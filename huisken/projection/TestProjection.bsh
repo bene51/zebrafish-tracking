@@ -37,14 +37,14 @@ print(radius);
 print("Needed " + (System.currentTimeMillis() - t) + " ms for fitting a circle");
 print("============");
 
-IJ.showStatus("Resampling");
-t = System.currentTimeMillis();
-ImageConverter.setDoScaling(true);
-new StackConverter(image).convertToGray8();
-image = NaiveResampler.resample(image, 4);
-image.show();
-print("Needed " + (System.currentTimeMillis() - t) + " ms for the downsampling");
-print("============");
+// IJ.showStatus("Resampling");
+// t = System.currentTimeMillis();
+// ImageConverter.setDoScaling(true);
+// new StackConverter(image).convertToGray8();
+// image = NaiveResampler.resample(image, 4);
+// image.show();
+// print("Needed " + (System.currentTimeMillis() - t) + " ms for the downsampling");
+// print("============");
 
 // use some cleverness for determining a meaningful subdivision.
 // maybe ensure that the final edge length is comparable to
@@ -58,15 +58,7 @@ print("subd = " + subd);
 IJ.showStatus("Calculating sphere vertices");
 t = System.currentTimeMillis();
 smp = new SphericalMaxProjection(image, center, (float)radius);
-print("Needed " + (System.currentTimeMillis() - t) + " ms to calculate the sphere");
-print("============");
-
-
-
-IJ.showStatus("Calculating LUT");
-t = System.currentTimeMillis();
-smp.calculateLUT();
-print("Needed " + (System.currentTimeMillis() - t) + " ms to calculate the LUT");
+print("Needed " + (System.currentTimeMillis() - t) + " ms to init projection");
 print("============");
 
 

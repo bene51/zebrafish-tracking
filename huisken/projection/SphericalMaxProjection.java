@@ -31,9 +31,9 @@ public class SphericalMaxProjection {
 	private final IndexedTriangleMesh sphere;
 	private final HashMap<Point3f, Integer> vertexToIndex;
 	private final PointOctree tree;
+	private final Point4[] lut;
 
 	private float[] maxima;
-	private Point4[] lut;
 
 	public SphericalMaxProjection(ImagePlus image, Point3f center, float radius) {
 		this.center = center;
@@ -66,6 +66,8 @@ public class SphericalMaxProjection {
 		vertexToIndex = new HashMap<Point3f, Integer>();
 		for(int i = 0; i < sphere.nVertices; i++)
 			vertexToIndex.put(sphere.getVertices()[i], i);
+
+		this.lut = calculateLUT();
 	}
 
 	public IndexedTriangleMesh getSphere() {
@@ -76,7 +78,7 @@ public class SphericalMaxProjection {
 		return maxima;
 	}
 
-	public void calculateLUT() {
+	private Point4[] calculateLUT() {
 		Vector3f dx = new Vector3f();
 		Point3f pos = new Point3f();
 		Point3i imagePos = new Point3i();
@@ -104,7 +106,7 @@ public class SphericalMaxProjection {
 				return 0;
 			}
 		});
-		lut = correspondences.toArray(new Point4[] {});
+		return correspondences.toArray(new Point4[] {});
 	}
 
 	public void project(ImagePlus image) {
