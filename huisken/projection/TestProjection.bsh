@@ -1,0 +1,138 @@
+import huisken.*;
+import ij.ImagePlus;
+import ij.process.FloatProcessor;
+import ij.process.StackConverter;
+import ij.process.ImageConverter;
+import vib.NaiveResampler;
+import javax.vecmath.Point3f;
+import javax.vecmath.Color3f;
+
+import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import ij3d.Image3DUniverse;
+
+import meshtools.IndexedTriangleMesh;
+
+import customnode.CustomTriangleMesh;
+
+path = "/home/bene/PostDoc/projection/s02_i0.tif";
+
+IJ.showStatus("Fitting sphere");
+t = System.currentTimeMillis();
+image = IJ.openImage(path);
+print("Needed " + (System.currentTimeMillis() - t) + " ms for loading the image");
+print("============");
+
+IJ.showStatus("Fitting sphere");
+t = System.currentTimeMillis();
+threshold = 2050;
+fs = new Fit_Sphere(image);
+fs.fit(threshold);
+center = new Point3f();
+fs.getCenter(center);
+radius = fs.getRadius();
+print(radius);
+print("Needed " + (System.currentTimeMillis() - t) + " ms for fitting a circle");
+print("============");
+
+IJ.showStatus("Resampling");
+t = System.currentTimeMillis();
+ImageConverter.setDoScaling(true);
+new StackConverter(image).convertToGray8();
+image = NaiveResampler.resample(image, 4);
+image.show();
+print("Needed " + (System.currentTimeMillis() - t) + " ms for the downsampling");
+print("============");
+
+// use some cleverness for determining a meaningful subdivision.
+// maybe ensure that the final edge length is comparable to
+// the minimum pixel dimension
+cal = image.getCalibration();
+dpixel = (float)Math.min(cal.pixelWidth, Math.min(cal.pixelHeight, cal.pixelDepth));
+// the edge length of a icosahedron is close to the radius of the circumscribed sphere
+subd = (int)Math.round(radius / dpixel);
+print("subd = " + subd);
+
+IJ.showStatus("Calculating sphere vertices");
+t = System.currentTimeMillis();
+smp = new SphericalMaxProjection(image, center, (float)radius);
+print("Needed " + (System.currentTimeMillis() - t) + " ms to calculate the sphere");
+print("============");
+
+
+
+IJ.showStatus("Calculating LUT");
+t = System.currentTimeMillis();
+smp.calculateLUT();
+print("Needed " + (System.currentTimeMillis() - t) + " ms to calculate the LUT");
+print("============");
+
+
+
+IJ.showStatus("Project image");
+t = System.currentTimeMillis();
+smp.project(image);
+print("Needed " + (System.currentTimeMillis() - t) + " ms for the projection");
+print("============");
+
+
+
+IJ.showStatus("Create 3D view");
+t = System.currentTimeMillis();
+IndexedTriangleMesh sphere = smp.getSphere();
+
+float[] maxima = smp.getMaxima();
+HashMap vertexToColor = new HashMap();
+for(int i = 0; i < maxima.length; i++)
+	vertexToColor.put(sphere.getVertices()[i], maxima[i]);
+
+List triangles = sphere.createMesh();
+List colors = new ArrayList();
+for(Point3f v : triangles) {
+	float col = vertexToColor.get(v) / 255f;
+	colors.add(new Color3f(col, col, col));
+}
+
+CustomTriangleMesh ctm = new CustomTriangleMesh(triangles);
+ctm.setColor(colors);
+
+Image3DUniverse univ = new Image3DUniverse();
+univ.show();
+univ.addCustomMesh(ctm, "projection");
+print("Needed " + (System.currentTimeMillis() - t) + " ms for the 3D view");
+print("============");
+
+
+
+
+ImagePlus createMercatorProjection(int w) {
+	int h = w / 2;
+	double xmin = -Math.PI;
+	double xmax = +Math.PI;
+	double ymin = -Math.PI / 2;
+	double ymax = +Math.PI / 2;
+	
+	FloatProcessor ip = new FloatProcessor(w, h);
+	for(int y = 0; y < h; y++) {
+		for(int x = 0; x < w; x++) {
+			double fx = xmin + x * (xmax - xmin) / w;
+			double fy = ymin + y * (ymax - ymin) / h;
+			float longitude = (float)fx;
+			float latitude = (float)(2 * Math.atan(Math.exp(fy)) - Math.PI / 2);
+			float v = smp.get(longitude, latitude);
+			ip.setf(x, y, v);
+		}
+	}
+	return new ImagePlus("Mercator", ip);
+}
+
+IJ.showStatus("Create mercator map");
+t = System.currentTimeMillis();
+createMercatorProjection(720).show();
+IJ.showStatus("");
+print("Needed " + (System.currentTimeMillis() - t) + " ms for the mercator projection");
+print("============");
+
+
