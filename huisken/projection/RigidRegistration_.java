@@ -70,7 +70,10 @@ public class RigidRegistration_ implements PlugIn {
 			return;
 		}
 
+		long start = System.currentTimeMillis();
 		rigidRegistration(trans, m, startlevel, stoplevel, tolerance);
+		long end = System.currentTimeMillis();
+		System.out.println("needed " + (end - start) + "ms");
 
 		trans.setTransformation(matrix);
 		trans.getTransformed().show();
@@ -84,7 +87,7 @@ public class RigidRegistration_ implements PlugIn {
 		return parameters;
 	}
 
-	public void rigidRegistration(TransformedImage trans,
+	public void rigidRegistration(FastTransformedImage trans,
 						double[] initialParam,
 						int startlevel,
 						int stoplevel,
@@ -105,13 +108,13 @@ System.out.println();
 	}
 
 	private static class Optimizer {
-		private TransformedImage t;
+		private FastTransformedImage t;
 		private int start, stop;
 		private double tolerance;
 		private double[] bestParameters; // this is a 9-parameter array with aaa - ttt - ccc
 		private FastMatrix bestMatrix;
 
-		public Optimizer(TransformedImage trans, double[] initial,
+		public Optimizer(FastTransformedImage trans, double[] initial,
 				int startLevel, int stopLevel,
 				double tol) {
 			if (stopLevel < 2)
@@ -126,7 +129,7 @@ System.out.println();
 
 		public void multiResRegister(int level) {
 			if (level > 0) {
-				TransformedImage backup = t;
+				FastTransformedImage backup = t;
 				t = t.resample(2);
 				multiResRegister(level-1);
 				t.setTransformation(bestMatrix);
@@ -137,7 +140,7 @@ System.out.println();
 
 			double factor = (1 << (start - level));
 			int minFactor = (1 << start);
-			double angleMax     = Math.PI / 4 * factor / minFactor;
+			double angleMax     = Math.PI / 180 * factor / minFactor;
 			double translateMax =        20.0 * factor / minFactor;
 			doRegister(tolerance / factor, level, angleMax, translateMax);
 		}
@@ -146,9 +149,7 @@ System.out.println();
 			ConjugateDirectionSearch CG =
 					new ConjugateDirectionSearch();
 
-			
-
-			Refinement refinement = new Refinement(bestParameters, angleMax, translateMax);
+			Refinement refinement = new Refinement(bestParameters, level, angleMax, translateMax);
 			double[] parameters = new double[refinement.getNumArguments()];
 
 			CG.optimize(refinement, parameters, tol,  tol);
@@ -172,14 +173,16 @@ System.out.println("distance = " + badness);
 			
 			private final double angleMax;
 			private final double translateMax;
+			private final int level;
 
 			// this is a 9-el array containing the unnormalized best parameter guess
 			private double[] initial;
 
 			private double angleFactor;
 
-			public Refinement(double[] initial, double angleMax, double translateMax) {
+			public Refinement(double[] initial, int level, double angleMax, double translateMax) {
 				this.initial = initial;
+				this.level = level;
 				this.angleMax = angleMax;
 				this.translateMax = translateMax;
 				this.angleFactor = angleMax / translateMax;
@@ -211,7 +214,7 @@ System.out.println("distance = " + badness);
 			 */
 			public double evaluate(double[] a) {
 				t.setTransformation(getMatrix(a));
-				double diff = t.getDistance();
+				double diff = t.getDistance(level);
 				return diff;
 			}
 
