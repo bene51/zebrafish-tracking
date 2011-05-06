@@ -3,17 +3,11 @@ package huisken.projection;
 import distance.*;
 import ij.IJ;
 import ij.ImagePlus;
-import ij.ImageStack;
 import ij.WindowManager;
 import ij.gui.GenericDialog;
-import ij.gui.YesNoCancelDialog;
-import ij.macro.Interpreter;
 import ij.measure.Calibration;
 import ij.plugin.PlugIn;
 import ij.process.ImageProcessor;
-import ij.text.TextWindow;
-import java.awt.Choice;
-import java.util.StringTokenizer;
 import math3d.Point3d;
 import pal.math.*;
 
@@ -61,7 +55,7 @@ public class RigidRegistration_ implements PlugIn {
 
 		ImagePlus templ = WindowManager.getImage(gd.getNextChoice());
 		ImagePlus model = WindowManager.getImage(gd.getNextChoice());
-		TransformedImage trans = new TransformedImage(templ, model);
+		FastTransformedImage trans = new FastTransformedImage(templ, model);
 		trans.measure = new distance.Correlation();
 
 
@@ -110,38 +104,12 @@ for(int i = 0; i < parameters.length; i++) {
 System.out.println();
 	}
 
-	static Point3d getCenterOfGravity(ImagePlus image) {
-		int w = image.getWidth();
-		int h = image.getHeight();
-		int d = image.getStackSize();
-
-		Point3d p = new Point3d();
-
-		for(int z = 0; z < d; z++) {
-			ImageProcessor ip = image.getStack().getProcessor(z + 1);
-			for(int y = 0; y < h; y++) {
-				for(int x = 0; x < w; x++) {
-					float v = ip.getf(x, y);
-					p.x += x * v;
-					p.y += y * v;
-					p.z += z * v;
-				}
-			}
-		}
-		Calibration calib = image.getCalibration();
-		p.x *= calib.pixelWidth;
-		p.y *= calib.pixelHeight;
-		p.z *= calib.pixelDepth;
-
-		return p;
-	}
-
-	static class Optimizer {
-		TransformedImage t;
-		int start, stop;
-		double tolerance;
-		double[] bestParameters; // this is a 9-parameter array with aaa - ttt - ccc
-		FastMatrix bestMatrix;
+	private static class Optimizer {
+		private TransformedImage t;
+		private int start, stop;
+		private double tolerance;
+		private double[] bestParameters; // this is a 9-parameter array with aaa - ttt - ccc
+		private FastMatrix bestMatrix;
 
 		public Optimizer(TransformedImage trans, double[] initial,
 				int startLevel, int stopLevel,
