@@ -14,7 +14,7 @@ import pal.math.*;
 import vib.TransformedImage;
 import vib.FastMatrix;
 
-public class RigidRegistration_ implements PlugIn {
+public class FastRigidRegistration implements PlugIn {
 
 	private FastMatrix matrix;
 	private double[] parameters;
@@ -55,9 +55,6 @@ public class RigidRegistration_ implements PlugIn {
 
 		ImagePlus templ = WindowManager.getImage(gd.getNextChoice());
 		ImagePlus model = WindowManager.getImage(gd.getNextChoice());
-		FastTransformedImage trans = new FastTransformedImage(templ, model);
-		trans.measure = new distance.Correlation();
-
 
 		// this is a1 - a2 - a3 - tx - ty - tz - cx - cy - cz
 		double[] m = new double[9];
@@ -71,12 +68,17 @@ public class RigidRegistration_ implements PlugIn {
 		}
 
 		long start = System.currentTimeMillis();
-		rigidRegistration(trans, m, startlevel, stoplevel, tolerance);
+		rigidRegistration(templ, model, m, startlevel, stoplevel, tolerance);
 		long end = System.currentTimeMillis();
 		System.out.println("needed " + (end - start) + "ms");
 
+		getTransformed(templ, model, matrix).show();
+	}
+
+	public static ImagePlus getTransformed(ImagePlus templ, ImagePlus model, FastMatrix matrix) {
+		FastTransformedImage trans = new FastTransformedImage(templ, model);
 		trans.setTransformation(matrix);
-		trans.getTransformed().show();
+		return trans.getTransformed();
 	}
 
 	public FastMatrix getMatrix() {
@@ -87,12 +89,15 @@ public class RigidRegistration_ implements PlugIn {
 		return parameters;
 	}
 
-	public void rigidRegistration(FastTransformedImage trans,
-						double[] initialParam,
-						int startlevel,
-						int stoplevel,
-						double tolerance) {
+	public void rigidRegistration(ImagePlus templ,
+					ImagePlus model,
+					double[] initialParam,
+					int startlevel,
+					int stoplevel,
+					double tolerance) {
 
+		FastTransformedImage trans = new FastTransformedImage(templ, model);
+		trans.measure = new distance.Correlation();
 		Optimizer opt = new Optimizer(
 			trans, initialParam, startlevel, stoplevel, tolerance);
 
@@ -100,11 +105,6 @@ public class RigidRegistration_ implements PlugIn {
 
 		matrix = opt.bestMatrix;
 		parameters = opt.bestParameters;
-System.out.print("parameters = ");
-for(int i = 0; i < parameters.length; i++) {
-	System.out.print((float)parameters[i] + "  ");
-}
-System.out.println();
 	}
 
 	private static class Optimizer {
@@ -140,8 +140,8 @@ System.out.println();
 
 			double factor = (1 << (start - level));
 			int minFactor = (1 << start);
-			double angleMax     = Math.PI / 180 * factor / minFactor;
-			double translateMax =        20.0 * factor / minFactor;
+			double angleMax     = Math.PI / 90 * factor / minFactor;
+			double translateMax =        140.0 * factor / minFactor;
 			doRegister(tolerance / factor, level, angleMax, translateMax);
 		}
 
@@ -156,7 +156,12 @@ System.out.println();
 			double badness = refinement.evaluate(parameters);
 			bestParameters = refinement.getParameters(parameters);
 			bestMatrix     = refinement.getMatrix(parameters);
-
+System.out.print("parameters = ");
+for(int i = 0; i < bestParameters.length; i++) {
+	System.out.print((float)bestParameters[i] + "  ");
+}
+System.out.println();
+System.out.println("matrix = " + bestMatrix);
 System.out.println("distance = " + badness);
 		}
 
@@ -214,7 +219,7 @@ System.out.println("distance = " + badness);
 			 */
 			public double evaluate(double[] a) {
 				t.setTransformation(getMatrix(a));
-				double diff = t.getDistance(level);
+				double diff = t.getDistance(/*level*/);
 				return diff;
 			}
 
