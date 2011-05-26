@@ -1,0 +1,80 @@
+import huisken.projection.*;
+import mpicbg.imglib.image.ImagePlusAdapter;
+import mpicbg.imglib.image.display.imagej.ImageJFunctions;
+import vib.NaiveResampler;
+
+// opening the images
+path1 = "/Users/huiskenlab/Documents/SPIMdata/Bene/timelapse_for_sphere_projection/110405_JH_sox17/recording_003_e0000/file_s000_a090_e0000_i1_p/Tifs";
+path2 = "/Users/huiskenlab/Documents/SPIMdata/Bene/timelapse_for_sphere_projection/110405_JH_sox17/recording_003_e0000/file_s001_a270_e0001_i1_p/Tifs";
+
+pw = 1.14286;
+ph = 1.14286;
+pd = 4.0;
+
+imp1 = FolderOpener.open(path1);
+imp1.getCalibration().pixelWidth  = pw;
+imp1.getCalibration().pixelHeight = ph;
+imp1.getCalibration().pixelDepth  = pd;
+new StackConverter(imp1).convertToGray8();
+
+imp2 = FolderOpener.open(path2);
+imp2.getCalibration().pixelWidth  = pw;
+imp2.getCalibration().pixelHeight = ph;
+imp2.getCalibration().pixelDepth  = pd;
+new StackConverter(imp2).convertToGray8();
+
+
+// step1: rigid registration
+centerx = imp1.getWidth()     * pw / 2.0;
+centery = imp1.getHeight()    * ph / 2.0;
+centerz = imp1.getStackSize() * pd / 2.0;
+
+param = new double[] {Math.PI, Math.PI, 0, 0, 0, 0, centerx, centery, centerz};
+rr = new FastRigidRegistration();
+rr.rigidRegistration(
+		imp1,
+		imp2,      // model
+		param,     // initialParam,
+		5,         // startlevel
+		2,         // stoplevel
+		1.0);      // tolerance
+matrix = rr.getMatrix();
+print(matrix);
+aligned = rr.getTransformed(imp1, imp2, matrix);
+aligned.show();
+
+// load again and transform with the matrix
+imp1 = FolderOpener.open(path1);
+imp1.getCalibration().pixelWidth  = pw;
+imp1.getCalibration().pixelHeight = ph;
+imp1.getCalibration().pixelDepth  = pd;
+imp1 = NaiveResampler.resample(imp1, 2);
+
+imp2 = FolderOpener.open(path2);
+imp2.getCalibration().pixelWidth  = pw;
+imp2.getCalibration().pixelHeight = ph;
+imp2.getCalibration().pixelDepth  = pd;
+imp2 = NaiveResampler.resample(imp2, 2);
+
+float[] m = new float[12];
+double[] tmp = new double[12];
+matrix.copyToFlatDoubleArray(tmp);
+for(int i = 0; i < 12; i++)
+	m[i] = (float)tmp[i];
+
+new StackConverter(imp1).convertToGray32();
+new StackConverter(imp2).convertToGray32();
+
+img1 = ImagePlusAdapter.wrap(imp1);
+img2 = ImagePlusAdapter.wrap(imp2);
+FuseImages.normalize(img1);
+FuseImages.normalize(img2);
+
+try {
+img2 = FuseImages.transformImage(img2, m, FuseImages.getBackgroundValue(img2));
+} catch(RuntimeException e) {
+	e.printStackTrace();
+}
+
+ImageJFunctions.copyToImagePlus( img1 ).show();
+ImageJFunctions.copyToImagePlus( img2 ).show();
