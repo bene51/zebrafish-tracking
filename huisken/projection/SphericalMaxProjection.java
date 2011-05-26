@@ -6,6 +6,7 @@ import ij.ImageStack;
 import ij.measure.Calibration;
 
 import ij.process.ImageProcessor;
+import ij.process.FloatProcessor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -157,6 +158,45 @@ public class SphericalMaxProjection {
 // 		return v0 + v1 + v2;
 		Point3f n = nnSearch.findNearestNeighbor(new Node3D(tmp)).p;
 		return maxima[vertexToIndex.get(n)];
+	}
+
+	private float get(double sinLong, double cosLong, double sinLat) {
+		// get point on sphere
+		tmp.x = (float)(center.x + radius * sinLong);
+		tmp.y = (float)(center.y + radius * cosLong);
+		tmp.z = (float)(center.z + radius * sinLat);
+		Point3f n = nnSearch.findNearestNeighbor(new Node3D(tmp)).p;
+		return maxima[vertexToIndex.get(n)];
+	}
+
+	public ImagePlus createMercatorProjection(int w) {
+		int h = w / 2;
+		double xmin = -Math.PI;
+		double xmax = +Math.PI;
+		double ymin = -Math.PI / 2;
+		double ymax = +Math.PI / 2;
+
+		float[] sinLongs = new float[w];
+		float[] cosLongs = new float[w];
+		for(int x = 0; x < w; x++) {
+			double fx = xmin + x * (xmax - xmin) / w;
+			sinLongs[x] = (float)Math.sin(fx);
+			cosLongs[x] = (float)Math.cos(fx);
+		}
+		float[] sinLats = new float[h];
+		for(int y = 0; y < h; y++) {
+			double fy = ymin + y * (ymax - ymin) / h;
+			sinLats[y] = (float)Math.sin(2 * Math.atan(Math.exp(fy)) - Math.PI / 2);
+		}
+
+		FloatProcessor ip = new FloatProcessor(w, h);
+		for(int y = 0; y < h; y++) {
+			for(int x = 0; x < w; x++) {
+				float v = get(sinLongs[x], cosLongs[x], sinLats[y]);
+				ip.setf(x, y, v);
+			}
+		}
+		return new ImagePlus("Mercator", ip);
 	}
 
 	final boolean inImage(Point3i p) {
