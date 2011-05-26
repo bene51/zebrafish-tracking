@@ -18,7 +18,10 @@ import javax.vecmath.Point3f;
 import javax.vecmath.Vector3f;
 
 import meshtools.IndexedTriangleMesh;
-import meshtools.PointOctree;
+
+import fiji.util.node.Leaf;
+import fiji.util.KDTree;
+import fiji.util.NearestNeighborSearch;
 
 public class SphericalMaxProjection {
 
@@ -30,7 +33,7 @@ public class SphericalMaxProjection {
 
 	private final IndexedTriangleMesh sphere;
 	private final HashMap<Point3f, Integer> vertexToIndex;
-	private final PointOctree tree;
+	private final NearestNeighborSearch<Node3D> nnSearch;
 	private final Point4[] lut;
 
 	private float[] maxima;
@@ -58,11 +61,16 @@ public class SphericalMaxProjection {
 		double dpixel = Math.min(pw, Math.min(ph, pd));
 		// the edge length of a icosahedron is close to the radius of the circumscribed sphere
 		int subd = (int)Math.round(radius / dpixel);
-		
+
 		sphere = icosa.createBuckyball(radius, subd);
 		for(Point3f p : sphere.getVertices())
 			p.add(center);
-		tree = new PointOctree(Arrays.asList(sphere.getVertices()));
+		ArrayList<Node3D> nodes = new ArrayList<Node3D>(sphere.nVertices);
+		for(Point3f p : sphere.getVertices())
+			nodes.add(new Node3D(p));
+		KDTree<Node3D> tree = new KDTree<Node3D>(nodes);
+		nnSearch = new NearestNeighborSearch<Node3D>(tree);
+
 		vertexToIndex = new HashMap<Point3f, Integer>();
 		for(int i = 0; i < sphere.nVertices; i++)
 			vertexToIndex.put(sphere.getVertices()[i], i);
@@ -147,7 +155,7 @@ public class SphericalMaxProjection {
 // 		float v1 = d1 * maxima[vertexToIndex.get(nn[1])];
 // 		float v2 = d2 * maxima[vertexToIndex.get(nn[2])];
 // 		return v0 + v1 + v2;
-		Point3f n = tree.getNearestNeighbor(tmp);
+		Point3f n = nnSearch.findNearestNeighbor(new Node3D(tmp)).p;
 		return maxima[vertexToIndex.get(n)];
 	}
 
@@ -179,6 +187,59 @@ public class SphericalMaxProjection {
 			this.y = p.y;
 			this.z = p.z;
 			this.vIndex = vIndex;
+		}
+	}
+
+
+	private static class Node3D implements Leaf<Node3D> {
+
+		final Point3f p;
+
+		public Node3D(final Point3f p) {
+			this.p = p;
+		}
+
+		public Node3D(final Node3D node) {
+			this.p = (Point3f)node.p.clone();
+		}
+
+		@Override
+		public boolean isLeaf() {
+			return true;
+		}
+
+		public boolean equals(final Node3D o) {
+	                 return p.equals(o.p);
+		}
+
+		@Override
+		public float distanceTo(final Node3D o) {
+			return p.distance(o.p);
+		}
+
+		@Override
+		public float get(final int k) {
+			switch(k) {
+				case 0: return p.x;
+				case 1: return p.y;
+				case 2: return p.z;
+			}
+			return 0f;
+		}
+
+		@Override
+		public String toString() {
+			return p.toString();
+		}
+
+		@Override
+		public Node3D[] createArray(final int n) {
+			return new Node3D[n];
+		}
+
+		@Override
+		public int getNumDimensions() {
+			return 3;
 		}
 	}
 }
