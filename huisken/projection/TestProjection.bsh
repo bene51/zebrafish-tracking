@@ -1,5 +1,6 @@
-import huisken.*;
+import huisken.projection.*;
 import ij.ImagePlus;
+import ij.plugin.FolderOpener;
 import ij.process.FloatProcessor;
 import ij.process.StackConverter;
 import ij.process.ImageConverter;
@@ -17,19 +18,29 @@ import meshtools.IndexedTriangleMesh;
 
 import customnode.CustomTriangleMesh;
 
-path = "/home/bene/PostDoc/projection/s02_i0.tif";
 
+path = "/Users/huiskenlab/Documents/SPIMdata/Bene/timelapse_for_sphere_projection/110405_JH_sox17/recording_003_e0000/file_s001_a270_e0001_i1_p/Tifs";
+// 8/7 x 8/7 x 4 or 1.14286 x 1.14286 x 4
+// path = "/home/bene/PostDoc/projection/s02_i0.tif";
 IJ.showStatus("Fitting sphere");
 t = System.currentTimeMillis();
 image = IJ.openImage(path);
+image = FolderOpener.open(path);
+image.getCalibration().pixelWidth = 1.14286;
+image.getCalibration().pixelHeight = 1.14286;
+image.getCalibration().pixelDepth = 4;
+image.show();
 print("Needed " + (System.currentTimeMillis() - t) + " ms for loading the image");
 print("============");
 
+image = IJ.getImage();
 IJ.showStatus("Fitting sphere");
 t = System.currentTimeMillis();
 threshold = 2050;
-fs = new Fit_Sphere(image);
+fs = new huisken.projection.Fit_Sphere(image);
+print("begin fit");
 fs.fit(threshold);
+print("end fit");
 center = new Point3f();
 fs.getCenter(center);
 radius = fs.getRadius();
@@ -46,18 +57,11 @@ print("============");
 // print("Needed " + (System.currentTimeMillis() - t) + " ms for the downsampling");
 // print("============");
 
-// use some cleverness for determining a meaningful subdivision.
-// maybe ensure that the final edge length is comparable to
-// the minimum pixel dimension
-cal = image.getCalibration();
-dpixel = (float)Math.min(cal.pixelWidth, Math.min(cal.pixelHeight, cal.pixelDepth));
-// the edge length of a icosahedron is close to the radius of the circumscribed sphere
-subd = (int)Math.round(radius / dpixel);
-print("subd = " + subd);
 
 IJ.showStatus("Calculating sphere vertices");
 t = System.currentTimeMillis();
 smp = new SphericalMaxProjection(image, center, (float)radius);
+print("Created sphere with " + smp.getSphere().nVertices + " vertices");
 print("Needed " + (System.currentTimeMillis() - t) + " ms to init projection");
 print("============");
 
@@ -70,7 +74,7 @@ print("Needed " + (System.currentTimeMillis() - t) + " ms for the projection");
 print("============");
 
 
-
+/*
 IJ.showStatus("Create 3D view");
 t = System.currentTimeMillis();
 IndexedTriangleMesh sphere = smp.getSphere();
@@ -96,35 +100,14 @@ univ.addCustomMesh(ctm, "projection");
 print("Needed " + (System.currentTimeMillis() - t) + " ms for the 3D view");
 print("============");
 
+*/
 
-
-
-ImagePlus createMercatorProjection(int w) {
-	int h = w / 2;
-	double xmin = -Math.PI;
-	double xmax = +Math.PI;
-	double ymin = -Math.PI / 2;
-	double ymax = +Math.PI / 2;
-	
-	FloatProcessor ip = new FloatProcessor(w, h);
-	for(int y = 0; y < h; y++) {
-		for(int x = 0; x < w; x++) {
-			double fx = xmin + x * (xmax - xmin) / w;
-			double fy = ymin + y * (ymax - ymin) / h;
-			float longitude = (float)fx;
-			float latitude = (float)(2 * Math.atan(Math.exp(fy)) - Math.PI / 2);
-			float v = smp.get(longitude, latitude);
-			ip.setf(x, y, v);
-		}
-	}
-	return new ImagePlus("Mercator", ip);
-}
-
+/*
 IJ.showStatus("Create mercator map");
 t = System.currentTimeMillis();
-createMercatorProjection(720).show();
+smp.createMercatorProjection(1440).show();
 IJ.showStatus("");
 print("Needed " + (System.currentTimeMillis() - t) + " ms for the mercator projection");
 print("============");
-
+*/
 
