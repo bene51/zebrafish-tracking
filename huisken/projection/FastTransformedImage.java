@@ -10,7 +10,7 @@ import java.util.Arrays;
 public class FastTransformedImage extends TransformedImage {
 
 	public static final int TILEX = 64, TILEY = 64, TILEZ = 32;
-	public static final float RATIO = 0.01f;
+	public static final float RATIO = 0.1f;
 
 	private Range[] ranges;
 
@@ -54,16 +54,15 @@ public class FastTransformedImage extends TransformedImage {
 					float measure = HistogramFeatures.getEntropy(histo, sum);
 
 					ranges[index++] = new Range(x0, y0, z0, x1, y1, z1, measure);
-					System.out.println(ranges[index - 1]);
 				}
 			}
 		}
 
 		Arrays.sort(ranges);
 		this.ranges = ranges;
-		// int n = (int)Math.ceil(RATIO * nx * ny * nz);
-		// this.ranges = new Range[n];
-		// System.arraycopy(ranges, ranges.length - n, this.ranges, 0, n);
+		int n = (int)Math.ceil(RATIO * nx * ny * nz);
+		this.ranges = new Range[n];
+		System.arraycopy(ranges, 0, this.ranges, 0, n);
 	}
 
 	@Override
@@ -107,27 +106,6 @@ public class FastTransformedImage extends TransformedImage {
 
 	}
 
-	/*
-	 * Level starts here from the lowest level; in the lowest
-	 * level, all ranges are used for optimization; for each
-	 * following layer, the number of ranges used is consecutively
-	 * increased to the 3rd root of the previous level.
-	 */
-int tmp = -1;
-	public float getDistance(int level) {
-
-		double exp = 1.0 / Math.pow(2, level);
-		int numberOfRangesToUse = (int)Math.ceil(Math.pow(ranges.length, exp));
-if(level != tmp) {
-	tmp = level;
-	System.out.println("level = " + level + " numberOfRangesToUse = " + numberOfRangesToUse);
-}
-		float dist = 0f;
-		for(int i = 0; i < numberOfRangesToUse; i++)
-			dist += getDistance(ranges[i]);
-		return dist;
-	}
-
 	private class Range implements Comparable<Range> {
 		int x0, y0, z0;
 		int x1, y1, z1;
@@ -143,9 +121,10 @@ if(level != tmp) {
 			this.measure = measure;
 		}
 
+		/* reverse sorting */
 		public int compareTo(Range r) {
-			if(this.measure < r.measure) return -1;
-			if(this.measure > r.measure) return +1;
+			if(this.measure < r.measure) return +1;
+			if(this.measure > r.measure) return -1;
 			return 0;
 		}
 
