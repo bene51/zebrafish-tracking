@@ -53,7 +53,7 @@ public class FastTransformedImage extends TransformedImage {
 					}
 					float measure = HistogramFeatures.getEntropy(histo, sum);
 
-					ranges[index++] = new Range(x0, z0, z0, x1, y1, z1, measure);
+					ranges[index++] = new Range(x0, y0, z0, x1, y1, z1, measure);
 					System.out.println(ranges[index - 1]);
 				}
 			}
