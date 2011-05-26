@@ -62,14 +62,18 @@ public class FuseImages implements PlugInFilter {
 		numLevels = 4;
 
 		// normalize
-		NormalizeImageMinMax<FloatType> mm = new NormalizeImageMinMax<FloatType>(image);
-		mm.process();
+		normalize(image);
 
 		// filter in multi resolution
 		Image<FloatType> target = filterMultiResolution(image, 1, r);
 
 		// output
 		ImageJFunctions.copyToImagePlus( target ).show();
+	}
+
+	public static void normalize(Image<FloatType> img) {
+		NormalizeImageMinMax<FloatType> mm = new NormalizeImageMinMax<FloatType>(img);
+		mm.process();
 	}
 
 	// source: source image for that level
