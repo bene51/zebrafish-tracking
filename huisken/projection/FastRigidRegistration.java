@@ -11,8 +11,8 @@ import ij.process.ImageProcessor;
 import math3d.Point3d;
 import pal.math.*;
 
-import vib.TransformedImage;
 import vib.FastMatrix;
+import vib.TransformedImage;
 
 public class FastRigidRegistration implements PlugIn {
 
@@ -26,14 +26,9 @@ public class FastRigidRegistration implements PlugIn {
 		int stoplevel = 2;
 		double tolerance = 1.0;
 
-		gd.addStringField("initial transformation", "", 30);
-		gd.addNumericField("tolerance", 1.0, 3);
-		gd.addNumericField("level", 4, 0);
-		gd.addNumericField("stopLevel", 2, 0);
-
 		int[] wIDs = WindowManager.getIDList();
-		if(wIDs == null){
-			IJ.error("No images open");
+		if(wIDs == null || wIDs.length < 2){
+			IJ.error("Two images needed.");
 			return;
 		}
 		String[] titles = new String[wIDs.length];
@@ -41,8 +36,13 @@ public class FastRigidRegistration implements PlugIn {
 			titles[i] = WindowManager.getImage(wIDs[i]).getTitle();
 		}
 
+		gd.addStringField("initial transformation", "1 0 0 0 0 1 0 0 0 0 1 0", 30);
+		gd.addNumericField("tolerance", 1.0, 3);
+		gd.addNumericField("level", 4, 0);
+		gd.addNumericField("stopLevel", 2, 0);
+
 		gd.addChoice("Template", titles, titles[0]);
-		gd.addChoice("Model", titles, titles[0]);
+		gd.addChoice("Model", titles, titles[1]);
 
 		gd.showDialog();
 		if (gd.wasCanceled())
@@ -56,12 +56,9 @@ public class FastRigidRegistration implements PlugIn {
 		ImagePlus templ = WindowManager.getImage(gd.getNextChoice());
 		ImagePlus model = WindowManager.getImage(gd.getNextChoice());
 
-		// this is a1 - a2 - a3 - tx - ty - tz - cx - cy - cz
-		double[] m = new double[9];
+		FastMatrix m = null;
 		try {
-			String[] toks = initial.split(" ");
-			for(int i = 0; i < toks.length; i++)
-				m[i] = Double.parseDouble(toks[i]);
+			m = FastMatrix.parseMatrix(initial);
 		} catch(Exception e) {
 			IJ.error("Couldn't parse initial transformation");
 			return;
@@ -89,21 +86,49 @@ public class FastRigidRegistration implements PlugIn {
 		return parameters;
 	}
 
+	private static Point3d getCenterOfGravity(ImagePlus img) {
+		int w = img.getWidth();
+		int h = img.getHeight();
+		int d = img.getStackSize();
+		long[] g = new long[3];
+		long sum = 0;
+		for(int z = 0; z < d; z++) {
+			ImageProcessor ip = img.getStack().getProcessor(z + 1);
+			for(int y = 0; y < h; y++) {
+				for(int x = 0; x < w; x++) {
+					int v = ip.get(x, y);
+					g[0] += v * x;
+					g[1] += v * y;
+					g[2] += v * z;
+					sum += v;
+				}
+			}
+		}
+		return new Point3d(
+			img.getCalibration().pixelWidth  * g[0] / sum,
+			img.getCalibration().pixelHeight * g[1] / sum,
+			img.getCalibration().pixelDepth  * g[2] / sum);
+	}
+
 	public void rigidRegistration(ImagePlus templ,
 					ImagePlus model,
-					double[] initialParam,
+					FastMatrix initial,
 					int startlevel,
 					int stoplevel,
 					double tolerance) {
 
 		FastTransformedImage trans = new FastTransformedImage(templ, model);
 		trans.measure = new distance.Correlation();
+
+		double[] params = new double[9];
+		Point3d center = getCenterOfGravity(model);
+		initial.guessEulerParameters(params, center);
+
+
 		Optimizer opt = new Optimizer(
-			trans, initialParam, startlevel, stoplevel, tolerance);
+			trans, params, startlevel, stoplevel, tolerance);
 
-		opt.multiResRegister(startlevel-stoplevel);
-
-		matrix = opt.bestMatrix;
+		matrix = opt.multiResRegister(startlevel - stoplevel);
 		parameters = opt.bestParameters;
 	}
 
@@ -112,7 +137,6 @@ public class FastRigidRegistration implements PlugIn {
 		private int start, stop;
 		private double tolerance;
 		private double[] bestParameters; // this is a 9-parameter array with aaa - ttt - ccc
-		private FastMatrix bestMatrix;
 
 		public Optimizer(FastTransformedImage trans, double[] initial,
 				int startLevel, int stopLevel,
@@ -127,12 +151,13 @@ public class FastRigidRegistration implements PlugIn {
 			bestParameters = initial;
 		}
 
-		public void multiResRegister(int level) {
+		public FastMatrix multiResRegister(int level) {
 			if (level > 0) {
 				FastTransformedImage backup = t;
-				t = t.resample(2);
-				multiResRegister(level-1);
-				t.setTransformation(bestMatrix);
+				int fx = 2, fy = 2;
+				int fz = t.orig.d > 0.5 * t.orig.w ? 2 : 1;
+				t = t.resample(fx, fy, fz);
+				t.setTransformation(multiResRegister(level-1));
 				t = backup;
 				System.gc();
 				System.gc();
@@ -140,31 +165,57 @@ public class FastRigidRegistration implements PlugIn {
 
 			double factor = (1 << (start - level));
 			int minFactor = (1 << start);
-			double angleMax     = Math.PI / 90 * factor / minFactor;
-			double translateMax =        140.0 * factor / minFactor;
-			doRegister(tolerance / factor, level, angleMax, translateMax);
+
+			double angleMax = Math.PI / 4 * factor / minFactor;
+			double transMax =        20.0 * factor / minFactor;
+			FastMatrix fm = doRegister(tolerance / factor, angleMax, transMax);
+			t.setTransformation(fm);
+			t.getTransformed().show();
+			return fm;
 		}
 
-		public void doRegister(double tol, int level, double angleMax, double translateMax) {
+		public FastMatrix doRegister(double tol, double angleMax, double transMax) {
+			System.out.println();
+			System.out.println("doRegister tol = " + (float)tol + ", transMax = " + transMax + ", angleMax = " + angleMax);
+			System.out.println("==========");
 			ConjugateDirectionSearch CG =
 					new ConjugateDirectionSearch();
+			CG.prin = 0;
 
-			Refinement refinement = new Refinement(bestParameters, level, angleMax, translateMax);
+			Refinement refinement = new Refinement(bestParameters, angleMax, transMax);
 			double[] parameters = new double[refinement.getNumArguments()];
+			double badness = Float.MAX_VALUE;
+			FastMatrix bestMatrix = null;
 
-			CG.optimize(refinement, parameters, tol,  tol);
-			double badness = refinement.evaluate(parameters);
-			bestParameters = refinement.getParameters(parameters);
-			bestMatrix     = refinement.getMatrix(parameters);
-System.out.print("parameters = ");
-for(int i = 0; i < bestParameters.length; i++) {
-	System.out.print((float)bestParameters[i] + "  ");
-}
-System.out.println();
-System.out.println("matrix = " + bestMatrix);
-System.out.println("distance = " + badness);
+			do {
+				System.out.println("calling optimize()");
+				System.out.println("initial = " + toString(refinement.initial));
+				CG.optimize(refinement, parameters, tol,  tol);
+				parameters = refinement.best;
+				badness = refinement.evaluate(parameters);
+				bestParameters = refinement.getParameters(parameters);
+				bestMatrix     = refinement.getMatrix(parameters);
+				System.out.println("badness = " + badness);
+			} while(refinement.adjustInitial(parameters) > transMax / 8);
+
+
+System.out.println("best parameters = " + toString(bestParameters));
+
+// System.out.println("matrix = " + bestMatrix);
+// System.out.println("distance = " + badness + " after " + refinement.calls + " calls");
+refinement.calls = 0;
+
+			return bestMatrix;
 		}
 
+private static String toString(double[] a) {
+	StringBuffer sb = new StringBuffer();
+	sb.append("[ ");
+	for(int i = 0; i < 6; i++)
+		sb.append((float)a[i] + "  ");
+	sb.append("]");
+	return sb.toString();
+}
 
 		/*
 		 * All the arrays in this class have the order of parameters
@@ -175,22 +226,26 @@ System.out.println("distance = " + badness);
 		class Refinement implements MultivariateFunction {
 
 			private static final int N = 6;
-			
+
 			private final double angleMax;
 			private final double translateMax;
-			private final int level;
+
+			private double min = Double.MAX_VALUE;
+			private double[] best; // normalized
+
+			private int calls = 0;
 
 			// this is a 9-el array containing the unnormalized best parameter guess
 			private double[] initial;
 
 			private double angleFactor;
 
-			public Refinement(double[] initial, int level, double angleMax, double translateMax) {
+			public Refinement(double[] initial, double angleMax, double translateMax) {
 				this.initial = initial;
-				this.level = level;
 				this.angleMax = angleMax;
 				this.translateMax = translateMax;
 				this.angleFactor = angleMax / translateMax;
+				evaluate(new double[6]);
 			}
 
 			/*
@@ -218,9 +273,35 @@ System.out.println("distance = " + badness);
 			 * @implements evaluate() in MultivariateFunction
 			 */
 			public double evaluate(double[] a) {
+				calls++;
 				t.setTransformation(getMatrix(a));
-				double diff = t.getDistance(/*level*/);
+				double diff = t.getDistance();
+				if(diff < min) {
+					min = diff;
+					best = (double[])a.clone();
+				}
 				return diff;
+			}
+
+			/*
+			 * Adjusts the initial parameters, resets the given
+			 * array and returns the maximum absolute (normalized) adjustment.
+			 */
+			public double adjustInitial(double[] a) {
+				initial[0] += a[0] * angleFactor;
+				initial[1] += a[1] * angleFactor;
+				initial[2] += a[2] * angleFactor;
+				initial[3] += a[3];
+				initial[4] += a[4];
+				initial[5] += a[5];
+
+				double maxAdjust = 0;
+				for(int i = 0; i < 6; i++) {
+					if(Math.abs(a[i]) > maxAdjust)
+						maxAdjust = Math.abs(a[i]);
+					a[i] = 0;
+				}
+				return maxAdjust;
 			}
 
 			/*
