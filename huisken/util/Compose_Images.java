@@ -1,4 +1,6 @@
-package util.ComposeImages;
+package huisken.util;
+
+import java.util.ArrayList;
 
 import ij.ImagePlus;
 import ij.IJ;
@@ -8,28 +10,50 @@ import ij.process.Blitter;
 
 public class Compose_Images {
 
-	public static ImagePlus compose(ImagePlus i1, int x1, int y1, int z1, ImagePlus i2, int x2, int y2, int z2) {
-		int w1 = i1.getWidth();
-		int h1 = i1.getHeight();
-		int d1 = i1.getStackSize();
+	private static class Entry {
+		ImagePlus image;
+		int x, y, z;
+		int w, h, d;
 
-		int w2 = i2.getWidth();
-		int h2 = i2.getHeight();
-		int d2 = i2.getStackSize();
+		Entry(ImagePlus image, int x, int y, int z, int w, int h, int d) {
+			this.image = image;
+			this.x = x;
+			this.y = y;
+			this.z = z;
+			this.w = w;
+			this.h = h;
+			this.d = d;
+		}
+	}
 
-		int rw = Math.max(x1 + w1, x2 + w2);
-		int rh = Math.max(y1 + h1, y2 + h2);
-		int rd = Math.max(z1 + d1, z1 + d2);
+	private ArrayList<Entry> entries = new ArrayList<Entry>();
 
-		ImagePlus res = IJ.createImage("Composed", "rgb black", rw, rh, rd);
+	public void add(ImagePlus imp, int x, int y, int z, int w, int h, int d) {
+		if(w < 0) w = imp.getWidth();
+		if(h < 0) h = imp.getHeight();
+		if(d < 0) d = imp.getStackSize();
+
+		entries.add(new Entry(imp, x, y, z, w, h, d));
+	}
+
+	public ImagePlus create() {
+
+		int rw = 0, rh = 0, rd = 0;
+
+		for(Entry e : entries) {
+			if(e.x + e.w > rw) rw = e.x + e.w;
+			if(e.y + e.h > rh) rh = e.y + e.h;
+			if(e.z + e.d > rd) rd = e.z + e.d;
+		}
+
+		ImagePlus res = IJ.createImage("Composed", "rgb white", rw, rh, rd);
 		for(int z = 0; z < rd; z++) {
 			ImageProcessor ipr = res.getStack().getProcessor(z + 1);
-			// copy z1
-			if(z >= z1 && z < z1 + d1)
-				ipr.copyBits(i1.getStack().getProcessor(z - z1 + 1), x1, y1, Blitter.ADD);
-			// copy z2
-			if(z >= z2 && z < z2 + d2)
-				ipr.copyBits(i2.getStack().getProcessor(z - z2 + 1), x2, y2, Blitter.ADD);
+
+			for(Entry e : entries) {
+				if(z >= e.z && z < e.z + e.d)
+					ipr.copyBits(e.image.getStack().getProcessor(z - e.z + 1).resize(e.w, e.h).convertToRGB(), e.x, e.y, Blitter.COPY);
+			}
 		}
 		return res;
 	}
