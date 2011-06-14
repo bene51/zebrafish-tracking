@@ -19,6 +19,7 @@ import java.util.Random;
 
 public class FastTransformedImage extends TransformedImage {
 
+	/*
 	public static void main(String[] args) {
 		ImagePlus templ = ij.WindowManager.getImage("template");
 		ImagePlus model = ij.WindowManager.getImage("model");
@@ -44,7 +45,7 @@ public class FastTransformedImage extends TransformedImage {
 
 		FastTransformedImage t = new FastTransformedImage(templ, model);
 		t.setTransformation(new FastMatrix());
-	}
+	}*/
 
 	public static final int TILEX = 64, TILEY = 64, TILEZ = 32;
 	public static final float RATIO = 1.0f;
@@ -133,7 +134,7 @@ System.out.println("nz = " + nz);
 		FastTransformedImage res = new FastTransformedImage(
 			new InterpolatedImage(resOrig),
 			new InterpolatedImage(resTran));
-		res.transformation = transformation;
+		// res.transformation = transformation;
 		res.measure = measure;
 
 		res.ranges = new Range[this.ranges.length];
