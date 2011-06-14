@@ -62,7 +62,7 @@ public class ConvertTo8 {
 		img.setStack(null, stack);
 	}
 
-	public static void convertTo8(ImagePlus img, int min, int max) {
+	public static void convertTo8(ImagePlus img, float min, float max) {
 		int bins = 256;
 		int w = img.getWidth();
 		int h = img.getHeight();
