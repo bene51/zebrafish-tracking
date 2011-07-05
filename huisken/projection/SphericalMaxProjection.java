@@ -1,5 +1,9 @@
 package huisken.projection;
 
+import customnode.CustomMesh;
+import customnode.CustomTriangleMesh;
+import customnode.WavefrontExporter;
+
 import ij.ImagePlus;
 import ij.ImageStack;
 
@@ -7,6 +11,11 @@ import ij.measure.Calibration;
 
 import ij.process.ImageProcessor;
 import ij.process.FloatProcessor;
+
+import java.io.DataOutputStream;
+import java.io.BufferedOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,38 +32,45 @@ import meshtools.IndexedTriangleMesh;
 import fiji.util.node.Leaf;
 import fiji.util.KDTree;
 import fiji.util.NearestNeighborSearch;
+import fiji.util.NNearestNeighborSearch;
+
+import java.util.Map;
+
+import vib.FastMatrix;
 
 public class SphericalMaxProjection {
 
-	private final Point3f center;
-	private final float radius;
+	final Point3f center;
+	final float radius;
 
 	private final int w, h, d;
 	private final double pw, ph, pd;
 
+	private final Icosahedron icosa;
 	private final IndexedTriangleMesh sphere;
 	private final HashMap<Point3f, Integer> vertexToIndex;
-	private final NearestNeighborSearch<Node3D> nnSearch;
+	private final NNearestNeighborSearch<Node3D> nnSearch;
 	private final Point4[] lut;
 
 	private float[] maxima;
+	private float[] weights;
 
-	public SphericalMaxProjection(ImagePlus image, Point3f center, float radius) {
+	public SphericalMaxProjection(ImagePlus mask, Point3f center, float radius, FusionWeight weighter) {
 		this.center = center;
 		this.radius = radius;
 
-		Calibration c = image.getCalibration();
+		Calibration c = mask.getCalibration();
 		pw = c.pixelWidth;
 		ph = c.pixelHeight;
 		pd = c.pixelDepth;
 
-		w = image.getWidth();
-		h = image.getHeight();
-		d = image.getStackSize();
+		w = mask.getWidth();
+		h = mask.getHeight();
+		d = mask.getStackSize();
 
 		// calculate the sphere coordinates
 		float tao = 1.61803399f;
-		Icosahedron icosa = new Icosahedron(tao, radius);
+		icosa = new Icosahedron(tao, radius);
 
 		// use some cleverness for determining a meaningful subdivision.
 		// maybe ensure that the final edge length is comparable to
@@ -62,7 +78,8 @@ public class SphericalMaxProjection {
 		double dpixel = Math.min(pw, Math.min(ph, pd));
 		// the edge length of a icosahedron is close to the radius of the circumscribed sphere
 		int subd = (int)Math.round(radius / dpixel);
-
+System.out.println("subd = " + subd);
+subd /= 4;
 		sphere = icosa.createBuckyball(radius, subd);
 		for(Point3f p : sphere.getVertices())
 			p.add(center);
@@ -70,13 +87,57 @@ public class SphericalMaxProjection {
 		for(Point3f p : sphere.getVertices())
 			nodes.add(new Node3D(p));
 		KDTree<Node3D> tree = new KDTree<Node3D>(nodes);
-		nnSearch = new NearestNeighborSearch<Node3D>(tree);
+		nnSearch = new NNearestNeighborSearch<Node3D>(tree);
 
 		vertexToIndex = new HashMap<Point3f, Integer>();
 		for(int i = 0; i < sphere.nVertices; i++)
 			vertexToIndex.put(sphere.getVertices()[i], i);
 
-		this.lut = calculateLUT();
+		this.lut = calculateLUT(weighter);
+	}
+
+	public void saveSphere(String objpath) throws IOException {
+		Map<String, CustomMesh> mesh = new HashMap<String, CustomMesh>();
+		mesh.put("Sphere", new CustomTriangleMesh(sphere.createMesh()));
+		WavefrontExporter.save(mesh, objpath);
+	}
+
+	public void saveMaxima(String path) throws IOException {
+		DataOutputStream out = new DataOutputStream(
+			new BufferedOutputStream(
+				new FileOutputStream(path)));
+		for(float f : maxima)
+			out.writeFloat(f);
+		out.close();
+	}
+
+	public SphericalMaxProjection(ImagePlus mask, IndexedTriangleMesh sphere, Point3f center, float radius, FusionWeight weighter) {
+		this.center = center;
+		this.radius = radius;
+
+		Calibration c = mask.getCalibration();
+		pw = c.pixelWidth;
+		ph = c.pixelHeight;
+		pd = c.pixelDepth;
+
+		w = mask.getWidth();
+		h = mask.getHeight();
+		d = mask.getStackSize();
+
+		this.icosa = null;
+		this.sphere = sphere; // TODO make sure we are not changing the original
+
+		ArrayList<Node3D> nodes = new ArrayList<Node3D>(sphere.nVertices);
+		for(Point3f p : sphere.getVertices())
+			nodes.add(new Node3D(p));
+		KDTree<Node3D> tree = new KDTree<Node3D>(nodes);
+		nnSearch = new NNearestNeighborSearch<Node3D>(tree);
+
+		vertexToIndex = new HashMap<Point3f, Integer>();
+		for(int i = 0; i < sphere.nVertices; i++)
+			vertexToIndex.put(sphere.getVertices()[i], i);
+
+		this.lut = calculateLUT(weighter);
 	}
 
 	public IndexedTriangleMesh getSphere() {
@@ -87,23 +148,42 @@ public class SphericalMaxProjection {
 		return maxima;
 	}
 
-	private Point4[] calculateLUT() {
+	public void addMaxima(float[] maxima) {
+		for(int i = 0; i < this.maxima.length; i++)
+			this.maxima[i] += maxima[i];
+	}
+
+	public void scaleMaxima(FusionWeight weighter) {
+		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
+			Point3f vertex = sphere.getVertices()[vIndex];
+			maxima[vIndex] *= weighter.getWeight(vertex.x, vertex.y, vertex.z);
+		}
+	}
+
+	private Point4[] calculateLUT(FusionWeight weighter) {
 		Vector3f dx = new Vector3f();
 		Point3f pos = new Point3f();
 		Point3i imagePos = new Point3i();
 		ArrayList<Point4> correspondences = new ArrayList<Point4>();
+		weights = new float[sphere.nVertices];
+
 		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
 			Point3f vertex = sphere.getVertices()[vIndex];
+			toImagePos(vertex, imagePos);
+			weights[vIndex] = weighter.getWeight(vertex.x, vertex.y, vertex.z);
+			if(weights[vIndex] == 0)
+				continue;
+
 			dx.sub(vertex, center);
 			dx.normalize();
 			float scale = scaleForOnePixel(dx);
-			int k = (int)Math.round(0.05f * radius / scale);
+			int k = (int)Math.round(0.2f * radius / scale);
 
 			for(int i = -k; i <= k; i++) {
 				pos.scaleAdd(i * scale, dx, vertex);
 				toImagePos(pos, imagePos);
-				if(inImage(imagePos))
-					correspondences.add(new Point4(imagePos, vIndex));
+
+				correspondences.add(new Point4(imagePos, vIndex));
 			}
 		}
 
@@ -115,6 +195,7 @@ public class SphericalMaxProjection {
 				return 0;
 			}
 		});
+
 		return correspondences.toArray(new Point4[] {});
 	}
 
@@ -133,70 +214,46 @@ public class SphericalMaxProjection {
 			}
 			lutIndex--;
 		}
+		for(int i = 0; i < maxima.length; i++)
+			maxima[i] *= weights[i];
 	}
 
 	Point3f tmp = new Point3f();
 	Point3f[] nn = new Point3f[3];
 	public float get(float longitude, float latitude) {
-		// get point on sphere
-		tmp.x = (float)(center.x + radius * Math.sin(longitude));
-		tmp.y = (float)(center.y + radius * Math.cos(longitude));
-		tmp.z = (float)(center.z + radius * Math.sin(latitude));
-		// get three nearest neighbors
-// 		tree.getNNearestNeighbors(tmp, nn);
-// 		// interpolate according to distance
-// 		float d0 = 1 / tmp.distance(nn[0]);
-// 		float d1 = 1 / tmp.distance(nn[1]);
-// 		float d2 = 1 / tmp.distance(nn[2]);
-// 		float sum = d0 + d1 + d2;
-// 		d0 /= sum;
-// 		d1 /= sum;
-// 		d2 /= sum;
-// 		float v0 = d0 * maxima[vertexToIndex.get(nn[0])];
-// 		float v1 = d1 * maxima[vertexToIndex.get(nn[1])];
-// 		float v2 = d2 * maxima[vertexToIndex.get(nn[2])];
-// 		return v0 + v1 + v2;
-		Point3f n = nnSearch.findNearestNeighbor(new Node3D(tmp)).p;
-		return maxima[vertexToIndex.get(n)];
+		return get(Math.sin(longitude), Math.cos(longitude), Math.sin(latitude), Math.cos(latitude));
 	}
 
-	private float get(double sinLong, double cosLong, double sinLat) {
+	public float get(double sinLong, double cosLong, double sinLat, double cosLat) {
 		// get point on sphere
-		tmp.x = (float)(center.x + radius * sinLong);
-		tmp.y = (float)(center.y + radius * cosLong);
+		tmp.x = (float)(center.x + radius * cosLat * cosLong);
+		tmp.y = (float)(center.y + radius * cosLat * sinLong);
 		tmp.z = (float)(center.z + radius * sinLat);
-		Point3f n = nnSearch.findNearestNeighbor(new Node3D(tmp)).p;
-		return maxima[vertexToIndex.get(n)];
+		return get(tmp);
 	}
 
-	public ImagePlus createMercatorProjection(int w) {
-		int h = w / 2;
-		double xmin = -Math.PI;
-		double xmax = +Math.PI;
-		double ymin = -Math.PI / 2;
-		double ymax = +Math.PI / 2;
+	public float get(Point3f p) {
+		// get three nearest neighbors
+		Node3D[] nn = nnSearch.findNNearestNeighbors(new Node3D(p), 3);
+		// interpolate according to distance
+		float d0 = 1 / p.distance(nn[0].p);
+		float d1 = 1 / p.distance(nn[1].p);
+		float d2 = 1 / p.distance(nn[2].p);
+		float sum = d0 + d1 + d2;
+		d0 /= sum;
+		d1 /= sum;
+		d2 /= sum;
+		float v0 = d0 * maxima[vertexToIndex.get(nn[0].p)];
+		float v1 = d1 * maxima[vertexToIndex.get(nn[1].p)];
+		float v2 = d2 * maxima[vertexToIndex.get(nn[2].p)];
+		return v0 + v1 + v2;
+	}
 
-		float[] sinLongs = new float[w];
-		float[] cosLongs = new float[w];
-		for(int x = 0; x < w; x++) {
-			double fx = xmin + x * (xmax - xmin) / w;
-			sinLongs[x] = (float)Math.sin(fx);
-			cosLongs[x] = (float)Math.cos(fx);
-		}
-		float[] sinLats = new float[h];
-		for(int y = 0; y < h; y++) {
-			double fy = ymin + y * (ymax - ymin) / h;
-			sinLats[y] = (float)Math.sin(2 * Math.atan(Math.exp(fy)) - Math.PI / 2);
-		}
-
-		FloatProcessor ip = new FloatProcessor(w, h);
-		for(int y = 0; y < h; y++) {
-			for(int x = 0; x < w; x++) {
-				float v = get(sinLongs[x], cosLongs[x], sinLats[y]);
-				ip.setf(x, y, v);
-			}
-		}
-		return new ImagePlus("Mercator", ip);
+	public void getThreeNearestVertexIndices(Point3f p, int[] ret) {
+		Node3D[] nn = nnSearch.findNNearestNeighbors(new Node3D(p), 3);
+		ret[0] = vertexToIndex.get(nn[0].p);
+		ret[1] = vertexToIndex.get(nn[1].p);
+		ret[2] = vertexToIndex.get(nn[2].p);
 	}
 
 	final boolean inImage(Point3i p) {
