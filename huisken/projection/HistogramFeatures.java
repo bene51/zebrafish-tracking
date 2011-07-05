@@ -1,6 +1,26 @@
 package huisken.projection;
 
+import ij.process.ImageProcessor;
+
 public class HistogramFeatures {
+
+	public static int calculateHistogram(ImageProcessor ip, int[] histo, int x, int y, int rx, int ry) {
+		for(int i = 0; i < histo.length; i++)
+			histo[i] = 0;
+		int sum = 0;
+		for(int ix = x - rx; ix <= x + rx; ix++) {
+			if(ix < 0 || ix >= ip.getWidth())
+				continue;
+			for(int iy = y - ry; iy <= y + ry; iy++) {
+				if(iy < 0 || iy >= ip.getHeight())
+					continue;
+				histo[ip.get(ix, iy)]++;
+				sum++;
+			}
+		}
+		return sum;
+	}
+
 	public static int getSum(int[] histo) {
 		int sum = 0;
 		for(int i = 0; i < histo.length; i++)
