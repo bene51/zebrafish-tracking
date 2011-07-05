@@ -1,4 +1,4 @@
-package huisken.projection;
+package huisken.registration;
 
 import vib.TransformedImage;
 import vib.FastMatrix;

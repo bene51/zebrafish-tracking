@@ -1,4 +1,4 @@
-package huisken.projection;
+package huisken.registration;
 
 import distance.*;
 import ij.IJ;

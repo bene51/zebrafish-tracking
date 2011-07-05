@@ -1,4 +1,4 @@
-package huisken.projection;
+package huisken.registration;
 
 import vib.TransformedImage;
 import vib.InterpolatedImage;
@@ -15,6 +15,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.Random;
+
+import huisken.projection.HistogramFeatures;
 
 
 public class FastTransformedImage extends TransformedImage {
