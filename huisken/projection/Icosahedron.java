@@ -47,6 +47,45 @@ public class Icosahedron extends IndexedTriangleMesh {
 		super(createVertices(tao, r), createFaces());
 	}
 
+	public IndexedTriangleMesh createFlatVersion(float s) {
+		float h = (float)(0.5 * Math.sqrt(3) * s);
+		Point3f[] vertices = new Point3f[22];
+		vertices[0] = new Point3f((1 + 0) * s, 0, 0);
+		vertices[1] = new Point3f((1 + 1) * s, 0, 0);
+		vertices[2] = new Point3f((1 + 2) * s, 0, 0);
+		vertices[3] = new Point3f((1 + 3) * s, 0, 0);
+		vertices[4] = new Point3f((1 + 4) * s, 0, 0);
+
+		vertices[5]  = new Point3f((.5f + 0) * s, h, 0);
+		vertices[6]  = new Point3f((.5f + 1) * s, h, 0);
+		vertices[7]  = new Point3f((.5f + 2) * s, h, 0);
+		vertices[8]  = new Point3f((.5f + 3) * s, h, 0);
+		vertices[9]  = new Point3f((.5f + 4) * s, h, 0);
+		vertices[10] = new Point3f((.5f + 5) * s, h, 0);
+
+		vertices[11] = new Point3f(0 * s, 2 * h, 0);
+		vertices[12] = new Point3f(1 * s, 2 * h, 0);
+		vertices[13] = new Point3f(2 * s, 2 * h, 0);
+		vertices[14] = new Point3f(3 * s, 2 * h, 0);
+		vertices[15] = new Point3f(4 * s, 2 * h, 0);
+		vertices[16] = new Point3f(5 * s, 2 * h, 0);
+
+		vertices[17] = new Point3f((0.5f + 0) * s, 3 * h, 0);
+		vertices[18] = new Point3f((0.5f + 1) * s, 3 * h, 0);
+		vertices[19] = new Point3f((0.5f + 2) * s, 3 * h, 0);
+		vertices[20] = new Point3f((0.5f + 3) * s, 3 * h, 0);
+		vertices[21] = new Point3f((0.5f + 4) * s, 3 * h, 0);
+
+		int[] faces = new int[] {
+			5, 12, 6, 12, 13, 6, 6, 13, 7, 7, 13, 14,
+			8, 14, 15, 14, 8, 7, 15, 9, 8, 10, 4, 9,
+			5, 6, 0, 3, 8, 9, 1, 6, 7, 2, 7, 8,
+			12, 5, 11, 17, 12, 11, 14, 13, 19, 16, 9, 15,
+			14, 20, 15, 21, 16, 15, 16, 10, 9, 13, 12, 18};
+
+		return new IndexedTriangleMesh(vertices, faces);
+	}
+
 	public IndexedTriangleMesh createBuckyball(float r, int subd) {
 		// Subdivide faces
 		ArrayList<Point3f> triangles = new ArrayList<Point3f>();
