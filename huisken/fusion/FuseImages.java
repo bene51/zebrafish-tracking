@@ -1,4 +1,4 @@
-package huisken.projection;
+package huisken.fusion;
 
 import ij.IJ;
 import ij.ImagePlus;

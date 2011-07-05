@@ -1,4 +1,4 @@
-package huisken.projection;
+package huisken.fusion;
 
 import ij.process.ImageProcessor;
 
