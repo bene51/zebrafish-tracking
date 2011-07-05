@@ -41,7 +41,8 @@ public class GLCM_TextureFilter implements PlugInFilter {
 		Prominence,
 		Inertia,
 		Correlation,
-		Binaryness
+		Binaryness,
+		MeanGradient
 	}
 
 	private double[][] glcm = new double[256][256];
@@ -95,6 +96,8 @@ public class GLCM_TextureFilter implements PlugInFilter {
 		return new FloatProcessor(256, 256, v, null);
 	}
 
+	private ImageProcessor ip;
+
 	public void run(ImageProcessor ip) {
 		GenericDialog gd = new GenericDialog("GLCM Texture Filter");
 
@@ -139,12 +142,24 @@ public class GLCM_TextureFilter implements PlugInFilter {
 			case Inertia:     return calculateInertia();
 			case Correlation: return calculateCorrelation();
 			case Binaryness:  return calculateBinaryness();
+			case MeanGradient:return calculateMeanGradient();
 			default: throw new IllegalArgumentException("Invalid method");
 		}
 	}
 
+	public float calculateMeanGradient() {
+		ip = ip.duplicate();
+		ip.findEdges();
+		double sum = 0.0;
+		for(int i = 0; i < ip.getWidth() * ip.getHeight(); i++)
+			sum += ip.getf(i);
+		return (float)(sum / (ip.getWidth() * ip.getHeight()));
+	}
+
 	// angle must be 0, 45, 90 or 135
 	public void calculateGLCM(ImageProcessor ip, int phi) {
+
+		this.ip = ip;
 
 		int w = ip.getWidth();
 		int h = ip.getHeight();
@@ -391,7 +406,7 @@ public class GLCM_TextureFilter implements PlugInFilter {
 		double binaryness = 0.0;
 		for (int i=0;  i<256; i++) {
 			for (int j=0; j<256; j++) {
-				binaryness += glcm[i][j] * (float)Math.exp(-0.005 * (256 - i) * (256 - j));			
+				binaryness += glcm[i][j] * (float)Math.exp(-0.005 * (255 - i) * (255 - j));
 			}
 		}
 
