@@ -46,7 +46,6 @@ public class SphericalMaxProjection {
 	private final int w, h, d;
 	private final double pw, ph, pd;
 
-	private final Icosahedron icosa;
 	private final IndexedTriangleMesh sphere;
 	private final HashMap<Point3f, Integer> vertexToIndex;
 	private final NNearestNeighborSearch<Node3D> nnSearch;
@@ -70,7 +69,7 @@ public class SphericalMaxProjection {
 
 		// calculate the sphere coordinates
 		float tao = 1.61803399f;
-		icosa = new Icosahedron(tao, radius);
+		Icosahedron icosa = new Icosahedron(tao, radius);
 
 		// use some cleverness for determining a meaningful subdivision.
 		// maybe ensure that the final edge length is comparable to
@@ -124,7 +123,6 @@ subd /= 4;
 		h = mask.getHeight();
 		d = mask.getStackSize();
 
-		this.icosa = null;
 		this.sphere = sphere; // TODO make sure we are not changing the original
 
 		ArrayList<Node3D> nodes = new ArrayList<Node3D>(sphere.nVertices);
