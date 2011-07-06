@@ -10,7 +10,6 @@ import ij.ImageStack;
 import ij.measure.Calibration;
 
 import ij.process.ImageProcessor;
-import ij.process.FloatProcessor;
 
 import java.io.DataOutputStream;
 import java.io.BufferedOutputStream;
@@ -18,7 +17,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -31,12 +29,9 @@ import meshtools.IndexedTriangleMesh;
 
 import fiji.util.node.Leaf;
 import fiji.util.KDTree;
-import fiji.util.NearestNeighborSearch;
 import fiji.util.NNearestNeighborSearch;
 
 import java.util.Map;
-
-import vib.FastMatrix;
 
 public class SphericalMaxProjection {
 
@@ -95,21 +90,6 @@ subd /= 4;
 		this.lut = calculateLUT(weighter);
 	}
 
-	public void saveSphere(String objpath) throws IOException {
-		Map<String, CustomMesh> mesh = new HashMap<String, CustomMesh>();
-		mesh.put("Sphere", new CustomTriangleMesh(sphere.createMesh()));
-		WavefrontExporter.save(mesh, objpath);
-	}
-
-	public void saveMaxima(String path) throws IOException {
-		DataOutputStream out = new DataOutputStream(
-			new BufferedOutputStream(
-				new FileOutputStream(path)));
-		for(float f : maxima)
-			out.writeFloat(f);
-		out.close();
-	}
-
 	public SphericalMaxProjection(ImagePlus mask, IndexedTriangleMesh sphere, Point3f center, float radius, FusionWeight weighter) {
 		this.center = center;
 		this.radius = radius;
@@ -136,6 +116,21 @@ subd /= 4;
 			vertexToIndex.put(sphere.getVertices()[i], i);
 
 		this.lut = calculateLUT(weighter);
+	}
+
+	public void saveSphere(String objpath) throws IOException {
+		Map<String, CustomMesh> mesh = new HashMap<String, CustomMesh>();
+		mesh.put("Sphere", new CustomTriangleMesh(sphere.createMesh()));
+		WavefrontExporter.save(mesh, objpath);
+	}
+
+	public void saveMaxima(String path) throws IOException {
+		DataOutputStream out = new DataOutputStream(
+			new BufferedOutputStream(
+				new FileOutputStream(path)));
+		for(float f : maxima)
+			out.writeFloat(f);
+		out.close();
 	}
 
 	public IndexedTriangleMesh getSphere() {
