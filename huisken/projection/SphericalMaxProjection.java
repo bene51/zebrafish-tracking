@@ -169,7 +169,6 @@ subd /= 4;
 
 		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
 			Point3f vertex = sphere.getVertices()[vIndex];
-			toImagePos(vertex, imagePos);
 			weights[vIndex] = weighter.getWeight(vertex.x, vertex.y, vertex.z);
 			if(weights[vIndex] == 0)
 				continue;
