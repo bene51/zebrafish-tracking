@@ -175,12 +175,21 @@ subd /= 4;
 
 			dx.sub(vertex, center);
 			dx.normalize();
-			float scale = scaleForOnePixel(dx);
+
+			// calculate the distance needed to move to the neighbor pixel
+			float scale = 1f / (float)Math.max(Math.abs(dx.x / pw), Math.max(
+					Math.abs(dx.y / ph), Math.abs(dx.z / pd)));
+
 			int k = (int)Math.round(0.2f * radius / scale);
 
 			for(int i = -k; i <= k; i++) {
+
 				pos.scaleAdd(i * scale, dx, vertex);
-				toImagePos(pos, imagePos);
+
+				// calculate the position in pixel dims
+				imagePos.x = (int)Math.round(pos.x / pw);
+				imagePos.y = (int)Math.round(pos.y / ph);
+				imagePos.z = (int)Math.round(pos.z / pd);
 
 				correspondences.add(new Point4(imagePos, vIndex));
 			}
@@ -253,22 +262,6 @@ subd /= 4;
 		ret[0] = vertexToIndex.get(nn[0].p);
 		ret[1] = vertexToIndex.get(nn[1].p);
 		ret[2] = vertexToIndex.get(nn[2].p);
-	}
-
-	final boolean inImage(Point3i p) {
-		return p.x >= 0 && p.y >= 0 && p.z >= 0 &&
-			p.x < w && p.y < h && p.z < d;
-	}
-
-	final void toImagePos(Point3f input, Point3i output) {
-		output.x = (int)Math.round(input.x / pw);
-		output.y = (int)Math.round(input.y / ph);
-		output.z = (int)Math.round(input.z / pd);
-	}
-
-	final float scaleForOnePixel(Vector3f dir) {
-		return 1f / (float)Math.max(Math.abs(dir.x / pw), Math.max(
-			Math.abs(dir.y / ph), Math.abs(dir.z / pd)));
 	}
 
 	/**
