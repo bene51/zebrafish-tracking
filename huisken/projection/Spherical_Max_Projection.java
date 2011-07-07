@@ -116,8 +116,9 @@ public class Spherical_Max_Projection implements PlugIn {
 			smp[1][0].addMaxima(smp[1][1].getMaxima());
 
 			// scale the two resulting maxima
-			smp[0][0].scaleMaxima(new SimpleUpWeighter(centers[0].z));
-			smp[1][0].scaleMaxima(new SimpleUpWeighter(centers[1].z));  // again UpWeighter because the sphere was turned
+			AngleWeighter aw = new AngleWeighter(opener.nAngles);
+			smp[0][0].scaleMaxima(aw);
+			smp[1][0].scaleMaxima(aw);
 
 			smp[0][0].addMaxima(smp[1][0].getMaxima());
 
