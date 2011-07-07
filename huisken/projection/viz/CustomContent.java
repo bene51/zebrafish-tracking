@@ -24,9 +24,6 @@ import ij3d.Image3DUniverse;
 import ij3d.ContentInstant;
 import ij3d.Content;
 
-import com.sun.j3d.utils.geometry.GeometryInfo;
-import com.sun.j3d.utils.geometry.NormalGenerator;
-
 import java.io.File;
 
 

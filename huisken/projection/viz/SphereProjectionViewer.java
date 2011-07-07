@@ -1,8 +1,5 @@
 package huisken.projection.viz;
 
-import customnode.CustomTriangleMesh;
-import customnode.WavefrontLoader;
-
 import fiji.util.gui.GenericDialogPlus;
 
 import ij.IJ;
@@ -23,23 +20,15 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.DataInputStream;
-import java.io.EOFException;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.File;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 
 import javax.vecmath.Point3f;
-import javax.vecmath.Color3f;
 
 
 public class SphereProjectionViewer implements PlugIn {
