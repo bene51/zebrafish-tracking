@@ -1,13 +1,7 @@
 package huisken.projection;
 
-import customnode.CustomMesh;
-import customnode.CustomTriangleMesh;
-import customnode.WavefrontExporter;
-
 import ij.ImagePlus;
 import ij.ImageStack;
-
-import ij.measure.Calibration;
 
 import ij.process.ImageProcessor;
 
@@ -24,7 +18,6 @@ import java.util.HashMap;
 import javax.vecmath.Point3i;
 import javax.vecmath.Point3f;
 import javax.vecmath.Vector3f;
-import javax.vecmath.Point3d;
 
 import meshtools.IndexedTriangleMesh;
 
@@ -32,13 +25,16 @@ import fiji.util.node.Leaf;
 import fiji.util.KDTree;
 import fiji.util.NNearestNeighborSearch;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.DataInputStream;
+import java.io.EOFException;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 
-import java.util.Map;
 import java.util.Scanner;
 
 import vib.FastMatrix;
@@ -191,6 +187,21 @@ public class SphericalMaxProjection {
 		for(float f : maxima)
 			out.writeFloat(f);
 		out.close();
+	}
+
+	public void loadMaxima(String file) throws IOException {
+		maxima = new float[sphere.nVertices];
+		DataInputStream in = new DataInputStream(
+			new BufferedInputStream(
+				new FileInputStream(file)));
+		for(int i = 0; i < maxima.length; i++) {
+			try {
+				maxima[i] = in.readFloat();
+			} catch(EOFException e) {
+				break;
+			}
+		}
+		in.close();
 	}
 
 	public IndexedTriangleMesh getSphere() {
