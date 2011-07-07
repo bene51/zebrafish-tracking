@@ -25,11 +25,13 @@ public class Spherical_Max_Projection implements PlugIn {
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Spherical_Max_Projection");
 		gd.addDirectoryField("Data directory", "");
+		gd.addNumericField("Timepoint used for sphere fitting", 1, 0);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
 
 		File datadir = new File(gd.getNextString());
+		int fittingTimepoint = (int)gd.getNextNumber();
 		if(!datadir.isDirectory()) {
 			IJ.error(datadir + " is not a directory");
 			return;
@@ -46,7 +48,7 @@ public class Spherical_Max_Projection implements PlugIn {
 		}
 
 		try {
-			process(datadir.getAbsolutePath(), outputdir.getAbsolutePath());
+			process(datadir.getAbsolutePath(), outputdir.getAbsolutePath(), fittingTimepoint);
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
@@ -55,26 +57,31 @@ public class Spherical_Max_Projection implements PlugIn {
 
 	private TimelapseOpener opener = null;
 
-	public void process(String datadir, String outputdir) {
+	public void process(String datadir, String outputdir, int fittingTimepoint) {
 		try {
 			opener = new TimelapseOpener(datadir, true);
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot open timelapse", e);
 		}
 
-
+		// fit the spheres to the specified timepoint
 		int startTimepoint = opener.timepointStart;
 		int nTimepoints    = opener.nTimepoints;
 
-		Point3f center = new Point3f(586.8f, 572.5f, 389.3f);  // TODO
-		float radius = 296f; // TODO
+		Point3f[] centers = new Point3f[opener.nAngles];
+		for(int i = 0; i < centers.length; i++)
+			centers[i] = new Point3f();
+		float radius = fitSpheres(fittingTimepoint, centers);
 
+		// calculate sphere transformations for each angle
 		FastMatrix[] transforms = new FastMatrix[2];
-		transforms[1] = FastMatrix.translate(0, 0, (408.1 - 389.3)).times(
-				FastMatrix.rotateEulerAt(Math.PI, Math.PI, 0, center.x, center.y, center.z));
+		transforms[1] = FastMatrix.translate(centers[0].x - centers[1].x, centers[0].y - centers[1].y, centers[0].z - centers[1].z).times(
+				FastMatrix.rotateEulerAt(Math.PI, Math.PI, 0, centers[1].x, centers[1].y, centers[1].z));
 
-		SphericalMaxProjection[][] smp = initSphericalMaximumProjection(transforms, center, radius);
+		// initialize the maximum projections
+		SphericalMaxProjection[][] smp = initSphericalMaximumProjection(transforms, centers[0], radius);
 
+		// save the sphere geometry
 		String spherepath = new File(outputdir, "Sphere.obj").getAbsolutePath();
 		try {
 			smp[0][0].saveSphere(spherepath);
@@ -82,8 +89,9 @@ public class Spherical_Max_Projection implements PlugIn {
 			throw new RuntimeException("Cannot save sphere: " + spherepath, e);
 		}
 
+		// start the projections
 		for(int tp = startTimepoint; tp < startTimepoint + nTimepoints; tp++) {
-			IJ.showStatus("Timepoint " + (tp - startTimepoint + 1) + "/" + (nTimepoints + 1));
+			IJ.showStatus("Timepoint " + (tp - startTimepoint + 1) + "/" + nTimepoints);
 
 			// 0 deg, left ill
 			ImagePlus image = opener.openStack(tp, 0, 0, 2, -1);
@@ -108,10 +116,8 @@ public class Spherical_Max_Projection implements PlugIn {
 			smp[1][0].addMaxima(smp[1][1].getMaxima());
 
 			// scale the two resulting maxima
-			float h1 = 389.3f;
-			float h2 = 408.1f;
-			smp[0][0].scaleMaxima(new SimpleUpWeighter(h1));
-			smp[1][0].scaleMaxima(new SimpleUpWeighter(h2));  // again UpWeighter because the sphere was turned
+			smp[0][0].scaleMaxima(new SimpleUpWeighter(centers[0].z));
+			smp[1][0].scaleMaxima(new SimpleUpWeighter(centers[1].z));  // again UpWeighter because the sphere was turned
 
 			smp[0][0].addMaxima(smp[1][0].getMaxima());
 
@@ -123,6 +129,21 @@ public class Spherical_Max_Projection implements PlugIn {
 				throw new RuntimeException("Cannot save " + path);
 			}
 		}
+	}
+
+	private float fitSpheres(int timepoint, Point3f[] centers) {
+		float radius = 0;
+		for(int a = 0; a < opener.nAngles; a++) {
+			int angle = opener.angleStart + opener.angleInc * a;
+
+			// left illumination
+			ImagePlus imp = opener.openStack(timepoint, angle, 0, 2, -1);
+			Fit_Sphere fs = new Fit_Sphere(imp);
+			fs.fit(FIT_SPHERE_THRESHOLD);
+			fs.getCenter(centers[a]);
+			radius += fs.getRadius();
+		}
+		return radius / opener.nAngles;
 	}
 
 	/**
