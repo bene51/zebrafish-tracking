@@ -24,6 +24,7 @@ import java.util.HashMap;
 import javax.vecmath.Point3i;
 import javax.vecmath.Point3f;
 import javax.vecmath.Vector3f;
+import javax.vecmath.Point3d;
 
 import meshtools.IndexedTriangleMesh;
 
@@ -31,7 +32,14 @@ import fiji.util.node.Leaf;
 import fiji.util.KDTree;
 import fiji.util.NNearestNeighborSearch;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+
 import java.util.Map;
+import java.util.Scanner;
 
 import vib.FastMatrix;
 
@@ -86,6 +94,32 @@ public class SphericalMaxProjection {
 
 	}
 
+	public SphericalMaxProjection(String objfile) throws IOException {
+		this.sphere = loadSphere(objfile);
+
+		ArrayList<Node3D> nodes = new ArrayList<Node3D>(sphere.nVertices);
+		double mx = 0, my = 0, mz = 0;
+		for(Point3f p : sphere.getVertices()) {
+			nodes.add(new Node3D(p));
+			mx += p.x;
+			my += p.y;
+			mz += p.z;
+		}
+		this.center = new Point3f(
+			(float)(mx / sphere.nVertices),
+			(float)(my / sphere.nVertices),
+			(float)(mz / sphere.nVertices));
+		this.radius = sphere.getVertices()[0].distance(center);
+
+
+		KDTree<Node3D> tree = new KDTree<Node3D>(nodes);
+		nnSearch = new NNearestNeighborSearch<Node3D>(tree);
+
+		vertexToIndex = new HashMap<Point3f, Integer>();
+		for(int i = 0; i < sphere.nVertices; i++)
+			vertexToIndex.put(sphere.getVertices()[i], i);
+	}
+
 	private static IndexedTriangleMesh createSphere(Point3f center, float radius, int subd) {
 		// calculate the sphere coordinates
 		float tao = 1.61803399f;
@@ -97,10 +131,57 @@ public class SphericalMaxProjection {
 		return sphere;
 	}
 
+	public static void saveSphere(IndexedTriangleMesh sphere, String objpath) throws IOException {
+		PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(objpath)));
+		out.println("# OBJ File");
+		out.println("g Sphere");
+		for(Point3f v : sphere.getVertices())
+			out.println("v " + v.x + " " + v.y + " " + v.z);
+		out.println("s 1");
+		int[] faces = sphere.getFaces();
+		for(int i = 0; i < faces.length; i += 3)
+			out.println("f " + faces[i] + " " + faces[i+1] + " " + faces[i+2]);
+		out.close();
+	}
+
 	public void saveSphere(String objpath) throws IOException {
-		Map<String, CustomMesh> mesh = new HashMap<String, CustomMesh>();
-		mesh.put("Sphere", new CustomTriangleMesh(sphere.createMesh()));
-		WavefrontExporter.save(mesh, objpath);
+		saveSphere(sphere, objpath);
+	}
+
+	public static IndexedTriangleMesh loadSphere(String objpath) throws IOException {
+		BufferedReader in = new BufferedReader(new FileReader(objpath));
+		ArrayList<Point3f> points = new ArrayList<Point3f>();
+		ArrayList<Integer> faces = new ArrayList<Integer>();
+		String line = in.readLine();
+		while(line != null && !line.startsWith("v "))
+			line = in.readLine();
+
+		while(line != null && line.startsWith("v ")) {
+			Scanner s = new Scanner(line);
+			s.next();
+			points.add(new Point3f(s.nextFloat(), s.nextFloat(), s.nextFloat()));
+			line = in.readLine();
+		}
+
+		while(line != null && !line.startsWith("f "))
+			line = in.readLine();
+
+		while(line != null && line.startsWith("f ")) {
+			Scanner s = new Scanner(line);
+			s.next();
+			faces.add(s.nextInt());
+			faces.add(s.nextInt());
+			faces.add(s.nextInt());
+			line = in.readLine();
+		}
+
+		Point3f[] vertices = new Point3f[points.size()];
+		points.toArray(vertices);
+
+		int[] f = new int[faces.size()];
+		for(int i = 0; i < f.length; i++)
+			f[i] = faces.get(i);
+		return new IndexedTriangleMesh(vertices, f);
 	}
 
 	public void saveMaxima(String path) throws IOException {
@@ -305,5 +386,31 @@ public class SphericalMaxProjection {
 		public int getNumDimensions() {
 			return 3;
 		}
+	}
+
+	public static void main(String[] args) throws Exception {
+		IndexedTriangleMesh mesh1 = createSphere(new Point3f(0, 0, 0), 1f, 5);
+		System.out.println("created");
+		saveSphere(mesh1, "/tmp/Sphere.obj");
+		System.out.println("saved");
+		IndexedTriangleMesh mesh2 = loadSphere("/tmp/Sphere.obj");
+		System.out.println("loaded");
+		if(mesh1.nVertices != mesh2.nVertices)
+			throw new RuntimeException("Not the same number of vertices");
+		for(int i = 0; i < mesh1.nVertices; i++) {
+			Point3f p1 = mesh1.getVertices()[i];
+			Point3f p2 = mesh2.getVertices()[i];
+			if(!p1.equals(p2))
+				throw new RuntimeException("Vertex positions do not match: " + p1 + " " + p2);
+		}
+		if(mesh1.nFaces != mesh2.nFaces)
+			throw new RuntimeException("Not the same number of faces");
+		for(int i = 0; i < mesh1.nFaces; i++) {
+			int p1 = mesh1.getFaces()[i];
+			int p2 = mesh2.getFaces()[i];
+			if(p1 != p2)
+				throw new RuntimeException("Faces do not match: " + p1 + " " + p2);
+		}
+		System.out.println("finished");
 	}
 }
