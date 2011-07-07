@@ -24,6 +24,8 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.FileInputStream;
@@ -34,6 +36,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 
 import javax.vecmath.Point3f;
 import javax.vecmath.Color3f;
@@ -76,35 +79,40 @@ public class SphereProjectionViewer implements PlugIn {
 		univ.addContent(content);
 	}
 
-	CustomContent readMesh(String objFile, String vertexDir) throws IOException {
-		CustomTriangleMesh ctm = (CustomTriangleMesh)WavefrontLoader
-				.load(objFile).get("Sphere");
+	public CustomContent readMesh(String objpath, String vertexDir) throws IOException {
+		BufferedReader in = new BufferedReader(new FileReader(objpath));
+		ArrayList<Point3f> points = new ArrayList<Point3f>();
+		ArrayList<Integer> faces = new ArrayList<Integer>();
+		String line = in.readLine();
+		while(line != null && !line.startsWith("v "))
+			line = in.readLine();
 
-		// indexify mesh
-		Map<Point3f, Integer> vertexToIndex =
-				new HashMap<Point3f, Integer>();
-
-		List<Point3f> meshlist = ctm.getMesh();
-		int nFaces = meshlist.size();
-		int[] faces = new int[nFaces];
-		List<Point3f> v = new ArrayList<Point3f>();
-
-		for(int i = 0; i < nFaces; i++) {
-			Point3f p = meshlist.get(i);
-
-			if(!vertexToIndex.containsKey(p)) {
-				Point3f newp = new Point3f(p);
-				vertexToIndex.put(newp, v.size());
-				v.add(newp);
-			}
-			faces[i] = vertexToIndex.get(p);
+		while(line != null && line.startsWith("v ")) {
+			Scanner s = new Scanner(line);
+			s.next();
+			points.add(new Point3f(s.nextFloat(), s.nextFloat(), s.nextFloat()));
+			line = in.readLine();
 		}
-		int nVertices = v.size();
-		Point3f[] vertices = new Point3f[nVertices];
-		v.toArray(vertices);
 
+		while(line != null && !line.startsWith("f "))
+			line = in.readLine();
 
-		return new CustomContent(vertices, faces, vertexDir);
+		while(line != null && line.startsWith("f ")) {
+			Scanner s = new Scanner(line);
+			s.next();
+			faces.add(s.nextInt());
+			faces.add(s.nextInt());
+			faces.add(s.nextInt());
+			line = in.readLine();
+		}
+
+		Point3f[] vertices = new Point3f[points.size()];
+		points.toArray(vertices);
+
+		int[] f = new int[faces.size()];
+		for(int i = 0; i < f.length; i++)
+			f[i] = faces.get(i);
+		return new CustomContent(vertices, f, vertexDir);
 	}
 
 	private static class CustomBehavior extends InteractiveBehavior {
