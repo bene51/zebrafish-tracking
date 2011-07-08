@@ -76,7 +76,7 @@ public class Map_Projection implements PlugIn {
 		switch(mapType) {
 			case MERCATOR: proj = new MercatorProjection(); break;
 			case GALLPETER: proj = new GallPetersProjection(); break;
-			case FULLER: throw new RuntimeException("Not yet implemented");
+			case FULLER: proj = new FullerProjection(); break;
 			default: throw new IllegalArgumentException("Unsupported map type: " + mapType);
 		}
 		proj.prepareForProjection(smp, width);
