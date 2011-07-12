@@ -178,11 +178,11 @@ public class Spherical_Max_Projection implements PlugIn {
 
 		// 180 degree, left illumination
 		smp[1][0] = new SphericalMaxProjection(sphere, center, radius, transform[1]);
-		smp[1][0].prepareForProjection(w, h, d, pw, ph, pd, new SimpleRightWeighter(center.x));
+		smp[1][0].prepareForProjection(w, h, d, pw, ph, pd, new SimpleLeftWeighter(center.x));
 
 		// 180 degree, right illumination
 		smp[1][1] = new SphericalMaxProjection(sphere, center, radius, transform[1]);
-		smp[1][1].prepareForProjection(w, h, d, pw, ph, pd, new SimpleLeftWeighter(center.x));
+		smp[1][1].prepareForProjection(w, h, d, pw, ph, pd, new SimpleRightWeighter(center.x));
 
 		return smp;
 	}
