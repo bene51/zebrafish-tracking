@@ -25,12 +25,14 @@ public class Spherical_Max_Projection implements PlugIn {
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Spherical_Max_Projection");
 		gd.addDirectoryField("Data directory", "");
+		gd.addNumericField("Number of timepoints to process", 5, 0);
 		gd.addNumericField("Timepoint used for sphere fitting", 1, 0);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
 
 		File datadir = new File(gd.getNextString());
+		int nTimepoints = (int)gd.getNextNumber();
 		int fittingTimepoint = (int)gd.getNextNumber();
 		if(!datadir.isDirectory()) {
 			IJ.error(datadir + " is not a directory");
@@ -48,7 +50,7 @@ public class Spherical_Max_Projection implements PlugIn {
 		}
 
 		try {
-			process(datadir.getAbsolutePath(), outputdir.getAbsolutePath(), fittingTimepoint);
+			process(datadir.getAbsolutePath(), outputdir.getAbsolutePath(), nTimepoints, fittingTimepoint);
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
@@ -57,7 +59,7 @@ public class Spherical_Max_Projection implements PlugIn {
 
 	private TimelapseOpener opener = null;
 
-	public void process(String datadir, String outputdir, int fittingTimepoint) {
+	public void process(String datadir, String outputdir, int nTimepoints, int fittingTimepoint) {
 		try {
 			opener = new TimelapseOpener(datadir, true);
 		} catch(Exception e) {
@@ -66,7 +68,7 @@ public class Spherical_Max_Projection implements PlugIn {
 
 		// fit the spheres to the specified timepoint
 		int startTimepoint = opener.timepointStart;
-		int nTimepoints    = opener.nTimepoints;
+		nTimepoints    = Math.min(opener.nTimepoints, nTimepoints);
 
 		Point3f[] centers = new Point3f[opener.nAngles];
 		for(int i = 0; i < centers.length; i++)
