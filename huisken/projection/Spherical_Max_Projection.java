@@ -59,6 +59,12 @@ public class Spherical_Max_Projection implements PlugIn {
 
 	private TimelapseOpener opener = null;
 
+	private static FastMatrix rotateY(double rad, Point3f center) {
+		FastMatrix rot = FastMatrix.rotate(rad, 1);
+		rot.apply(center.x, center.y, center.z);
+		return FastMatrix.translate(center.x - rot.x, center.y - rot.y, center.z - rot.z).times(rot);
+	}
+
 	public void process(String datadir, String outputdir, int nTimepoints, int fittingTimepoint) {
 		try {
 			opener = new TimelapseOpener(datadir, true);
@@ -76,9 +82,17 @@ public class Spherical_Max_Projection implements PlugIn {
 		float radius = fitSpheres(fittingTimepoint, centers);
 
 		// calculate sphere transformations for each angle
-		FastMatrix[] transforms = new FastMatrix[2];
-		transforms[1] = FastMatrix.translate(centers[0].x - centers[1].x, centers[0].y - centers[1].y, centers[0].z - centers[1].z).times(
-				FastMatrix.rotateEulerAt(Math.PI, Math.PI, 0, centers[1].x, centers[1].y, centers[1].z));
+		FastMatrix[] transforms = new FastMatrix[opener.nAngles];
+		for(int a = 1; a < opener.nAngles; a++) {
+			double angle = opener.angleStart + opener.angleInc * a;
+			angle = angle * Math.PI / 180.0;
+			transforms[a] = FastMatrix.translate(
+						centers[0].x - centers[a].x,
+						centers[0].y - centers[a].y,
+						centers[0].z - centers[a].z)
+					.times(rotateY(Math.PI, centers[a]));
+		}
+
 
 		// initialize the maximum projections
 		SphericalMaxProjection[][] smp = initSphericalMaximumProjection(transforms, centers[0], radius);
@@ -176,13 +190,16 @@ public class Spherical_Max_Projection implements PlugIn {
 		smp[0][1] = new SphericalMaxProjection(sphere, center, radius);
 		smp[0][1].prepareForProjection(w, h, d, pw, ph, pd, new SimpleRightWeighter(center.x));
 
-		// 180 degree, left illumination
-		smp[1][0] = new SphericalMaxProjection(sphere, center, radius, transform[1]);
-		smp[1][0].prepareForProjection(w, h, d, pw, ph, pd, new SimpleLeftWeighter(center.x));
+		// all other angles
+		for(int a = 0; a < opener.nAngles; a++) {
+			// 180 degree, left illumination
+			smp[a][0] = new SphericalMaxProjection(sphere, center, radius, transform[a]);
+			smp[a][0].prepareForProjection(w, h, d, pw, ph, pd, new SimpleLeftWeighter(center.x));
 
-		// 180 degree, right illumination
-		smp[1][1] = new SphericalMaxProjection(sphere, center, radius, transform[1]);
-		smp[1][1].prepareForProjection(w, h, d, pw, ph, pd, new SimpleRightWeighter(center.x));
+			// 180 degree, right illumination
+			smp[a][1] = new SphericalMaxProjection(sphere, center, radius, transform[a]);
+			smp[a][1].prepareForProjection(w, h, d, pw, ph, pd, new SimpleRightWeighter(center.x));
+		}
 
 		return smp;
 	}
