@@ -2,12 +2,18 @@ package huisken.projection;
 
 import fiji.util.gui.GenericDialogPlus;
 
+import huisken.fusion.HistogramFeatures;
+
 import ij.IJ;
 import ij.ImagePlus;
 
 import ij.gui.GenericDialog;
+import ij.gui.Roi;
+import ij.gui.WaitForUserDialog;
 
 import ij.plugin.PlugIn;
+
+import ij.process.ImageProcessor;
 
 import java.io.File;
 
@@ -96,7 +102,7 @@ public class Spherical_Max_Projection implements PlugIn {
 
 		if(!outputdir.endsWith(File.separator))
 			outputdir += File.separator;
-		
+
 		// fit the spheres to the specified timepoint
 		int startTimepoint = timepointStart;
 
@@ -176,12 +182,48 @@ public class Spherical_Max_Projection implements PlugIn {
 
 			// left illumination
 			ImagePlus imp = opener.openStack(timepoint, angle, 0, 2, -1);
+			limitAreaForFitSphere(imp, FIT_SPHERE_THRESHOLD);
+			imp.show();
+			IJ.runMacro("setThreshold(" + FIT_SPHERE_THRESHOLD + ", 16000);");
+			IJ.run("Threshold...");
+			new WaitForUserDialog("Fit sphere", "Adjust ROI and minimum threshold").show();
+			float threshold = (float)imp.getProcessor().getMinThreshold();
 			Fit_Sphere fs = new Fit_Sphere(imp);
 			fs.fit(FIT_SPHERE_THRESHOLD);
+			fs.getControlImage().show();
 			fs.getCenter(centers[a]);
 			radius += fs.getRadius();
+			imp.close();
 		}
 		return radius / nAngles;
+	}
+
+	private static void limitAreaForFitSphere(ImagePlus imp, float threshold) {
+		int w = imp.getWidth();
+		int h = imp.getHeight();
+		int d = imp.getStackSize();
+
+		int[] xs = new int[w];
+		int[] ys = new int[h];
+		int sum = 0;
+		for(int z = 0; z < d; z++) {
+			ImageProcessor ip = imp.getStack().getProcessor(z + 1);
+			for(int y = 0; y < h; y++) {
+				for(int x = 0; x < w; x++) {
+					float v = ip.getf(x, y);
+					if(v >= threshold) {
+						xs[x]++;
+						ys[y]++;
+						sum++;
+					}
+				}
+			}
+		}
+		int xl = Math.round(HistogramFeatures.getQuantile(xs, sum, 0.1f));
+		int xu = Math.round(HistogramFeatures.getQuantile(xs, sum, 0.9f));
+		int yl = Math.round(HistogramFeatures.getQuantile(ys, sum, 0.1f));
+		int yu = Math.round(HistogramFeatures.getQuantile(ys, sum, 0.9f));
+		imp.setRoi(new Roi(xl, yl, xu - xl, yu - yl));
 	}
 
 	/**
