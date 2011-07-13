@@ -5,6 +5,8 @@ import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
 import ij.ImagePlus;
 
+import ij.gui.GenericDialog;
+
 import ij.plugin.PlugIn;
 
 import java.io.File;
@@ -25,14 +27,12 @@ public class Spherical_Max_Projection implements PlugIn {
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Spherical_Max_Projection");
 		gd.addDirectoryField("Data directory", "");
-		gd.addNumericField("Number of timepoints to process", 5, 0);
 		gd.addNumericField("Timepoint used for sphere fitting", 1, 0);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
 
 		File datadir = new File(gd.getNextString());
-		int nTimepoints = (int)gd.getNextNumber();
 		int fittingTimepoint = (int)gd.getNextNumber();
 		if(!datadir.isDirectory()) {
 			IJ.error(datadir + " is not a directory");
@@ -50,7 +50,7 @@ public class Spherical_Max_Projection implements PlugIn {
 		}
 
 		try {
-			process(datadir.getAbsolutePath(), outputdir.getAbsolutePath(), nTimepoints, fittingTimepoint);
+			process(datadir.getAbsolutePath(), outputdir.getAbsolutePath(), fittingTimepoint);
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
@@ -65,26 +65,50 @@ public class Spherical_Max_Projection implements PlugIn {
 		return FastMatrix.translate(center.x - rot.x, center.y - rot.y, center.z - rot.z).times(rot);
 	}
 
-	public void process(String datadir, String outputdir, int nTimepoints, int fittingTimepoint) {
+	public void process(String datadir, String outputdir, int fittingTimepoint) {
+		TimelapseOpener opener = null;
 		try {
 			opener = new TimelapseOpener(datadir, true);
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot open timelapse", e);
 		}
+		GenericDialog gd = new GenericDialog("Limit processing");
+		gd.addNumericField("Start_timepoint",      opener.timepointStart, 0);
+		gd.addNumericField("Timepoint_Increment",  opener.timepointInc, 0);
+		gd.addNumericField("Number_of_timepoints", opener.nTimepoints, 0);
+		gd.addNumericField("Start_angle",          opener.angleStart, 0);
+		gd.addNumericField("Angle_Increment",      opener.angleInc, 0);
+		gd.addNumericField("Number_of_angles",     opener.nAngles, 0);
+		gd.showDialog();
+		if(gd.wasCanceled())
+			return;
+		process(opener, outputdir, fittingTimepoint,
+			(int)gd.getNextNumber(),
+			(int)gd.getNextNumber(),
+			(int)gd.getNextNumber(),
+			(int)gd.getNextNumber(),
+			(int)gd.getNextNumber(),
+			(int)gd.getNextNumber());
+	}
 
+	public void process(TimelapseOpener opener, String outputdir, int fittingTimepoint, int timepointStart, int timepointInc, int nTimepoints, int angleStart, int angleInc, int nAngles) {
+		this.opener = opener;
+
+		if(!outputdir.endsWith(File.separator))
+			outputdir += File.separator;
+		
 		// fit the spheres to the specified timepoint
-		int startTimepoint = opener.timepointStart;
-		nTimepoints    = Math.min(opener.nTimepoints, nTimepoints);
+		int startTimepoint = timepointStart;
 
-		Point3f[] centers = new Point3f[opener.nAngles];
+		Point3f[] centers = new Point3f[nAngles];
 		for(int i = 0; i < centers.length; i++)
 			centers[i] = new Point3f();
-		float radius = fitSpheres(fittingTimepoint, centers);
+		float radius = fitSpheres(fittingTimepoint, centers, angleStart, angleInc, nAngles);
 
 		// calculate sphere transformations for each angle
-		FastMatrix[] transforms = new FastMatrix[opener.nAngles];
-		for(int a = 1; a < opener.nAngles; a++) {
-			double angle = opener.angleStart + opener.angleInc * a;
+		FastMatrix[] transforms = new FastMatrix[nAngles];
+		for(int a = 1; a < nAngles; a++) {
+			double angle = angleStart + angleInc * a;
 			angle = angle * Math.PI / 180.0;
 			transforms[a] = FastMatrix.translate(
 						centers[0].x - centers[a].x,
@@ -95,7 +119,7 @@ public class Spherical_Max_Projection implements PlugIn {
 
 
 		// initialize the maximum projections
-		SphericalMaxProjection[][] smp = initSphericalMaximumProjection(transforms, centers[0], radius);
+		SphericalMaxProjection[][] smp = initSphericalMaximumProjection(transforms, centers[0], radius, angleStart, angleInc, nAngles);
 
 		// save the sphere geometry
 		String spherepath = new File(outputdir, "Sphere.obj").getAbsolutePath();
@@ -106,7 +130,7 @@ public class Spherical_Max_Projection implements PlugIn {
 		}
 
 		// start the projections
-		for(int tp = startTimepoint; tp < startTimepoint + nTimepoints; tp++) {
+		for(int tp = startTimepoint; tp < startTimepoint + nTimepoints; tp += timepointInc) {
 			IJ.showStatus("Timepoint " + (tp - startTimepoint + 1) + "/" + nTimepoints);
 
 			// 0 deg, left ill
@@ -132,11 +156,8 @@ public class Spherical_Max_Projection implements PlugIn {
 			smp[1][0].addMaxima(smp[1][1].getMaxima());
 
 			// scale the two resulting maxima
-			AngleWeighter aw = new AngleWeighter(opener.nAngles);
-			smp[0][0].scaleMaxima(aw);
-			smp[1][0].scaleMaxima(aw);
+			AngleWeighter aw = new AngleWeighter(nAngles);
 
-			smp[0][0].addMaxima(smp[1][0].getMaxima());
 
 			String filename = String.format("tp%04d.tif", tp);
 			String path = new File(outputdir, filename + ".vertices").getAbsolutePath();
@@ -148,10 +169,10 @@ public class Spherical_Max_Projection implements PlugIn {
 		}
 	}
 
-	private float fitSpheres(int timepoint, Point3f[] centers) {
+	private float fitSpheres(int timepoint, Point3f[] centers, int angleStart, int angleInc, int nAngles) {
 		float radius = 0;
-		for(int a = 0; a < opener.nAngles; a++) {
-			int angle = opener.angleStart + opener.angleInc * a;
+		for(int a = 0; a < nAngles; a++) {
+			int angle = angleStart + angleInc * a;
 
 			// left illumination
 			ImagePlus imp = opener.openStack(timepoint, angle, 0, 2, -1);
@@ -160,16 +181,16 @@ public class Spherical_Max_Projection implements PlugIn {
 			fs.getCenter(centers[a]);
 			radius += fs.getRadius();
 		}
-		return radius / opener.nAngles;
+		return radius / nAngles;
 	}
 
 	/**
 	 * @param transform Array with one transformation for each angle; the first entry
 	 *                  in this array is ignored (it is assumed to be the identity matrix.
 	 */
-	private SphericalMaxProjection[][] initSphericalMaximumProjection(FastMatrix[] transform, Point3f center, float radius) {
+	private SphericalMaxProjection[][] initSphericalMaximumProjection(FastMatrix[] transform, Point3f center, float radius, int angleStart, int angleInc, int nAngles) {
 
-		if(transform.length != opener.nAngles)
+		if(transform.length != nAngles)
 			throw new IllegalArgumentException("Need one transformation for each angle");
 
 		int w = opener.w, h = opener.h, d = opener.d / 2;
@@ -178,7 +199,7 @@ public class Spherical_Max_Projection implements PlugIn {
 		int subd = (int)Math.round(radius / (Math.min(pw, Math.min(ph, pd))));
 		subd /= 4;
 
-		SphericalMaxProjection[][] smp = new SphericalMaxProjection[opener.nAngles][2];
+		SphericalMaxProjection[][] smp = new SphericalMaxProjection[nAngles][2];
 
 		// 0 degree, left illumination
 		smp[0][0] = new SphericalMaxProjection(center, radius, subd);
@@ -191,12 +212,12 @@ public class Spherical_Max_Projection implements PlugIn {
 		smp[0][1].prepareForProjection(w, h, d, pw, ph, pd, new SimpleRightWeighter(center.x));
 
 		// all other angles
-		for(int a = 0; a < opener.nAngles; a++) {
-			// 180 degree, left illumination
+		for(int a = 1; a < nAngles; a++) {
+			// left illumination
 			smp[a][0] = new SphericalMaxProjection(sphere, center, radius, transform[a]);
 			smp[a][0].prepareForProjection(w, h, d, pw, ph, pd, new SimpleLeftWeighter(center.x));
 
-			// 180 degree, right illumination
+			// right illumination
 			smp[a][1] = new SphericalMaxProjection(sphere, center, radius, transform[a]);
 			smp[a][1].prepareForProjection(w, h, d, pw, ph, pd, new SimpleRightWeighter(center.x));
 		}
