@@ -135,35 +135,33 @@ public class Spherical_Max_Projection implements PlugIn {
 			throw new RuntimeException("Cannot save sphere: " + spherepath, e);
 		}
 
+		AngleWeighter aw = new AngleWeighter(nAngles);
+
 		// start the projections
 		for(int tp = startTimepoint; tp < startTimepoint + nTimepoints; tp += timepointInc) {
 			IJ.showStatus("Timepoint " + (tp - startTimepoint + 1) + "/" + nTimepoints);
 
-			// 0 deg, left ill
-			ImagePlus image = opener.openStack(tp, 0, 0, 2, -1);
-			smp[0][0].project(image);
+			for(int a = 0; a < nAngles; a++) {
+				int angle = angleStart + a * angleInc;
 
-			// 0 deg, right ill
-			image = opener.openStack(tp, 0, 1, 2, -1);
-			smp[0][1].project(image);
+				// left ill
+				ImagePlus image = opener.openStack(tp, angle, 0, 2, -1);
+				smp[a][0].project(image);
 
-			// 180 deg, left ill
-			image = opener.openStack(tp, 180, 0, 2, -1);
-			smp[1][0].project(image);
+				// right ill
+				image = opener.openStack(tp, angle, 1, 2, -1);
+				smp[a][1].project(image);
 
-			// 180 deg, right ill
-			image = opener.openStack(tp, 180, 1, 2, -1);
-			smp[1][1].project(image);
+				// sum up left and right illumination
+				smp[a][0].addMaxima(smp[a][1].getMaxima());
 
-			// sum up left and right illumination of 0 degree
-			smp[0][0].addMaxima(smp[0][1].getMaxima());
+				// scale the resulting maxima according to angle
+				smp[a][0].scaleMaxima(aw);
 
-			// sum up left and right illumination of 180 degree
-			smp[1][0].addMaxima(smp[1][1].getMaxima());
-
-			// scale the two resulting maxima
-			AngleWeighter aw = new AngleWeighter(nAngles);
-
+				// sum them all up
+				if(a > 0)
+					smp[0][0].addMaxima(smp[a][0].getMaxima());
+			}
 
 			String filename = String.format("tp%04d.tif", tp);
 			String path = new File(outputdir, filename + ".vertices").getAbsolutePath();
