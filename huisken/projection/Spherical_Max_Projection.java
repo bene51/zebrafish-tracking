@@ -85,6 +85,7 @@ public class Spherical_Max_Projection implements PlugIn {
 		gd.addNumericField("Start_angle",          opener.angleStart, 0);
 		gd.addNumericField("Angle_Increment",      opener.angleInc, 0);
 		gd.addNumericField("Number_of_angles",     opener.nAngles, 0);
+		gd.addCheckbox("Also save single views", false);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
@@ -94,10 +95,11 @@ public class Spherical_Max_Projection implements PlugIn {
 			(int)gd.getNextNumber(),
 			(int)gd.getNextNumber(),
 			(int)gd.getNextNumber(),
-			(int)gd.getNextNumber());
+			(int)gd.getNextNumber(),
+			gd.getNextBoolean());
 	}
 
-	public void process(TimelapseOpener opener, String outputdir, int fittingTimepoint, int timepointStart, int timepointInc, int nTimepoints, int angleStart, int angleInc, int nAngles) {
+	public void process(TimelapseOpener opener, String outputdir, int fittingTimepoint, int timepointStart, int timepointInc, int nTimepoints, int angleStart, int angleInc, int nAngles, boolean saveSingleViews) {
 		this.opener = opener;
 
 		if(!outputdir.endsWith(File.separator))
@@ -154,6 +156,28 @@ public class Spherical_Max_Projection implements PlugIn {
 
 				// sum up left and right illumination
 				smp[a][0].addMaxima(smp[a][1].getMaxima());
+
+				// if specified, save the single views in separate folders
+				if(saveSingleViews) {
+					String filename = String.format("tp%04d.tif", tp, angle);
+					String subfolder = String.format("angle%3d/", angle);
+					String path = new File(outputdir + subfolder, filename + ".vertices").getAbsolutePath();
+					File subf = new File(outputdir, subfolder);
+					if(!subf.exists()) {
+						subf.mkdir();
+						try {
+							smp[0][0].saveSphere(outputdir + subfolder + "Sphere.obj");
+						} catch(Exception e) {
+							throw new RuntimeException("Cannot save sphere: " + outputdir + subfolder + "Sphere.obj", e);
+						}
+					}
+
+					try {
+						smp[a][0].saveMaxima(path);
+					} catch(Exception e) {
+						throw new RuntimeException("Cannot save " + path);
+					}
+				}
 
 				// scale the resulting maxima according to angle
 				smp[a][0].scaleMaxima(aw);
