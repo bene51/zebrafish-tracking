@@ -294,6 +294,7 @@ public class SphericalMaxProjection {
 
 	Point3f tmp = new Point3f();
 	Point3f[] nn = new Point3f[3];
+	// in radians
 	public float get(float longitude, float latitude) {
 		return get(Math.sin(longitude), Math.cos(longitude), Math.sin(latitude), Math.cos(latitude));
 	}
@@ -309,18 +310,29 @@ public class SphericalMaxProjection {
 	public float get(Point3f p) {
 		// get three nearest neighbors
 		Node3D[] nn = nnSearch.findNNearestNeighbors(new Node3D(p), 3);
+		int i0 = vertexToIndex.get(nn[0].p);
+		int i1 = vertexToIndex.get(nn[1].p);
+		int i2 = vertexToIndex.get(nn[2].p);
+
 		// interpolate according to distance
-		float d0 = 1 / p.distance(nn[0].p);
-		float d1 = 1 / p.distance(nn[1].p);
-		float d2 = 1 / p.distance(nn[2].p);
-		float sum = d0 + d1 + d2;
-		d0 /= sum;
-		d1 /= sum;
-		d2 /= sum;
-		float v0 = d0 * maxima[vertexToIndex.get(nn[0].p)];
-		float v1 = d1 * maxima[vertexToIndex.get(nn[1].p)];
-		float v2 = d2 * maxima[vertexToIndex.get(nn[2].p)];
-		return v0 + v1 + v2;
+		float d0 = p.distance(nn[0].p);
+		float d1 = p.distance(nn[1].p);
+		float d2 = p.distance(nn[2].p);
+
+		if(d0 == 0) return maxima[i0];
+		if(d1 == 0) return maxima[i1];
+		if(d2 == 0) return maxima[i2];
+
+		float sum = 1 / d0 + 1 / d1 + 1 / d2;
+
+		d0 = 1 / d0 / sum;
+		d1 = 1 / d1 / sum;
+		d2 = 1 / d2 / sum;
+		float v0 = d0 * maxima[i0];
+		float v1 = d1 * maxima[i1];
+		float v2 = d2 * maxima[i2];
+		float ret = v0 + v1 + v2;
+		return ret;
 	}
 
 	public void getThreeNearestVertexIndices(Point3f p, int[] ret) {
