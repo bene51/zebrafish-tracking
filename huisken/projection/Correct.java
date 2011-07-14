@@ -26,27 +26,13 @@ public class Correct {
 
 		// get the first line containing wrong pixels
 		int firstbad = getFirstBad(pixels, w, h, threshold);
-		int lastbad = -1;
 
 		// nothing found, so nothing to do
 		if(firstbad == -1)
 			return;
 
-		// find the next line which is good
-		for(int y = firstbad + 1; y < h; y++) {
-			boolean allgood = true;
-			for(int x = 0; x < w; x++) {
-				if((pixels[y * w + x] & 0xffff) > threshold) {
-					allgood = false;
-					continue;
-				}
-			}
-			if(allgood) {
-				lastbad = y;
-				break;
-			}
-		}
-
+		// get the last bad line
+		int lastbad = getLastBad(pixels, w, h, threshold) + 1;
 		if(lastbad == -1)
 			lastbad = h;
 
@@ -76,6 +62,14 @@ public class Correct {
 
 	public static int getFirstBad(short[] pixels, int w, int h, int threshold) {
 		for(int y = 0; y < h; y++)
+			for(int x = 0; x < w; x++)
+				if((pixels[y * w + x] & 0xffff) > threshold)
+					return y;
+		return -1;
+	}
+
+	public static int getLastBad(short[] pixels, int w, int h, int threshold) {
+		for(int y = h - 1; y >= 0; y--)
 			for(int x = 0; x < w; x++)
 				if((pixels[y * w + x] & 0xffff) > threshold)
 					return y;

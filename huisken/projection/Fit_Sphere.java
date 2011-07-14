@@ -4,6 +4,8 @@ import ij.ImagePlus;
 import ij.ImageStack;
 import ij.IJ;
 
+import ij.gui.Roi;
+
 import ij.plugin.filter.PlugInFilter;
 
 import ij.plugin.Duplicator;
@@ -56,7 +58,12 @@ public class Fit_Sphere implements PlugInFilter {
 			return;
 		fit(threshold);
 		IJ.showMessage("x0 = " + x0 + "\ny0 = " + y0 + "\nz0 = " + z0 + "\nr = " + r);
+		getControlImage().show();
+	}
 
+	public ImagePlus getControlImage() {
+		Roi roi = image.getRoi();
+		image.killRoi();
 		ImagePlus imp = new Duplicator().run(image);
 		ImageConverter.setDoScaling(true);
 		new StackConverter(imp).convertToGray8();
@@ -64,7 +71,9 @@ public class Fit_Sphere implements PlugInFilter {
 		
 		IndexedTriangleMesh mesh = new IndexedTriangleMesh(
 			MeshMaker.createSphere(x0, y0, z0, r));
-		mesh.createOverlay(imp, 0xff0000).show();
+		imp = mesh.createOverlay(imp, 0xff0000);
+		image.setRoi(roi);
+		return imp;
 	}
 
 	public void fit(double threshold) {
@@ -87,6 +96,8 @@ public class Fit_Sphere implements PlugInFilter {
 				double y = yi * ph;
 				for(int xi = 0; xi < w; xi++) {
 					if(ip.getf(xi, yi) < threshold)
+						continue;
+					if(image.getRoi() != null && !image.getRoi().contains(xi, yi))
 						continue;
 					double x = xi * pw;
 

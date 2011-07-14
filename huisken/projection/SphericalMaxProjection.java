@@ -267,6 +267,7 @@ public class SphericalMaxProjection {
 			int k = (int)Math.round(0.2f * radius / scale);
 
 			for(int i = -k; i <= k; i++) {
+				// TODO check if we are in the image at all
 
 				pos.scaleAdd(i * scale, dx, vertex);
 
@@ -294,7 +295,8 @@ public class SphericalMaxProjection {
 
 	public void project(ImagePlus image) {
 		ImageStack stack = image.getStack();
-		int wh = image.getWidth() * image.getHeight();
+		int w = image.getWidth(), h = image.getHeight();
+		int wh = w * h;
 		int d = image.getStackSize();
 		maxima = new float[sphere.nVertices];
 		int lutIndex = 0;
@@ -302,7 +304,9 @@ public class SphericalMaxProjection {
 			ImageProcessor ip = stack.getProcessor(z + 1);
 			Point4 p;
 			while(lutIndex < lut.length && (p = (Point4)lut[lutIndex++]).z == z) {
-				float v = ip.getf(p.x, p.y);
+				float v = 0;
+				if(p.x >= 0 && p.x < w && p.y >= 0 && p.y < h)
+					v = ip.getf(p.x, p.y);
 				if(v > maxima[p.vIndex])
 					maxima[p.vIndex] = v;
 			}

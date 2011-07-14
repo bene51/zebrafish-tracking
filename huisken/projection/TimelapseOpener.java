@@ -180,10 +180,14 @@ public class TimelapseOpener {
 					continue;
 
 				IJ.log(folder + filename);
-				if(new File(folder, filename).renameTo(new File(folder, filename + ".orig")))
-					copyFile(new File(folder, String.format(slicePattern, plane - inc)), new File(folder, filename));
-				else
+				if(new File(folder, filename).renameTo(new File(folder, filename + ".orig"))) {
+					if(plane >= inc)
+						copyFile(new File(folder, String.format(slicePattern, plane - inc)), new File(folder, filename));
+					else
+						copyFile(new File(folder, String.format(slicePattern, plane + inc)), new File(folder, filename));
+				} else {
 					IJ.log("Could not rename " + (folder + filename));
+				}
 			}
 		}
 	}
