@@ -35,8 +35,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 
-import java.util.Scanner;
-
 import vib.FastMatrix;
 
 
@@ -153,9 +151,11 @@ public class SphericalMaxProjection {
 			line = in.readLine();
 
 		while(line != null && line.startsWith("v ")) {
-			Scanner s = new Scanner(line);
-			s.next();
-			points.add(new Point3f(s.nextFloat(), s.nextFloat(), s.nextFloat()));
+			String[] toks = line.split("\\s");
+			points.add(new Point3f(
+				Float.parseFloat(toks[1]),
+				Float.parseFloat(toks[2]),
+				Float.parseFloat(toks[3])));
 			line = in.readLine();
 		}
 
@@ -163,11 +163,10 @@ public class SphericalMaxProjection {
 			line = in.readLine();
 
 		while(line != null && line.startsWith("f ")) {
-			Scanner s = new Scanner(line);
-			s.next();
-			faces.add(s.nextInt());
-			faces.add(s.nextInt());
-			faces.add(s.nextInt());
+			String[] toks = line.split("\\s");
+			faces.add(Integer.parseInt(toks[1]));
+			faces.add(Integer.parseInt(toks[2]));
+			faces.add(Integer.parseInt(toks[3]));
 			line = in.readLine();
 		}
 
