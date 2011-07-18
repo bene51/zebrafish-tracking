@@ -119,10 +119,10 @@ public class Spherical_Max_Projection implements PlugIn {
 			double angle = angleStart + angleInc * a;
 			angle = angle * Math.PI / 180.0;
 			transforms[a] = FastMatrix.translate(
-						centers[0].x - centers[a].x,
-						centers[0].y - centers[a].y,
-						centers[0].z - centers[a].z)
-					.times(rotateY(Math.PI, centers[a]));
+						centers[a].x - centers[0].x,
+						centers[a].y - centers[0].y,
+						centers[a].z - centers[0].z)
+					.times(rotateY(-angle, centers[0]));
 		}
 
 
