@@ -35,8 +35,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 
-import java.util.Scanner;
-
 import vib.FastMatrix;
 
 
@@ -153,9 +151,11 @@ public class SphericalMaxProjection {
 			line = in.readLine();
 
 		while(line != null && line.startsWith("v ")) {
-			Scanner s = new Scanner(line);
-			s.next();
-			points.add(new Point3f(s.nextFloat(), s.nextFloat(), s.nextFloat()));
+			String[] toks = line.split("\\s");
+			points.add(new Point3f(
+				Float.parseFloat(toks[1]),
+				Float.parseFloat(toks[2]),
+				Float.parseFloat(toks[3])));
 			line = in.readLine();
 		}
 
@@ -163,11 +163,10 @@ public class SphericalMaxProjection {
 			line = in.readLine();
 
 		while(line != null && line.startsWith("f ")) {
-			Scanner s = new Scanner(line);
-			s.next();
-			faces.add(s.nextInt());
-			faces.add(s.nextInt());
-			faces.add(s.nextInt());
+			String[] toks = line.split("\\s");
+			faces.add(Integer.parseInt(toks[1]));
+			faces.add(Integer.parseInt(toks[2]));
+			faces.add(Integer.parseInt(toks[3]));
 			line = in.readLine();
 		}
 
@@ -215,6 +214,26 @@ public class SphericalMaxProjection {
 	public void addMaxima(float[] maxima) {
 		for(int i = 0; i < this.maxima.length; i++)
 			this.maxima[i] += maxima[i];
+	}
+
+	public void applyTransform(FastMatrix matrix) {
+		applyInverseTransform(matrix.inverse());
+	}
+
+	public void applyInverseTransform(FastMatrix inverse) {
+		float[] newmaxima = new float[sphere.nVertices];
+		Point3f p = new Point3f();
+		Point3f[] vertices = sphere.getVertices();
+		for(int i = 0; i < vertices.length; i++) {
+			p.set(vertices[i]);
+			inverse.apply(p.x, p.y, p.z);
+			p.set((float)inverse.x, (float)inverse.y, (float)inverse.z);
+			p.sub(center); // TODO transform the center too?
+			double lat = Math.asin(p.z / radius);
+			double lon = Math.atan2(p.y / radius, p.x / radius);
+			newmaxima[i] = get((float)lon, (float)lat);
+		}
+		maxima = newmaxima;
 	}
 
 	public void scaleMaxima(AngleWeighter weighter) {
@@ -299,6 +318,7 @@ public class SphericalMaxProjection {
 
 	Point3f tmp = new Point3f();
 	Point3f[] nn = new Point3f[3];
+	// in radians
 	public float get(float longitude, float latitude) {
 		return get(Math.sin(longitude), Math.cos(longitude), Math.sin(latitude), Math.cos(latitude));
 	}
@@ -314,18 +334,29 @@ public class SphericalMaxProjection {
 	public float get(Point3f p) {
 		// get three nearest neighbors
 		Node3D[] nn = nnSearch.findNNearestNeighbors(new Node3D(p), 3);
+		int i0 = vertexToIndex.get(nn[0].p);
+		int i1 = vertexToIndex.get(nn[1].p);
+		int i2 = vertexToIndex.get(nn[2].p);
+
 		// interpolate according to distance
-		float d0 = 1 / p.distance(nn[0].p);
-		float d1 = 1 / p.distance(nn[1].p);
-		float d2 = 1 / p.distance(nn[2].p);
-		float sum = d0 + d1 + d2;
-		d0 /= sum;
-		d1 /= sum;
-		d2 /= sum;
-		float v0 = d0 * maxima[vertexToIndex.get(nn[0].p)];
-		float v1 = d1 * maxima[vertexToIndex.get(nn[1].p)];
-		float v2 = d2 * maxima[vertexToIndex.get(nn[2].p)];
-		return v0 + v1 + v2;
+		float d0 = p.distance(nn[0].p);
+		float d1 = p.distance(nn[1].p);
+		float d2 = p.distance(nn[2].p);
+
+		if(d0 == 0) return maxima[i0];
+		if(d1 == 0) return maxima[i1];
+		if(d2 == 0) return maxima[i2];
+
+		float sum = 1 / d0 + 1 / d1 + 1 / d2;
+
+		d0 = 1 / d0 / sum;
+		d1 = 1 / d1 / sum;
+		d2 = 1 / d2 / sum;
+		float v0 = d0 * maxima[i0];
+		float v1 = d1 * maxima[i1];
+		float v2 = d2 * maxima[i2];
+		float ret = v0 + v1 + v2;
+		return ret;
 	}
 
 	public void getThreeNearestVertexIndices(Point3f p, int[] ret) {
