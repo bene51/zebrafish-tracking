@@ -3,6 +3,7 @@ package huisken.opener;
 import ij.IJ;
 import ij.ImagePlus;
 
+import ij.process.Blitter;
 import ij.process.ImageProcessor;
 import ij.process.ShortProcessor;
 
@@ -16,21 +17,25 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-public class Experiment {
+public class SPIMExperiment {
 
-	int sampleStart, sampleEnd;
-	int timepointStart, timepointEnd;
-	int regionStart, regionEnd;
-	int angleStart, angleEnd;
-	int channelStart, channelEnd;
-	int planeStart, planeEnd;
-	int frameStart, frameEnd;
-	String pathFormatString;
-	double pw, ph, pd;
-	int w, h, d;
-	String[] samples, regions, angles, channels;
+	public final int sampleStart, sampleEnd;
+	public final int timepointStart, timepointEnd;
+	public final int regionStart, regionEnd;
+	public final int angleStart, angleEnd;
+	public final int channelStart, channelEnd;
+	public final int planeStart, planeEnd;
+	public final int frameStart, frameEnd;
+	public final String pathFormatString;
+	public final double pw, ph, pd;
+	public final int w, h, d;
+	public final String[] samples, regions, angles, channels;
 
-	public Experiment(String xmlfile) {
+	public static final int NO_PROJECTION = 0;
+	public static final int MAX_PROJECTION = 1;
+	public static final int MIN_PROJECTION = 2;
+
+	public SPIMExperiment(String xmlfile) {
 		if(!xmlfile.endsWith(".xml"))
 			throw new IllegalArgumentException("Please select an xml file");
 		File experimentFolder = new File(xmlfile.substring(0, xmlfile.length() - 4));
@@ -58,21 +63,26 @@ public class Experiment {
 		angleEnd       = getMax(angles);
 		channelStart   = getMin(channels);
 		channelEnd     = getMax(channels);
-		planeStart     = getMin(planes);
-		planeEnd       = getMax(planes);
-		frameStart     = getMin(frames);
-		frameEnd       = getMax(frames);
+		int zMin       = getMin(planes);
+		int zMax       = getMax(planes);
+		int fMin       = getMin(frames);
+		int fMax       = getMax(frames);
 
 		if(frames[0].startsWith("plane_")) {
 			pathFormatString = experimentFolder.getAbsolutePath() + File.separator +
-				"s%03d/t%05d/r%03d/a%03d/c%03d/z0000d/plane_%10d.dat";
-			planeStart = frameStart;
-			planeEnd = frameEnd;
-			frameStart = frameEnd = 0;
+				"s%03d/t%05d/r%03d/a%03d/c%03d/z0000/plane_%010d.dat";
+			zMin = fMin;
+			zMax = fMax;
+			fMin = fMax = 0;
 		} else {
 			pathFormatString = experimentFolder.getAbsolutePath() + File.separator +
 				"s%03d/t%05d/r%03d/a%03d/c%03d/z%04d/%010d.dat";
 		}
+
+		planeStart = zMin;
+		planeEnd   = zMax;
+		frameStart = fMin;
+		frameEnd   = fMax;
 
 		try {
 			XMLReader xmlreader = new XMLReader(xmlfile);
@@ -91,34 +101,48 @@ public class Experiment {
 		return String.format(pathFormatString, sample, timepoint, region, angle, channel, plane, frame);
 	}
 
-	public ImagePlus open(boolean virtual, boolean doZProjection) {
-		int nTimepoints = timepointEnd - timepointStart + 1;
-		int nPlanes     = planeEnd - planeStart + 1;
-		int nFrames     = frameEnd - frameStart + 1;
+	public ImagePlus open(int sample,
+				int tpMin, int tpMax,
+				int region,
+				int angle,
+				int channel,
+				int zMin, int zMax,
+				int fMin, int fMax,
+				int projection,
+				boolean virtual) {
+		int nTimepoints = tpMax - tpMin + 1;
+		int nPlanes     = zMax - zMin + 1;
+		int nFrames     = fMax - fMin + 1;
 		int nFiles      = nTimepoints * nPlanes * nFrames;
 		int i = 0;
 
 		SPIMStack stack = null;
-		if(!doZProjection)
-			stack = virtual ? new SPIMVirtualStack(w, h) : new SPIMRegularStack(w, h);
-		else
-			stack = virtual ? new SPIM_ProjectedVirtualStack(w, h) : new SPIM_ProjectedRegularStack(w, h);
-		outer: for(int tp = timepointStart; tp <= timepointEnd; tp++) {
-			for(int p = planeStart; p <= planeEnd; p++) {
-				for(int f = frameStart; f <= frameEnd; f++) {
+		switch(projection) {
+			case NO_PROJECTION:  stack = virtual ? new SPIMVirtualStack(w, h) : new SPIMRegularStack(w, h); break;
+			case MAX_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, Blitter.MAX) : new SPIM_ProjectedRegularStack(w, h, Blitter.MAX); break;
+			case MIN_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, Blitter.MIN) : new SPIM_ProjectedRegularStack(w, h, Blitter.MIN); break;
+			default: throw new IllegalArgumentException("Unsupported projection type");
+		}
+
+		outer: for(int tp = tpMin; tp <= tpMax; tp++) {
+			for(int p = zMin; p <= zMax; p++) {
+				for(int f = fMin; f <= fMax; f++) {
 					if(IJ.escapePressed()) {
 						IJ.resetEscape();
 						break outer;
 					}
-					String path = getPath(sampleStart, tp, regionStart, angleStart, channelStart, p, f);
-					stack.addSlice(path, p == planeEnd);
+					String path = getPath(sample, tp, region, angle, channel, p, f);
+					stack.addSlice(path, p == zMax);
 					IJ.showProgress(i++, nFiles);
-
 				}
 			}
 		}
 		IJ.showProgress(1);
-		return new ImagePlus("SPIM", stack);
+		ImagePlus ret = new ImagePlus("SPIM", stack);
+		ret.getCalibration().pixelWidth = pw;
+		ret.getCalibration().pixelWidth = ph;
+		ret.getCalibration().pixelWidth = pd;
+		return ret;
 	}
 
 	public static ImageProcessor openRaw(String path, int w, int h) {

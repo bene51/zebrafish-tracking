@@ -12,7 +12,7 @@ public class SPIMRegularStack extends SPIMStack {
 	public void addSlice(String path, boolean lastZ) {
 		ImageProcessor ip = null;
 		try {
-			ip = Experiment.openRaw(path, getWidth(), getHeight());
+			ip = SPIMExperiment.openRaw(path, getWidth(), getHeight());
 		} catch(Exception e) {
 			e.printStackTrace();
 			return;

@@ -15,13 +15,14 @@ public class SPIM_Opener implements PlugIn {
 		if(filename == null || directory == null)
 			return;
 
-		Experiment exp = null;
+		SPIMExperiment exp = null;
 		int dimsWithMoreThanOne = 0;
-		boolean zProject = false;
+		int sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax;
+		int zProject = SPIMExperiment.NO_PROJECTION;
 		boolean virtual = true;
 		do {
 			try {
-				exp = new Experiment(directory + filename);
+				exp = new SPIMExperiment(directory + filename);
 			} catch(Exception e) {
 				IJ.error(e.getMessage());
 				e.printStackTrace();
@@ -36,62 +37,63 @@ public class SPIM_Opener implements PlugIn {
 			gd.addChoice("Channel", exp.channels);
 			gd.addDoubleSlider("Planes",  exp.planeStart, exp.planeEnd);
 			gd.addDoubleSlider("Frames",  exp.frameStart, exp.frameEnd);
-			gd.addCheckbox("Maximum projection", false);
+			String[] projMethods = new String[] {"None", "Maximum", "Minimum"};
+			gd.addChoice("Projection Method", projMethods, "None");
 			gd.addCheckbox("Use Virtual Stack", true);
 			gd.showDialog();
 			if(gd.wasCanceled())
 				return;
 
-			exp.sampleStart  = exp.sampleEnd  = Integer.parseInt(gd.getNextChoice().substring(1));
-			exp.regionStart  = exp.regionEnd  = Integer.parseInt(gd.getNextChoice().substring(1));
-			exp.angleStart   = exp.angleEnd   = Integer.parseInt(gd.getNextChoice().substring(1));
-			exp.channelStart = exp.channelEnd = Integer.parseInt(gd.getNextChoice().substring(1));
+			sample  = Integer.parseInt(gd.getNextChoice().substring(1));
+			region  = Integer.parseInt(gd.getNextChoice().substring(1));
+			angle   = Integer.parseInt(gd.getNextChoice().substring(1));
+			channel = Integer.parseInt(gd.getNextChoice().substring(1));
 
 			DoubleSlider slider = gd.getNextDoubleSlider();
-			exp.timepointStart = slider.getCurrentMin();
-			exp.timepointEnd   = slider.getCurrentMax();
+			tpMin = slider.getCurrentMin();
+			tpMax = slider.getCurrentMax();
 			slider = gd.getNextDoubleSlider();
-			exp.planeStart = slider.getCurrentMin();
-			exp.planeEnd   = slider.getCurrentMax();
+			zMin = slider.getCurrentMin();
+			zMax = slider.getCurrentMax();
 			slider = gd.getNextDoubleSlider();
-			exp.frameStart = slider.getCurrentMin();
-			exp.frameEnd   = slider.getCurrentMax();
-			zProject = gd.getNextBoolean();
+			fMin = slider.getCurrentMin();
+			fMax = slider.getCurrentMax();
+			zProject = gd.getNextChoiceIndex();
 			virtual = gd.getNextBoolean();
 
-			int nTimepoints = exp.timepointEnd - exp.timepointStart + 1;
-			int nPlanes     = exp.planeEnd - exp.planeStart + 1;
-			int nFrames     = exp.frameEnd - exp.frameStart + 1;
+			int nTimepoints = tpMax - tpMin + 1;
+			int nPlanes     = zMax - zMin + 1;
+			int nFrames     = fMax - fMin + 1;
 
-			if(zProject && (nFrames > 1 || nPlanes < 2)) {
+			if(zProject != SPIMExperiment.NO_PROJECTION && (nFrames > 1 || nPlanes < 2)) {
 				IJ.error("Maximum projection is only possible for non-movie stacks");
-				zProject = false;
+				zProject = SPIMExperiment.NO_PROJECTION;
 			}
 
 			dimsWithMoreThanOne = 0;
 			if(nTimepoints > 1)          dimsWithMoreThanOne++;
-			if(!zProject && nPlanes > 1) dimsWithMoreThanOne++;
+			if(zProject == SPIMExperiment.NO_PROJECTION && nPlanes > 1) dimsWithMoreThanOne++;
 			if(nFrames > 1)              dimsWithMoreThanOne++;
 
 			if(dimsWithMoreThanOne > 1)
 				IJ.error("Only one dimension may contain more than one entry");
 		} while(dimsWithMoreThanOne > 1);
 
-		exp.open(virtual, zProject).show();
+		exp.open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, zProject, virtual).show();
 
 		String command = "call(\"huisken.opener.SPIM_Opener.open\",\n";
-		command += "\t\"" + directory + filename + "\", // path to xml\n";
-		command += "\t\"" + exp.sampleStart      + "\", // sample\n";
-		command += "\t\"" + exp.timepointStart   + "\", // first timepoint\n";
-		command += "\t\"" + exp.timepointEnd     + "\", // last timepoint\n";
-		command += "\t\"" + exp.regionStart      + "\", // region\n";
-		command += "\t\"" + exp.angleStart       + "\", // angle\n";
-		command += "\t\"" + exp.channelStart     + "\", // channel\n";
-		command += "\t\"" + exp.planeStart       + "\", // first plane\n";
-		command += "\t\"" + exp.planeEnd         + "\", // last plane\n";
-		command += "\t\"" + exp.frameStart       + "\", // first frame\n";
-		command += "\t\"" + exp.frameEnd         + "\", // last frame\n";
-		command += "\t\"" + zProject             + "\", // zProjection?\n";
+		command += "\t\"" + directory + filename + "\",  // path to xml\n";
+		command += "\t\"" + sample               + "\",  // sample\n";
+		command += "\t\"" + tpMin                + "\",  // first timepoint\n";
+		command += "\t\"" + tpMax                + "\",  // last timepoint\n";
+		command += "\t\"" + region               + "\",  // region\n";
+		command += "\t\"" + angle                + "\",  // angle\n";
+		command += "\t\"" + channel              + "\",  // channel\n";
+		command += "\t\"" + zMin                 + "\",  // first plane\n";
+		command += "\t\"" + zMax                 + "\",  // last plane\n";
+		command += "\t\"" + fMin                 + "\",  // first frame\n";
+		command += "\t\"" + fMax                 + "\",  // last frame\n";
+		command += "\t\"" + zProject             + "\",  // zProjection?\n";
 		command += "\t\"" + virtual              + "\"); // virtual?";
 
 		if(Recorder.record)
@@ -119,7 +121,7 @@ public class SPIM_Opener implements PlugIn {
 			Integer.parseInt(zMax),
 			Integer.parseInt(fMin),
 			Integer.parseInt(fMax),
-			Boolean.parseBoolean(projection),
+			Integer.parseInt(projection),
 			Boolean.parseBoolean(virtual));
 	}
 
@@ -131,42 +133,31 @@ public class SPIM_Opener implements PlugIn {
 				int channel,
 				int zMin, int zMax,
 				int fMin, int fMax,
-				boolean projection,
+				int projection,
 				boolean virtual) {
 
-		Experiment exp = null;
+		SPIMExperiment exp = null;
 		try {
-			exp = new Experiment(xmlpath);
+			exp = new SPIMExperiment(xmlpath);
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot load experiment " + xmlpath, e);
 		}
-		exp.sampleStart  = exp.sampleEnd  = sample;
-		exp.regionStart  = exp.regionEnd  = region;
-		exp.angleStart   = exp.angleEnd   = angle;
-		exp.channelStart = exp.channelEnd = channel;
 
-		exp.timepointStart = tpMin;
-		exp.timepointEnd   = tpMax;
-		exp.planeStart = zMin;
-		exp.planeEnd   = zMax;
-		exp.frameStart = fMin;
-		exp.frameEnd   = fMax;
+		int nTimepoints = tpMax - tpMin + 1;
+		int nPlanes     = zMax - zMin + 1;
+		int nFrames     = fMax - fMin + 1;
 
-		int nTimepoints = exp.timepointEnd - exp.timepointStart + 1;
-		int nPlanes     = exp.planeEnd - exp.planeStart + 1;
-		int nFrames     = exp.frameEnd - exp.frameStart + 1;
-
-		if(projection && (nFrames > 1 || nPlanes < 2))
+		if(projection != SPIMExperiment.NO_PROJECTION && (nFrames > 1 || nPlanes < 2))
 			throw new RuntimeException("Maximum projection is only possible for non-movie stacks");
 
 		int dimsWithMoreThanOne = 0;
 		if(nTimepoints > 1)            dimsWithMoreThanOne++;
-		if(!projection && nPlanes > 1) dimsWithMoreThanOne++;
+		if(projection == SPIMExperiment.NO_PROJECTION && nPlanes > 1) dimsWithMoreThanOne++;
 		if(nFrames > 1)                dimsWithMoreThanOne++;
 
 		if(dimsWithMoreThanOne > 1)
 			throw new RuntimeException("Only one dimension may contain more than one entry");
 
-		exp.open(virtual, projection).show();
+		exp.open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, projection, virtual).show();
 	}
 }

@@ -9,10 +9,12 @@ import java.io.File;
 public class SPIM_ProjectedVirtualStack extends SPIMVirtualStack {
 
 	private String tempdir;
+	private final int proj;
 
-	public SPIM_ProjectedVirtualStack(int w, int h) {
+	public SPIM_ProjectedVirtualStack(int w, int h, int proj) {
 		super(w, h);
 		makeTempDir();
+		this.proj = proj;
 	}
 
 	private ImageProcessor projection = null;
@@ -22,7 +24,7 @@ public class SPIM_ProjectedVirtualStack extends SPIMVirtualStack {
 
 		ImageProcessor ip = null;
 		try {
-			ip = Experiment.openRaw(path, getWidth(), getHeight());
+			ip = SPIMExperiment.openRaw(path, getWidth(), getHeight());
 		} catch(Exception e) {
 			e.printStackTrace();
 			return;
@@ -33,11 +35,11 @@ public class SPIM_ProjectedVirtualStack extends SPIMVirtualStack {
 		if(projection == null)
 			projection = ip;
 		else
-			projection.copyBits(ip, 0, 0, Blitter.MAX);
+			projection.copyBits(ip, 0, 0, proj);
 
 		if(lastZ) {
 			String projectionPath = tempdir + File.separator + String.format("%05d.dat", getSize());
-			Experiment.saveRaw(projection, projectionPath);
+			SPIMExperiment.saveRaw(projection, projectionPath);
 			paths.add(projectionPath);
 			projection = null;
 		}

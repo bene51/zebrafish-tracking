@@ -68,7 +68,7 @@ public class SPIMVirtualStack extends SPIMStack {
 	public ImageProcessor getProcessor(int n) {
 		ImageProcessor ip = null;
 		try {
-			ip = Experiment.openRaw(paths.get(n - 1), getWidth(), getHeight());
+			ip = SPIMExperiment.openRaw(paths.get(n - 1), getWidth(), getHeight());
 		} catch(Exception e) {
 			e.printStackTrace();
 			return null;
