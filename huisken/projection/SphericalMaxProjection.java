@@ -18,6 +18,7 @@ import java.util.HashMap;
 import javax.vecmath.Point3i;
 import javax.vecmath.Point3f;
 import javax.vecmath.Vector3f;
+import javax.vecmath.Matrix4f;
 
 import meshtools.IndexedTriangleMesh;
 
@@ -216,6 +217,12 @@ public class SphericalMaxProjection {
 			this.maxima[i] += maxima[i];
 	}
 
+	public void applyTransform(Matrix4f matrix) {
+		Matrix4f inverse = new Matrix4f(matrix);
+		inverse.invert();
+		applyInverseTransform(inverse);
+	}
+
 	public void applyTransform(FastMatrix matrix) {
 		applyInverseTransform(matrix.inverse());
 	}
@@ -228,6 +235,21 @@ public class SphericalMaxProjection {
 			p.set(vertices[i]);
 			inverse.apply(p.x, p.y, p.z);
 			p.set((float)inverse.x, (float)inverse.y, (float)inverse.z);
+			p.sub(center); // TODO transform the center too?
+			double lat = Math.asin(p.z / radius);
+			double lon = Math.atan2(p.y / radius, p.x / radius);
+			newmaxima[i] = get((float)lon, (float)lat);
+		}
+		maxima = newmaxima;
+	}
+
+	public void applyInverseTransform(Matrix4f inverse) {
+		float[] newmaxima = new float[sphere.nVertices];
+		Point3f p = new Point3f();
+		Point3f[] vertices = sphere.getVertices();
+		for(int i = 0; i < vertices.length; i++) {
+			p.set(vertices[i]);
+			inverse.transform(p);
 			p.sub(center); // TODO transform the center too?
 			double lat = Math.asin(p.z / radius);
 			double lon = Math.atan2(p.y / radius, p.x / radius);
