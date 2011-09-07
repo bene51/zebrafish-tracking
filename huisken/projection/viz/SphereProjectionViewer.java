@@ -82,6 +82,9 @@ public class SphereProjectionViewer implements PlugIn {
 		}
 	
 		public void doProcess(KeyEvent e) {
+			if(e.getID() != KeyEvent.KEY_PRESSED)
+				return;
+
 			if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_C) {
 				final float oldMin = cc.getDisplayedMinimum();
 				final float oldMax = cc.getDisplayedMaximum();
