@@ -50,7 +50,7 @@ public class Register_ implements PlugIn {
 			throw new IllegalArgumentException(dataDirectory + " is not a directory");
 
 		File outputdir = new File(outputDirectory);
-		if(outputdir.isDirectory()) {
+		if(outputdir.isDirectory() && outputdir.list().length > 0) {
 			boolean cancelled = !IJ.showMessageWithCancel("Overwrite",
 					outputdir + " already exists. Overwrite?");
 			if(cancelled)
