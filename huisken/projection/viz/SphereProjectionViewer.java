@@ -12,10 +12,10 @@ import ij3d.*;
 
 import ij3d.behaviors.InteractiveBehavior;
 
-import java.awt.Scrollbar;
+import java.awt.TextField;
 
-import java.awt.event.AdjustmentEvent;
-import java.awt.event.AdjustmentListener;
+import java.awt.event.TextEvent;
+import java.awt.event.TextListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -83,8 +83,8 @@ public class SphereProjectionViewer implements PlugIn {
 	
 		public void doProcess(KeyEvent e) {
 			if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_C) {
-				final float oldMin = cc.getCurrentMinimum();
-				final float oldMax = cc.getCurrentMaximum();
+				final float oldMin = cc.getDisplayedMinimum();
+				final float oldMax = cc.getDisplayedMaximum();
 				final GenericDialog gd = new GenericDialog("Adjust contrast");
 				gd.addSlider("Minimum", 0, 1 << 14, oldMin);
 				gd.addSlider("Maximum", 0, 1 << 14, oldMax);
@@ -92,26 +92,28 @@ public class SphereProjectionViewer implements PlugIn {
 				gd.addWindowListener(new WindowAdapter() {
 					public void windowClosed(WindowEvent e) {
 						if(gd.wasCanceled()) {
-							System.out.println("closing");
 							cc.setDisplayedMinimum(oldMin);
 							cc.setDisplayedMaximum(oldMax);
 						}
 					}
 				});
-				final Scrollbar minChoice = (Scrollbar)gd.getSliders().get(0);
-				final Scrollbar maxChoice = (Scrollbar)gd.getSliders().get(1);
-				minChoice.addAdjustmentListener(new AdjustmentListener() {
-					public void adjustmentValueChanged(AdjustmentEvent e) {
-						System.out.println("setMinimum: " + minChoice.getValue());
-						cc.setDisplayedMinimum(minChoice.getValue());
+				final TextField minTF = (TextField)gd.getNumericFields().get(0);
+				final TextField maxTF = (TextField)gd.getNumericFields().get(1);
+				minTF.addTextListener(new TextListener() {
+					public void textValueChanged(TextEvent e) {
+						try {
+							cc.setDisplayedMinimum(Integer.parseInt(minTF.getText()));
+						} catch(NumberFormatException ex) {}
 					}
 				});
-				maxChoice.addAdjustmentListener(new AdjustmentListener() {
-					public void adjustmentValueChanged(AdjustmentEvent e) {
-						System.out.println("setMaximum: " + maxChoice.getValue());
-						cc.setDisplayedMaximum(maxChoice.getValue());
+				maxTF.addTextListener(new TextListener() {
+					public void textValueChanged(TextEvent e) {
+						try {
+							cc.setDisplayedMaximum(Integer.parseInt(maxTF.getText()));
+						} catch(NumberFormatException ex) {}
 					}
 				});
+
 				gd.showDialog();
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_S) {
