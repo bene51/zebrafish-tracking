@@ -94,24 +94,24 @@ public class ICPRegistration {
 		return mseOld;
 	}
 
-	public static final void apply(Point3f[] list, Matrix4f m) {
+	private static final void apply(Point3f[] list, Matrix4f m) {
 		for(Point3f p : list)
 			m.transform(p);
 	}
 
-	public static final Point3f nearestNeighbor(
+	private static final Point3f nearestNeighbor(
 			Point3f p, PointOctree t) {
 		return t.getNearestNeighbor(p);
 	}
 
-	public static final float calculateMSE(ArrayList<PointMatch> pm) {
+	private static final float calculateMSE(ArrayList<PointMatch> pm) {
 		double sum = 0.0;
 		for(PointMatch p : pm)
 			sum += p.p1.distanceSquared(p.p2);
 		return (float)(sum / pm.size());
 	}
 
-	public static void bestRigid(ArrayList<PointMatch> pm, Matrix4f result, Point3f cor) {
+	private static void bestRigid(ArrayList<PointMatch> pm, Matrix4f result, Point3f cor) {
 		double c1x, c1y, c1z, c2x, c2y, c2z;
 		c1x = c1y = c1z = c2x = c2y = c2z = 0;
 
