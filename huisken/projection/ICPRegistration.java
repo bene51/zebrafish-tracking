@@ -46,18 +46,18 @@ public class ICPRegistration {
 		return ret;
 	}
 
-	public float register(Matrix4f mat) {
+	public float register(Matrix4f mat, Point3f cor) {
 		Point3f[] sSphere = filter(src);
 		Point3f[] tSphere = filter(tgt);
-		float mse = icp(sSphere, tSphere, mat, 500);
-		src.applyTransform(mat);
+		float mse = icp(sSphere, tSphere, mat, cor, 500);
 		System.out.println(mat);
 		return mse;
 	}
 
-	public static float icp(Point3f[] m,
+	private static float icp(Point3f[] m,
 				Point3f[] t,
 				Matrix4f result,
+				Point3f cor,
 				int maxIter) {
 		int ms = m.length;
 
@@ -82,7 +82,7 @@ public class ICPRegistration {
 
 			// Calculate a best rigid transform
 			Matrix4f fm = new Matrix4f();
-			bestRigid(correspondences, fm);
+			bestRigid(correspondences, fm, cor);
 			result.mul(fm, result);
 			apply(m, fm);
 			float mse = calculateMSE(correspondences);
@@ -111,7 +111,7 @@ public class ICPRegistration {
 		return (float)(sum / pm.size());
 	}
 
-	public static void bestRigid(ArrayList<PointMatch> pm, Matrix4f result) {
+	public static void bestRigid(ArrayList<PointMatch> pm, Matrix4f result, Point3f cor) {
 		double c1x, c1y, c1z, c2x, c2y, c2z;
 		c1x = c1y = c1z = c2x = c2y = c2z = 0;
 
@@ -200,12 +200,12 @@ public class ICPRegistration {
 		result.m32 = 0;
 		result.m33 = 1;
 
-		Point3f tr = new Point3f((float)c1x, (float)c1y, (float)c1z);
+		Point3f tr = new Point3f(cor);
 		// translational part
 		result.transform(tr);
-		result.m03 = (float)c1x - tr.x;
-		result.m13 = (float)c1y - tr.y;
-		result.m23 = (float)c1z - tr.z;
+		result.m03 = cor.x - tr.x;
+		result.m13 = cor.y - tr.y;
+		result.m23 = cor.z - tr.z;
 	}
 }
 
