@@ -82,17 +82,26 @@ public class Register_ implements PlugIn {
 		SphericalMaxProjection src = new SphericalMaxProjection(objfile.getAbsolutePath());
 		SphericalMaxProjection tgt = new SphericalMaxProjection(objfile.getAbsolutePath());
 		tgt.loadMaxima(dataDirectory + files[0]);
+		tgt.smooth();
+		tgt.saveMaxima(outputDirectory + files[0]);
 
 		// save sphere
 		tgt.saveSphere(outputDirectory + "Sphere.obj");
 
-		Matrix4f mat = new Matrix4f();
-		mat.setIdentity();
+		Matrix4f overall = new Matrix4f();
+		overall.setIdentity();
 
 		// register
 		for(int i = 1; i < files.length; i++) {
+			tgt.loadMaxima(dataDirectory + files[i - 1]);
+			tgt.smooth();
 			src.loadMaxima(dataDirectory + files[i]);
-			new ICPRegistration(tgt, src).register(mat);
+			src.smooth();
+			Matrix4f mat = new Matrix4f();
+			mat.setIdentity();
+			new ICPRegistration(tgt, src).register(mat, src.center);
+			overall.mul(mat, overall);
+			src.applyTransform(overall);
 			src.saveMaxima(outputDirectory + files[i]);
 			IJ.showProgress(i, files.length);
 		}

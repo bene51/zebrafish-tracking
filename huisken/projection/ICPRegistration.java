@@ -35,12 +35,14 @@ public class ICPRegistration {
 		this.src = src;
 	}
 
-	public static Point3f[] filter(SphericalMaxProjection mesh) {
+	private static Point3f[] filter(SphericalMaxProjection mesh) {
+		float[] maxima = mesh.getMaxima();
+		boolean[] isMax = mesh.isMaximum();
+		Point3f[] vertices = mesh.getSphere().getVertices();
 		ArrayList<Point3f> pts = new ArrayList<Point3f>();
-		for(int i = 0; i < mesh.getSphere().nVertices; i++) {
-			if(mesh.getMaxima()[i] > THRESHOLD)
-				pts.add(new Point3f(mesh.getSphere().getVertices()[i]));
-		}
+		for(int i = 0; i < maxima.length; i++)
+			if(isMax[i] && maxima[i] > THRESHOLD)
+				pts.add(new Point3f(vertices[i]));
 		Point3f[] ret = new Point3f[pts.size()];
 		pts.toArray(ret);
 		return ret;
