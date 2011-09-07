@@ -3,6 +3,8 @@ package huisken.projection.viz;
 import customnode.CustomTriangleMesh;
 import customnode.CustomMeshNode;
 
+import huisken.projection.SphericalMaxProjection;
+
 import javax.vecmath.Point3f;
 import javax.vecmath.Color3f;
 
@@ -26,24 +28,20 @@ import ij3d.Content;
 
 import java.io.File;
 
-
 public class CustomContent extends Content {
 
 	private CustomIndexedTriangleMesh mesh;
-	public final int nVertices;
 	public final String[] files;
-
-	private float[] rawData;
 
 	private float displayedMaximum = 0;
 	private float displayedMinimum = 0;
 
-	public CustomContent(
-			Point3f[] vertices,
-			int[] faces,
-			String vertexDir) {
+	private final SphericalMaxProjection smp;
+
+	public CustomContent(String objfile, String vertexDir) throws IOException {
 
 		super("bla", 0);
+		smp = new SphericalMaxProjection(objfile);
 
 		List<String> tmp = new ArrayList<String>();
 		tmp.addAll(Arrays.asList(new File(vertexDir).list()));
@@ -56,8 +54,7 @@ public class CustomContent extends Content {
 			files[i] = vertexDir + File.separator + files[i];
 		Arrays.sort(files);
 
-		nVertices = vertices.length;
-		this.rawData = new float[nVertices];
+		int nVertices = smp.getSphere().nVertices;
 		Color3f[] colors = new Color3f[nVertices];
 		for(int i = 0; i < colors.length; i++)
 			colors[i] = new Color3f(0, 1, 0);
@@ -67,7 +64,7 @@ public class CustomContent extends Content {
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot load " + files[0], e);
 		}
-		mesh = new CustomIndexedTriangleMesh(vertices, colors, faces);
+		mesh = new CustomIndexedTriangleMesh(smp.getSphere().getVertices(), colors, smp.getSphere().getFaces());
 		CustomMeshNode node = new CustomMeshNode(mesh);
 	
 		ContentInstant content = getInstant(0);
@@ -75,22 +72,29 @@ public class CustomContent extends Content {
 
 		displayedMinimum = getCurrentMinimum();
 		displayedMaximum = getCurrentMaximum();
+	}
+
+	public void smooth() {
+		smp.smooth();
+		updateDisplayRange();
 
 	}
 
 	public float getCurrentMinimum() {
-		float min = rawData[0];
-		for(int i = 1; i < rawData.length; i++)
-			if(rawData[i] < min)
-				min = rawData[i];
+		float[] maxima = smp.getMaxima();
+		float min = maxima[0];
+		for(int i = 1; i < maxima.length; i++)
+			if(maxima[i] < min)
+				min = maxima[i];
 		return min;
 	}
 
 	public float getCurrentMaximum() {
-		float max = rawData[0];
-		for(int i = 1; i < rawData.length; i++)
-			if(rawData[i] > max)
-				max = rawData[i];
+		float[] maxima = smp.getMaxima();
+		float max = maxima[0];
+		for(int i = 1; i < maxima.length; i++)
+			if(maxima[i] > max)
+				max = maxima[i];
 		return max;
 	}
 
@@ -105,8 +109,9 @@ public class CustomContent extends Content {
 	}
 
 	private void updateDisplayRange() {
+		float[] maxima = smp.getMaxima();
 		for(int i = 0; i < mesh.colors.length; i++) {
-			float v = rawData[i];
+			float v = maxima[i];
 			v = (v - displayedMinimum) / (displayedMaximum - displayedMinimum);
 			mesh.colors[i].set(v, v, v);
 		}
@@ -114,20 +119,13 @@ public class CustomContent extends Content {
 	}
 
 	void readColors(String file, Color3f[] colors) throws IOException {
-		DataInputStream in = new DataInputStream(
-			new BufferedInputStream(
-				new FileInputStream(file)));
+		smp.loadMaxima(file);
+		float[] maxima = smp.getMaxima();
 		for(int i = 0; i < colors.length; i++) {
-			try {
-				float v = in.readFloat();
-				rawData[i] = v;
-				v = (v - displayedMinimum) / (displayedMaximum - displayedMinimum);
-				colors[i].set(v, v, v);
-			} catch(EOFException e) {
-				break;
-			}
+			float v = maxima[i];
+			v = (v - displayedMinimum) / (displayedMaximum - displayedMinimum);
+			colors[i].set(v, v, v);
 		}
-		in.close();
 	}
 
 	public void setColors(Color3f[] colors) {
@@ -246,25 +244,6 @@ public class CustomContent extends Content {
 
 			return ta;
 		}
-	}
-
-	public static void main(String[] args) {
-		Point3f[] vertices = new Point3f[] {
-			new Point3f(0, 0, 0),
-			new Point3f(1, 0, 0),
-			new Point3f(.5f, 1, 0),
-			new Point3f(1.5f, 1, 0) };
-		Color3f[] colors = new Color3f[] {
-			new Color3f(1, 0, 0),
-			new Color3f(0, 0, 1),
-			new Color3f(0, 1, 0),
-			new Color3f(1, 1, 0) };
-		int[] faces = new int[] {0, 1, 2, 2, 1, 3};
-
-		Image3DUniverse u = new Image3DUniverse();
-		u.show();
-
-//		u.addContent(new CustomContent(vertices, colors, faces));
 	}
 }
 

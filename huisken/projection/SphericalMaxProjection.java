@@ -217,6 +217,30 @@ public class SphericalMaxProjection {
 			this.maxima[i] += maxima[i];
 	}
 
+	public void smooth() {
+		int[] nNeighbors = new int[maxima.length];
+		float[] newMaxima = new float[maxima.length];
+
+		int[] faces = sphere.getFaces();
+		for(int i = 0; i < sphere.nFaces; i += 3) {
+			int f1 = faces[i];
+			int f2 = faces[i + 1];
+			int f3 = faces[i + 2];
+			nNeighbors[f1] += 2;
+			newMaxima[f1] += maxima[f2];
+			newMaxima[f1] += maxima[f3];
+			nNeighbors[f2] += 2;
+			newMaxima[f2] += maxima[f1];
+			newMaxima[f2] += maxima[f3];
+			nNeighbors[f3] += 2;
+			newMaxima[f3] += maxima[f1];
+			newMaxima[f3] += maxima[f2];
+		}
+		for(int i = 0; i < newMaxima.length; i++)
+			newMaxima[i] /= (nNeighbors[i] + 1);
+		maxima = newMaxima;
+	}
+
 	public void applyTransform(Matrix4f matrix) {
 		Matrix4f inverse = new Matrix4f(matrix);
 		inverse.invert();

@@ -69,39 +69,7 @@ public class SphereProjectionViewer implements PlugIn {
 	}
 
 	public CustomContent readMesh(String objpath, String vertexDir) throws IOException {
-		BufferedReader in = new BufferedReader(new FileReader(objpath));
-		ArrayList<Point3f> points = new ArrayList<Point3f>();
-		ArrayList<Integer> faces = new ArrayList<Integer>();
-		String line = in.readLine();
-		while(line != null && !line.startsWith("v "))
-			line = in.readLine();
-
-		while(line != null && line.startsWith("v ")) {
-			Scanner s = new Scanner(line);
-			s.next();
-			points.add(new Point3f(s.nextFloat(), s.nextFloat(), s.nextFloat()));
-			line = in.readLine();
-		}
-
-		while(line != null && !line.startsWith("f "))
-			line = in.readLine();
-
-		while(line != null && line.startsWith("f ")) {
-			Scanner s = new Scanner(line);
-			s.next();
-			faces.add(s.nextInt());
-			faces.add(s.nextInt());
-			faces.add(s.nextInt());
-			line = in.readLine();
-		}
-
-		Point3f[] vertices = new Point3f[points.size()];
-		points.toArray(vertices);
-
-		int[] f = new int[faces.size()];
-		for(int i = 0; i < f.length; i++)
-			f[i] = faces.get(i);
-		return new CustomContent(vertices, f, vertexDir);
+		return new CustomContent(objpath, vertexDir);
 	}
 
 	private static class CustomBehavior extends InteractiveBehavior {
@@ -145,6 +113,9 @@ public class SphereProjectionViewer implements PlugIn {
 					}
 				});
 				gd.showDialog();
+			}
+			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_S) {
+				cc.smooth();
 			}
 		}
 	}
