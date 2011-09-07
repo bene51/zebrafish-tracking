@@ -122,6 +122,9 @@ public class SphereProjectionViewer implements PlugIn {
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_S) {
 				cc.smooth();
 			}
+			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_M) {
+				cc.toggleShowMaxima();
+			}
 		}
 	}
 }

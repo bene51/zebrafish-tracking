@@ -241,6 +241,29 @@ public class SphericalMaxProjection {
 		maxima = newMaxima;
 	}
 
+	public boolean[] isMaximum() {
+		boolean[] maxs = new boolean[maxima.length];
+		for(int i = 0; i < maxs.length; i++)
+			maxs[i] = true;
+		int[] faces = sphere.getFaces();
+		for(int i = 0; i < sphere.nFaces; i += 3) {
+			int f1 = faces[i];
+			int f2 = faces[i + 1];
+			int f3 = faces[i + 2];
+			float m1 = maxima[f1];
+			float m2 = maxima[f2];
+			float m3 = maxima[f3];
+
+			if(m1 <= m2 || m1 <= m3)
+				maxs[f1] = false;
+			if(m2 <= m1 || m2 <= m3)
+				maxs[f2] = false;
+			if(m3 <= m1 || m3 <= m1)
+				maxs[f3] = false;
+		}
+		return maxs;
+	}
+
 	public void applyTransform(Matrix4f matrix) {
 		Matrix4f inverse = new Matrix4f(matrix);
 		inverse.invert();

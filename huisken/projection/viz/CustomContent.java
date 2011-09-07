@@ -38,6 +38,8 @@ public class CustomContent extends Content {
 
 	private final SphericalMaxProjection smp;
 
+	private boolean showMaxima = false;
+
 	public CustomContent(String objfile, String vertexDir) throws IOException {
 
 		super("bla", 0);
@@ -74,10 +76,22 @@ public class CustomContent extends Content {
 		displayedMaximum = getCurrentMaximum();
 	}
 
+	public void toggleShowMaxima() {
+		showMaxima = !showMaxima;
+		updateDisplayRange();
+	}
+
 	public void smooth() {
 		smp.smooth();
 		updateDisplayRange();
+	}
 
+	public float getDisplayedMinimum() {
+		return displayedMinimum;
+	}
+
+	public float getDisplayedMaximum() {
+		return displayedMaximum;
 	}
 
 	public float getCurrentMinimum() {
@@ -110,10 +124,15 @@ public class CustomContent extends Content {
 
 	private void updateDisplayRange() {
 		float[] maxima = smp.getMaxima();
+		boolean[] isMax = smp.isMaximum();
 		for(int i = 0; i < mesh.colors.length; i++) {
-			float v = maxima[i];
-			v = (v - displayedMinimum) / (displayedMaximum - displayedMinimum);
-			mesh.colors[i].set(v, v, v);
+			if(showMaxima && isMax[i] && maxima[i] > 1600)
+				mesh.colors[i].set(1, 0, 0);
+			else {
+				float v = maxima[i];
+				v = (v - displayedMinimum) / (displayedMaximum - displayedMinimum);
+				mesh.colors[i].set(v, v, v);
+			}
 		}
 		setColors(mesh.colors);
 	}
