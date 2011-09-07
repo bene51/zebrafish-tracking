@@ -12,6 +12,7 @@ import javax.vecmath.Point3f;
 
 import java.io.File;
 
+import java.util.Collections;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -24,30 +25,6 @@ import meshtools.PointOctree;
 public class ICPRegistration {
 
 	public static final float THRESHOLD = 1600f;
-
-	public static void main(String[] args) throws Exception {
-		String dir = "/home/bene/PostDoc/data/SphereProjection/";
-
-		SphericalMaxProjection src = new SphericalMaxProjection(dir + "Sphere.obj");
-		SphericalMaxProjection tgt = new SphericalMaxProjection(dir + "Sphere.obj");
-
-		tgt.loadMaxima(dir + "tp0000.tif.vertices");
-		src.loadMaxima(dir + "tp0010.tif.vertices");
-		// src.applyTransform(FastMatrix.rotateEulerAt(15 * Math.PI / 180, 1 * Math.PI / 180, 0, tgt.center.x, tgt.center.y, tgt.center.z));
-
-		int WIDTH = 360;
-		PolarTransform pt = new PolarTransform();
-		pt.prepareForProjection(src, WIDTH);
-		new ImagePlus("src", pt.project()).show();
-		pt.prepareForProjection(tgt, WIDTH);
-		new ImagePlus("tgt", pt.project()).show();
-
-		float mse = new ICPRegistration(tgt, src).register(new Matrix4f());
-		System.out.println("mse = " + mse);
-
-		pt.prepareForProjection(src, WIDTH);
-		new ImagePlus("transformed", pt.project()).show();
-	}
 
 	private final SphericalMaxProjection tgt;
 	private final SphericalMaxProjection src;
