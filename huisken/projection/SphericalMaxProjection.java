@@ -3,6 +3,8 @@ package huisken.projection;
 import ij.ImagePlus;
 import ij.ImageStack;
 
+import ij.measure.Calibration;
+
 import ij.process.ImageProcessor;
 
 import java.io.DataOutputStream;
@@ -44,6 +46,7 @@ public class SphericalMaxProjection {
 	// These fields are set in prepareForProjection();
 	private Point4[] lut;
 	private float[] maxima;
+	private float[] distances;
 	private float[] weights;
 
 	// These fields must be set in the constructor and
@@ -181,27 +184,44 @@ public class SphericalMaxProjection {
 	}
 
 	public void saveMaxima(String path) throws IOException {
+		saveFloatData(maxima, path);
+	}
+
+	public void saveDistances(String path) throws IOException {
+		saveFloatData(distances, path);
+	}
+
+	private void saveFloatData(float[] data, String path) throws IOException {
 		DataOutputStream out = new DataOutputStream(
 			new BufferedOutputStream(
 				new FileOutputStream(path)));
-		for(float f : maxima)
+		for(float f : data)
 			out.writeFloat(f);
 		out.close();
 	}
 
 	public void loadMaxima(String file) throws IOException {
-		maxima = new float[sphere.nVertices];
+		maxima = loadFloatData(file);
+	}
+
+	public void loadDistances(String file) throws IOException {
+		distances = loadFloatData(file);
+	}
+
+	private float[] loadFloatData(String file) throws IOException {
+		float[] data = new float[sphere.nVertices];
 		DataInputStream in = new DataInputStream(
 			new BufferedInputStream(
 				new FileInputStream(file)));
-		for(int i = 0; i < maxima.length; i++) {
+		for(int i = 0; i < data.length; i++) {
 			try {
-				maxima[i] = in.readFloat();
+				data[i] = in.readFloat();
 			} catch(EOFException e) {
 				break;
 			}
 		}
 		in.close();
+		return data;
 	}
 
 	public IndexedTriangleMesh getSphere() {
@@ -365,11 +385,17 @@ public class SphericalMaxProjection {
 
 	public void project(ImagePlus image) {
 		ImageStack stack = image.getStack();
+		Calibration cal = image.getCalibration();
+		double pw = cal.pixelWidth;
+		double ph = cal.pixelHeight;
+		double pd = cal.pixelDepth;
 		int w = image.getWidth(), h = image.getHeight();
 		int wh = w * h;
 		int d = image.getStackSize();
 		maxima = new float[sphere.nVertices];
+		distances = new float[sphere.nVertices];
 		int lutIndex = 0;
+		Point3f rw = new Point3f();
 		for(int z = 0; z < d; z++) {
 			ImageProcessor ip = stack.getProcessor(z + 1);
 			Point4 p;
@@ -377,8 +403,13 @@ public class SphericalMaxProjection {
 				float v = 0;
 				if(p.x >= 0 && p.x < w && p.y >= 0 && p.y < h)
 					v = ip.getf(p.x, p.y);
-				if(v > maxima[p.vIndex])
+				if(v > maxima[p.vIndex]) {
 					maxima[p.vIndex] = v;
+					rw.set((float)pw * p.x,
+						(float)ph * p.y,
+						(float)pd * p.z);
+					distances[p.vIndex] = rw.distance(center);
+				}
 			}
 			lutIndex--;
 		}
@@ -445,6 +476,10 @@ public class SphericalMaxProjection {
 		if(this.maxima != null) {
 			cp.maxima = new float[this.maxima.length];
 			System.arraycopy(this.maxima, 0, cp.maxima, 0, this.maxima.length);
+		}
+		if(this.distances != null) {
+			cp.distances = new float[this.distances.length];
+			System.arraycopy(this.distances, 0, cp.distances, 0, this.distances.length);
 		}
 		if(this.lut != null) {
 			cp.lut = new Point4[this.lut.length];
