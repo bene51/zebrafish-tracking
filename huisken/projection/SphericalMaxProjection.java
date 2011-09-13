@@ -435,18 +435,44 @@ public class SphericalMaxProjection {
 		ret[2] = vertexToIndex.get(nn[2].p);
 	}
 
+	public SphericalMaxProjection clone() {
+		SphericalMaxProjection cp = new SphericalMaxProjection(this.sphere, this.center, this.radius);
+		if(this.weights != null) {
+			cp.weights = new float[this.weights.length];
+			System.arraycopy(this.weights, 0, cp.weights, 0, this.weights.length);
+		}
+		if(this.maxima != null) {
+			cp.maxima = new float[this.maxima.length];
+			System.arraycopy(this.maxima, 0, cp.maxima, 0, this.maxima.length);
+		}
+		if(this.lut != null) {
+			cp.lut = new Point4[this.lut.length];
+			for(int i = 0; i < this.lut.length; i++)
+				cp.lut[i] = this.lut[i].clone();
+		}
+		return cp;
+	}
+
 	/**
 	 * Holds the image coordinates together with the vertex index.
 	 */
 	private final class Point4 {
-		int vIndex;
-		int x, y, z;
+		final int vIndex;
+		final int x, y, z;
 
 		public Point4(Point3i p, int vIndex) {
-			this.x = p.x;
-			this.y = p.y;
-			this.z = p.z;
+			this(p.x, p.y, p.z, vIndex);
+		}
+
+		public Point4(int x, int y, int z, int vIndex) {
+			this.x = x;
+			this.y = y;
+			this.z = z;
 			this.vIndex = vIndex;
+		}
+
+		public Point4 clone() {
+			return new Point4(this.x, this.y, this.z, this.vIndex);
 		}
 	}
 
