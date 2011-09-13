@@ -161,7 +161,8 @@ public class Spherical_Max_Projection implements PlugIn {
 				if(saveSingleViews) {
 					String filename = String.format("tp%04d.tif", tp, angle);
 					String subfolder = String.format("angle%3d/", angle);
-					String path = new File(outputdir + subfolder, filename + ".vertices").getAbsolutePath();
+					String vpath = new File(outputdir + subfolder, filename + ".vertices").getAbsolutePath();
+					String dpath = new File(outputdir + subfolder, filename + ".distances").getAbsolutePath();
 					File subf = new File(outputdir, subfolder);
 					if(!subf.exists()) {
 						subf.mkdir();
@@ -173,26 +174,39 @@ public class Spherical_Max_Projection implements PlugIn {
 					}
 
 					try {
-						smp[a][0].saveMaxima(path);
+						smp[a][0].saveMaxima(vpath);
 					} catch(Exception e) {
-						throw new RuntimeException("Cannot save " + path);
+						throw new RuntimeException("Cannot save " + vpath);
+					}
+					try {
+						smp[a][0].saveDistances(dpath);
+					} catch(Exception e) {
+						throw new RuntimeException("Cannot save " + vpath);
 					}
 				}
 
 				// scale the resulting maxima according to angle
-				smp[a][0].scaleMaxima(aw);
+				smp[a][0].scaleMaximaAndDistances(aw);
 
 				// sum them all up
-				if(a > 0)
+				if(a > 0) {
 					smp[0][0].addMaxima(smp[a][0].getMaxima());
+					smp[0][0].addDistances(smp[a][0].getDistances());
+				}
 			}
 
 			String filename = String.format("tp%04d.tif", tp);
-			String path = new File(outputdir, filename + ".vertices").getAbsolutePath();
+			String vpath = new File(outputdir, filename + ".vertices").getAbsolutePath();
+			String dpath = new File(outputdir, filename + ".distances").getAbsolutePath();
 			try {
-				smp[0][0].saveMaxima(path);
+				smp[0][0].saveMaxima(vpath);
 			} catch(Exception e) {
-				throw new RuntimeException("Cannot save " + path);
+				throw new RuntimeException("Cannot save " + vpath);
+			}
+			try {
+				smp[0][0].saveDistances(dpath);
+			} catch(Exception e) {
+				throw new RuntimeException("Cannot save " + dpath);
 			}
 		}
 	}

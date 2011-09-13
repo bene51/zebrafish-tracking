@@ -232,9 +232,18 @@ public class SphericalMaxProjection {
 		return maxima;
 	}
 
+	public float[] getDistances() {
+		return maxima;
+	}
+
 	public void addMaxima(float[] maxima) {
 		for(int i = 0; i < this.maxima.length; i++)
 			this.maxima[i] += maxima[i];
+	}
+
+	public void addDistances(float[] distances) {
+		for(int i = 0; i < this.distances.length; i++)
+			this.distances[i] += distances[i];
 	}
 
 	public void smooth() {
@@ -330,6 +339,15 @@ public class SphericalMaxProjection {
 		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
 			Point3f vertex = sphere.getVertices()[vIndex];
 			maxima[vIndex] *= weighter.getWeight(vertex, center);
+		}
+	}
+
+	public void scaleMaximaAndDistances(AngleWeighter weighter) {
+		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
+			Point3f vertex = sphere.getVertices()[vIndex];
+			double w = weighter.getWeight(vertex, center);
+			maxima[vIndex] *= w;
+			distances[vIndex] *= w;
 		}
 	}
 
