@@ -82,7 +82,6 @@ public class Register_ implements PlugIn {
 		SphericalMaxProjection src = new SphericalMaxProjection(objfile.getAbsolutePath());
 		SphericalMaxProjection tgt = new SphericalMaxProjection(objfile.getAbsolutePath());
 		tgt.loadMaxima(dataDirectory + files[0]);
-		tgt.smooth();
 		tgt.saveMaxima(outputDirectory + files[0]);
 
 		// save sphere
@@ -96,13 +95,14 @@ public class Register_ implements PlugIn {
 			tgt.loadMaxima(dataDirectory + files[i - 1]);
 			tgt.smooth();
 			src.loadMaxima(dataDirectory + files[i]);
+			SphericalMaxProjection srcOrig = src.clone();
 			src.smooth();
 			Matrix4f mat = new Matrix4f();
 			mat.setIdentity();
 			new ICPRegistration(tgt, src).register(mat, src.center);
 			overall.mul(mat, overall);
-			src.applyTransform(overall);
-			src.saveMaxima(outputDirectory + files[i]);
+			srcOrig.applyTransform(overall);
+			srcOrig.saveMaxima(outputDirectory + files[i]);
 			IJ.showProgress(i, files.length);
 		}
 		IJ.showProgress(1);
