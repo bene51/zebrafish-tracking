@@ -9,10 +9,17 @@ import java.util.List;
 public class SPIMVirtualStack extends SPIMStack {
 
 	protected List<String> paths = new ArrayList<String>();
+	private final int x0, x1, y0, y1, orgW, orgH;
 
 	/** Creates a new, empty virtual stack. */
-	public SPIMVirtualStack(int width, int height) {
-		super(width, height);
+	public SPIMVirtualStack(int orgW, int orgH, int x0, int x1, int y0, int y1) {
+		super(x1 - x0, y1 - y0);
+		this.x0 = x0;
+		this.x1 = x1;
+		this.y0 = y0;
+		this.y1 = y1;
+		this.orgW = orgW;
+		this.orgH = orgH;
 	}
 
 	 /** Adds an image to the end of the stack. */
@@ -68,7 +75,7 @@ public class SPIMVirtualStack extends SPIMStack {
 	public ImageProcessor getProcessor(int n) {
 		ImageProcessor ip = null;
 		try {
-			ip = SPIMExperiment.openRaw(paths.get(n - 1), getWidth(), getHeight());
+			ip = SPIMExperiment.openRaw(paths.get(n - 1), orgW, orgH, x0, x1, y0, y1);
 		} catch(Exception e) {
 			e.printStackTrace();
 			return null;

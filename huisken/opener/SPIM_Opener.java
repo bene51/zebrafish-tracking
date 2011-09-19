@@ -44,6 +44,8 @@ public class SPIM_Opener implements PlugIn {
 		gd.addChoice("Region", exp.regions);
 		gd.addChoice("Angle", exp.angles);
 		gd.addChoice("Channel", exp.channels);
+		gd.addDoubleSlider("x Range", 0, exp.w);
+		gd.addDoubleSlider("y Range", 0, exp.h);
 		gd.addDoubleSlider("Planes",  exp.planeStart, exp.planeEnd);
 		gd.addDoubleSlider("Frames",  exp.frameStart, exp.frameEnd);
 		String[] projMethods = new String[] {"None", "Maximum", "Minimum"};
@@ -64,9 +66,15 @@ public class SPIM_Opener implements PlugIn {
 				int tpMin = slider.getCurrentMin();
 				int tpMax = slider.getCurrentMax();
 				slider = sliders.get(1);
+				int xMin = slider.getCurrentMin();
+				int xMax = slider.getCurrentMax();
+				slider = sliders.get(2);
+				int yMin = slider.getCurrentMin();
+				int yMax = slider.getCurrentMax();
+				slider = sliders.get(3);
 				int zMin = slider.getCurrentMin();
 				int zMax = slider.getCurrentMax();
-				slider = sliders.get(2);
+				slider = sliders.get(4);
 				int fMin = slider.getCurrentMin();
 				int fMax = slider.getCurrentMax();
 
@@ -92,7 +100,7 @@ public class SPIM_Opener implements PlugIn {
 					return;
 				}
 		
-				exp.open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, zProject, virtual).show();
+				exp.open(sample, tpMin, tpMax, xMin, xMax, yMin, yMax, region, angle, channel, zMin, zMax, fMin, fMax, zProject, virtual).show();
 		
 				String command = "call(\"huisken.opener.SPIM_Opener.open\",\n";
 				command += "\t\"" + directory + filename + "\",  // path to xml\n";

@@ -10,10 +10,17 @@ public class SPIM_ProjectedVirtualStack extends SPIMVirtualStack {
 
 	private String tempdir;
 	private final int proj;
+	private final int x0, y0, x1, y1, orgW, orgH;
 
-	public SPIM_ProjectedVirtualStack(int w, int h, int proj) {
-		super(w, h);
+	public SPIM_ProjectedVirtualStack(int orgW, int orgH, int x0, int x1, int y0, int y1, int proj) {
+		super(orgW, orgH, x0, x1, y0, y1);
 		makeTempDir();
+		this.x0 = x0;
+		this.x1 = x1;
+		this.y0 = y0;
+		this.y1 = y1;
+		this.orgW = orgW;
+		this.orgH = orgH;
 		this.proj = proj;
 	}
 
@@ -24,7 +31,7 @@ public class SPIM_ProjectedVirtualStack extends SPIMVirtualStack {
 
 		ImageProcessor ip = null;
 		try {
-			ip = SPIMExperiment.openRaw(path, getWidth(), getHeight());
+			ip = SPIMExperiment.openRaw(path, orgW, orgH, x0, x1, y0, y1);
 		} catch(Exception e) {
 			e.printStackTrace();
 			return;
@@ -43,6 +50,19 @@ public class SPIM_ProjectedVirtualStack extends SPIMVirtualStack {
 			paths.add(projectionPath);
 			projection = null;
 		}
+	}
+
+	public ImageProcessor getProcessor(int n) {
+		ImageProcessor ip = null;
+		try {
+			ip = SPIMExperiment.openRaw(paths.get(n - 1), getWidth(), getHeight());
+		} catch(Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+		if(!(ip instanceof ShortProcessor))
+			ip = ip.convertToShort(true);
+		return ip;
 	}
 
 	private void makeTempDir() {

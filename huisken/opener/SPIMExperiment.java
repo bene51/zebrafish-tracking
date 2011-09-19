@@ -118,9 +118,9 @@ public class SPIMExperiment {
 
 		SPIMStack stack = null;
 		switch(projection) {
-			case NO_PROJECTION:  stack = virtual ? new SPIMVirtualStack(w, h) : new SPIMRegularStack(w, h); break;
-			case MAX_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, Blitter.MAX) : new SPIM_ProjectedRegularStack(w, h, Blitter.MAX); break;
-			case MIN_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, Blitter.MIN) : new SPIM_ProjectedRegularStack(w, h, Blitter.MIN); break;
+			case NO_PROJECTION:  stack = virtual ? new SPIMVirtualStack(w, h, 0, w, 0, h) : new SPIMRegularStack(w, h, 0, w, 0, h); break;
+			case MAX_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, 0, w, 0, h, Blitter.MAX) : new SPIM_ProjectedRegularStack(w, h, 0, w, 0, h, Blitter.MAX); break;
+			case MIN_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, 0, w, 0, h, Blitter.MIN) : new SPIM_ProjectedRegularStack(w, h, 0, w, 0, h, Blitter.MIN); break;
 			default: throw new IllegalArgumentException("Unsupported projection type");
 		}
 
@@ -143,6 +143,101 @@ public class SPIMExperiment {
 		ret.getCalibration().pixelWidth = ph;
 		ret.getCalibration().pixelWidth = pd;
 		return ret;
+	}
+
+	public ImagePlus open(int sample,
+				int tpMin, int tpMax,
+				int xMin, int xMax,
+				int yMin, int yMax,
+				int region,
+				int angle,
+				int channel,
+				int zMin, int zMax,
+				int fMin, int fMax,
+				int projection,
+				boolean virtual) {
+		int nX          = xMax - xMin;
+		int nY          = yMax - yMin;
+		int nTimepoints = tpMax - tpMin + 1;
+		int nPlanes     = zMax - zMin + 1;
+		int nFrames     = fMax - fMin + 1;
+		int nFiles      = nTimepoints * nPlanes * nFrames;
+		int i = 0;
+
+		SPIMStack stack = null;
+		switch(projection) {
+			case NO_PROJECTION:  stack = virtual ? new SPIMVirtualStack(w, h, xMin, xMax, yMin, yMax) : new SPIMRegularStack(w, h, xMin, xMax, yMin, yMax); break;
+			case MAX_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, xMin, xMax, yMin, yMax, Blitter.MAX) : new SPIM_ProjectedRegularStack(w, h, xMin, xMax, yMin, yMax, Blitter.MAX); break;
+			case MIN_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, xMin, xMax, yMin, yMax, Blitter.MIN) : new SPIM_ProjectedRegularStack(w, h, xMin, xMax, yMin, yMax, Blitter.MIN); break;
+			default: throw new IllegalArgumentException("Unsupported projection type");
+		}
+
+		outer: for(int tp = tpMin; tp <= tpMax; tp++) {
+			for(int p = zMin; p <= zMax; p++) {
+				for(int f = fMin; f <= fMax; f++) {
+					if(IJ.escapePressed()) {
+						IJ.resetEscape();
+						break outer;
+					}
+					String path = getPath(sample, tp, region, angle, channel, p, f);
+					stack.addSlice(path, p == zMax);
+					IJ.showProgress(i++, nFiles);
+				}
+			}
+		}
+		IJ.showProgress(1);
+		ImagePlus ret = new ImagePlus("SPIM", stack);
+		ret.getCalibration().pixelWidth = pw;
+		ret.getCalibration().pixelWidth = ph;
+		ret.getCalibration().pixelWidth = pd;
+		return ret;
+	}
+
+	public static ImageProcessor openRaw(String path, int orgW, int orgH, int xMin, int xMax, int yMin, int yMax) {
+		if(xMin == 0 && xMax == orgW && yMin == 0 && yMax == orgH)
+			return openRaw(path, orgW, orgH);
+
+		int ws = xMax - xMin;
+		int hs = yMax - yMin;
+
+		byte[] bytes = new byte[ws * hs * 2];
+		short[] pixels = new short[ws * hs];
+
+		FileInputStream in = null;
+		try {
+			in = new FileInputStream(path);
+
+			// skip the top
+			int toSkip = 2 * (yMin * orgW + xMin);
+			while(toSkip > 0)
+				toSkip -= in.skip(toSkip);
+
+			// read through it line by line
+			int offs = 0;
+			for(int r = 0; r < hs; r++) {
+				// read the data
+				int read = 0;
+				while(read < ws)
+					read += in.read(bytes, offs + read, 2 * ws - read);
+				offs += 2 * ws;
+
+				// skip to next line
+				toSkip = 2 * (orgW - xMax + xMin);
+				while(toSkip > 0)
+					toSkip -= in.skip(toSkip);
+			}
+			in.close();
+		} catch(IOException e) {
+			throw new RuntimeException("Cannot load " + path, e);
+		}
+
+		for(int i = 0; i < pixels.length; i++) {
+			int low  = 0xff & bytes[2 * i];
+			int high = 0xff & bytes[2 * i + 1];
+			pixels[i] = (short)((high << 8) | low);
+		}
+
+		return new ShortProcessor(ws, hs, pixels, null);
 	}
 
 	public static ImageProcessor openRaw(String path, int w, int h) {
