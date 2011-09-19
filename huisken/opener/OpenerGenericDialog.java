@@ -7,10 +7,16 @@ import java.util.ArrayList;
 
 import java.awt.*;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+
 public class OpenerGenericDialog extends GenericDialogPlus {
 
+	private ActionListener listener;
 	private List<DoubleSlider> doubleSliders = new ArrayList<DoubleSlider>();
 	private int cIdx = 0;
+	private Button okButton, cancelButton;
 
 	public OpenerGenericDialog(String title) {
 		super(title);
@@ -20,8 +26,30 @@ public class OpenerGenericDialog extends GenericDialogPlus {
 		super(title, parent);
 	}
 
+	public void setActionListener(ActionListener l) {
+		this.listener = l;
+	}
+
+	public void showDialog() {
+		super.showDialog();
+		Button[] buttons = getButtons();
+		okButton = buttons[0];
+		cancelButton = buttons[1];
+	}
+
+	public void actionPerformed(ActionEvent e) {
+		if(e.getSource() == okButton && listener != null)
+			listener.actionPerformed(e);
+		else
+			super.actionPerformed(e);
+	}
+
 	public DoubleSlider getNextDoubleSlider() {
 		return doubleSliders.get(cIdx++);
+	}
+
+	public List<DoubleSlider> getDoubleSliders() {
+		return doubleSliders;
 	}
 
 	public void addChoice(String label, String[] choice) {

@@ -8,7 +8,7 @@ import java.util.List;
 
 public class SPIMVirtualStack extends SPIMStack {
 
-	protected List<String>paths = new ArrayList<String>();
+	protected List<String> paths = new ArrayList<String>();
 
 	/** Creates a new, empty virtual stack. */
 	public SPIMVirtualStack(int width, int height) {
