@@ -99,9 +99,10 @@ public class SPIM_Opener implements PlugIn {
 					IJ.error("Only one dimension may contain more than one entry");
 					return;
 				}
-		
-				exp.open(sample, tpMin, tpMax, xMin, xMax, yMin, yMax, region, angle, channel, zMin, zMax, fMin, fMax, zProject, virtual).show();
-		
+long start = System.currentTimeMillis();
+				exp.open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, yMin, yMax, xMin, xMax, zProject, virtual).show();
+long end = System.currentTimeMillis();
+System.out.println("needed " + (end - start) + " ms");
 				String command = "call(\"huisken.opener.SPIM_Opener.open\",\n";
 				command += "\t\"" + directory + filename + "\",  // path to xml\n";
 				command += "\t\"" + sample               + "\",  // sample\n";

@@ -110,50 +110,18 @@ public class SPIMExperiment {
 				int fMin, int fMax,
 				int projection,
 				boolean virtual) {
-		int nTimepoints = tpMax - tpMin + 1;
-		int nPlanes     = zMax - zMin + 1;
-		int nFrames     = fMax - fMin + 1;
-		int nFiles      = nTimepoints * nPlanes * nFrames;
-		int i = 0;
-
-		SPIMStack stack = null;
-		switch(projection) {
-			case NO_PROJECTION:  stack = virtual ? new SPIMVirtualStack(w, h, 0, w, 0, h) : new SPIMRegularStack(w, h, 0, w, 0, h); break;
-			case MAX_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, 0, w, 0, h, Blitter.MAX) : new SPIM_ProjectedRegularStack(w, h, 0, w, 0, h, Blitter.MAX); break;
-			case MIN_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, 0, w, 0, h, Blitter.MIN) : new SPIM_ProjectedRegularStack(w, h, 0, w, 0, h, Blitter.MIN); break;
-			default: throw new IllegalArgumentException("Unsupported projection type");
-		}
-
-		outer: for(int tp = tpMin; tp <= tpMax; tp++) {
-			for(int p = zMin; p <= zMax; p++) {
-				for(int f = fMin; f <= fMax; f++) {
-					if(IJ.escapePressed()) {
-						IJ.resetEscape();
-						break outer;
-					}
-					String path = getPath(sample, tp, region, angle, channel, p, f);
-					stack.addSlice(path, p == zMax);
-					IJ.showProgress(i++, nFiles);
-				}
-			}
-		}
-		IJ.showProgress(1);
-		ImagePlus ret = new ImagePlus("SPIM", stack);
-		ret.getCalibration().pixelWidth = pw;
-		ret.getCalibration().pixelWidth = ph;
-		ret.getCalibration().pixelWidth = pd;
-		return ret;
+		return open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, 0, h, 0, w, projection, virtual);
 	}
 
 	public ImagePlus open(int sample,
 				int tpMin, int tpMax,
-				int xMin, int xMax,
-				int yMin, int yMax,
 				int region,
 				int angle,
 				int channel,
 				int zMin, int zMax,
 				int fMin, int fMax,
+				int yMin, int yMax,
+				int xMin, int xMax,
 				int projection,
 				boolean virtual) {
 		int nX          = xMax - xMin;
