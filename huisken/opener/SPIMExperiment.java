@@ -110,7 +110,7 @@ public class SPIMExperiment {
 				int fMin, int fMax,
 				int projection,
 				boolean virtual) {
-		return open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, 0, h, 0, w, projection, virtual);
+		return open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, 0, h - 1, 0, w - 1, projection, virtual);
 	}
 
 	public ImagePlus open(int sample,
@@ -124,17 +124,17 @@ public class SPIMExperiment {
 				int xMin, int xMax,
 				int projection,
 				boolean virtual) {
-		int nX          = xMax - xMin;
-		int nY          = yMax - yMin;
+		int nX          = xMax  - xMin  + 1;
+		int nY          = yMax  - yMin  + 1;
 		int nTimepoints = tpMax - tpMin + 1;
-		int nPlanes     = zMax - zMin + 1;
-		int nFrames     = fMax - fMin + 1;
+		int nPlanes     = zMax  - zMin  + 1;
+		int nFrames     = fMax  - fMin  + 1;
 		int nFiles      = nTimepoints * nPlanes * nFrames;
 		int i = 0;
 
 		SPIMStack stack = null;
 		switch(projection) {
-			case NO_PROJECTION:  stack = virtual ? new SPIMVirtualStack(w, h, xMin, xMax, yMin, yMax) : new SPIMRegularStack(w, h, xMin, xMax, yMin, yMax); break;
+			case NO_PROJECTION:  stack = virtual ? new SPIMVirtualStack(w, h, xMin, xMax, yMin, yMax)                        : new SPIMRegularStack(w, h, xMin, xMax, yMin, yMax);                        break;
 			case MAX_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, xMin, xMax, yMin, yMax, Blitter.MAX) : new SPIM_ProjectedRegularStack(w, h, xMin, xMax, yMin, yMax, Blitter.MAX); break;
 			case MIN_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, xMin, xMax, yMin, yMax, Blitter.MIN) : new SPIM_ProjectedRegularStack(w, h, xMin, xMax, yMin, yMax, Blitter.MIN); break;
 			default: throw new IllegalArgumentException("Unsupported projection type");
@@ -162,11 +162,10 @@ public class SPIMExperiment {
 	}
 
 	public static ImageProcessor openRaw(String path, int orgW, int orgH, int xMin, int xMax, int yMin, int yMax) {
-		if(xMin == 0 && xMax == orgW && yMin == 0 && yMax == orgH)
+		if(xMin == 0 && xMax == orgW - 1 && yMin == 0 && yMax == orgH - 1)
 			return openRaw(path, orgW, orgH);
-
-		int ws = xMax - xMin;
-		int hs = yMax - yMin;
+		int ws = xMax - xMin + 1;
+		int hs = yMax - yMin + 1;
 
 		byte[] bytes = new byte[ws * hs * 2];
 		short[] pixels = new short[ws * hs];
@@ -190,7 +189,7 @@ public class SPIMExperiment {
 				offs += 2 * ws;
 
 				// skip to next line
-				toSkip = 2 * (orgW - xMax + xMin);
+				toSkip = 2 * (orgW - xMax - 1 + xMin);
 				while(toSkip > 0)
 					toSkip -= in.skip(toSkip);
 			}

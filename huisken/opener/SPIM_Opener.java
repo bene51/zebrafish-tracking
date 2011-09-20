@@ -44,8 +44,8 @@ public class SPIM_Opener implements PlugIn {
 		gd.addChoice("Region", exp.regions);
 		gd.addChoice("Angle", exp.angles);
 		gd.addChoice("Channel", exp.channels);
-		gd.addDoubleSlider("x Range", 0, exp.w);
-		gd.addDoubleSlider("y Range", 0, exp.h);
+		gd.addDoubleSlider("x Range", 0, exp.w - 1);
+		gd.addDoubleSlider("y Range", 0, exp.h - 1);
 		gd.addDoubleSlider("Planes",  exp.planeStart, exp.planeEnd);
 		gd.addDoubleSlider("Frames",  exp.frameStart, exp.frameEnd);
 		String[] projMethods = new String[] {"None", "Maximum", "Minimum"};

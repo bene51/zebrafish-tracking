@@ -8,7 +8,7 @@ public class SPIMRegularStack extends SPIMStack {
 	private final int x0, x1, y0, y1, orgW, orgH;
 
 	public SPIMRegularStack(int orgW, int orgH, int x0, int x1, int y0, int y1) {
-		super(x1 - x0, y1 - y0);
+		super(x1 - x0 + 1, y1 - y0 + 1);
 		this.x0 = x0;
 		this.x1 = x1;
 		this.y0 = y0;
