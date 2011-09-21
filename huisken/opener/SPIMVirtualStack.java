@@ -3,30 +3,52 @@ package huisken.opener;
 import ij.process.ImageProcessor;
 import ij.process.ShortProcessor;
 
+import java.io.File;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class SPIMVirtualStack extends SPIMStack {
 
 	protected List<String> paths = new ArrayList<String>();
-	private final int x0, x1, y0, y1, orgW, orgH;
+	private int x0, x1, y0, y1, orgW, orgH;
+	private String tempdir = null;
 
 	/** Creates a new, empty virtual stack. */
-	public SPIMVirtualStack(int orgW, int orgH, int x0, int x1, int y0, int y1) {
-		super(x1 - x0 + 1, y1 - y0 + 1);
-		this.x0 = x0;
-		this.x1 = x1;
-		this.y0 = y0;
-		this.y1 = y1;
-		this.orgW = orgW;
-		this.orgH = orgH;
+	public SPIMVirtualStack(int w, int h) {
+		super(w, h);
+		this.x0 = 0;
+		this.x1 = w - 1;
+		this.y0 = 0;
+		this.y1 = h - 1;
+		this.orgW = w;
+		this.orgH = h;
 	}
 
-	 /** Adds an image to the end of the stack. */
-	public void addSlice(String path, boolean lastZ) {
+	public void setRange(int orgW, int orgH, int xOffs, int yOffs) {
+		this.orgW = orgW;
+		this.orgH = orgH;
+		this.x0 = xOffs;
+		this.x1 = xOffs + getWidth() - 1;
+		this.y0 = yOffs;
+		this.y1 = yOffs + getHeight() - 1;
+	}
+
+	/** Adds an image to the end of the stack. */
+	public void addSlice(String path) {
 		if (path == null)
 			throw new IllegalArgumentException("path is null!");
 
+		paths.add(path);
+	}
+
+	public void addSlice(ImageProcessor ip) {
+		String path = makeTempFilename();
+		try {
+			SPIMExperiment.saveRaw(ip, path);
+		} catch(Exception e) {
+			throw new RuntimeException("Cannot save tmp virtual file: " + path);
+		}
 		paths.add(path);
 	}
 
@@ -116,5 +138,25 @@ public class SPIMVirtualStack extends SPIMStack {
 
 	/** Does nothing. */
 	public void trim() {
+	}
+
+	private void makeTempDir() {
+		String tmp = System.getProperty("java.io.tmpdir");
+		int i = 0;
+		File f = null;
+		while((f = new File(tmp, String.format("SPIM_MaxProjection_%05d", i))).exists())
+			i++;
+		f.mkdir();
+		tempdir = f.getAbsolutePath();
+	}
+
+	private String makeTempFilename() {
+		if(tempdir == null)
+			makeTempDir();
+		int i = 0;
+		File f = null;
+		while((f = new File(tempdir, String.format("ip%05d.dat", i))).exists())
+			i++;
+		return f.getAbsolutePath();
 	}
 }

@@ -48,18 +48,27 @@ public class SPIM_Opener implements PlugIn {
 		gd.addDoubleSlider("y Range", 0, exp.h - 1);
 		gd.addDoubleSlider("Planes",  exp.planeStart, exp.planeEnd);
 		gd.addDoubleSlider("Frames",  exp.frameStart, exp.frameEnd);
+		String[] dirs = new String[] {"x", "y", "frame", "plane", "time"};
+		gd.addChoice("Display_horizontally: ", dirs, dirs[0]);
+		gd.addChoice("Display_vertically: ", dirs, dirs[1]);
+		gd.addChoice("Display_in_depth: ", dirs, dirs[2]);
 		String[] projMethods = new String[] {"None", "Maximum", "Minimum"};
 		gd.addChoice("Projection Method", projMethods, "None");
+		gd.addChoice("Projection Direction", dirs, dirs[3]);
 		gd.addCheckbox("Use Virtual Stack", true);
 		gd.setModal(false);
 		gd.setActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				Vector choices = gd.getChoices();
-				int sample   = Integer.parseInt(((Choice)choices.get(0)).getSelectedItem().substring(1));
-				int region   = Integer.parseInt(((Choice)choices.get(1)).getSelectedItem().substring(1));
-				int angle    = Integer.parseInt(((Choice)choices.get(2)).getSelectedItem().substring(1));
-				int channel  = Integer.parseInt(((Choice)choices.get(3)).getSelectedItem().substring(1));
-				int zProject = ((Choice)choices.get(4)).getSelectedIndex();
+				int sample           = Integer.parseInt(((Choice)choices.get(0)).getSelectedItem().substring(1));
+				int region           = Integer.parseInt(((Choice)choices.get(1)).getSelectedItem().substring(1));
+				int angle            = Integer.parseInt(((Choice)choices.get(2)).getSelectedItem().substring(1));
+				int channel          = Integer.parseInt(((Choice)choices.get(3)).getSelectedItem().substring(1));
+				int xDir             = ((Choice)choices.get(4)).getSelectedIndex();
+				int yDir             = ((Choice)choices.get(5)).getSelectedIndex();
+				int zDir             = ((Choice)choices.get(6)).getSelectedIndex();
+				int projectionMethod = ((Choice)choices.get(7)).getSelectedIndex();
+				int projectionDir    = ((Choice)choices.get(8)).getSelectedIndex();
 
 				List<DoubleSlider> sliders = gd.getDoubleSliders();
 				DoubleSlider slider = sliders.get(0);
@@ -80,29 +89,12 @@ public class SPIM_Opener implements PlugIn {
 
 				Vector checkboxes = gd.getCheckboxes();
 				boolean virtual = ((Checkbox)checkboxes.get(0)).getState();
-	
-				int nTimepoints = tpMax - tpMin + 1;
-				int nPlanes     = zMax - zMin + 1;
-				int nFrames     = fMax - fMin + 1;
-	
-				if(zProject != SPIMExperiment.NO_PROJECTION && (nFrames > 1 || nPlanes < 2)) {
-					IJ.error("Maximum projection is only possible for non-movie stacks");
-					return;
-				}
-	
-				int dimsWithMoreThanOne = 0;
-				if(nTimepoints > 1)          dimsWithMoreThanOne++;
-				if(zProject == SPIMExperiment.NO_PROJECTION && nPlanes > 1) dimsWithMoreThanOne++;
-				if(nFrames > 1)              dimsWithMoreThanOne++;
-	
-				if(dimsWithMoreThanOne > 1) {
-					IJ.error("Only one dimension may contain more than one entry");
-					return;
-				}
+
 long start = System.currentTimeMillis();
-				exp.open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, yMin, yMax, xMin, xMax, zProject, virtual).show();
+				exp.open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, yMin, yMax, xMin, xMax, xDir, yDir, zDir, virtual, projectionMethod, projectionDir).show();
 long end = System.currentTimeMillis();
 System.out.println("needed " + (end - start) + " ms");
+
 				String command = "call(\"huisken.opener.SPIM_Opener.open\",\n";
 				command += "\t\"" + directory + filename + "\",  // path to xml\n";
 				command += "\t\"" + sample               + "\",  // sample\n";
@@ -115,14 +107,84 @@ System.out.println("needed " + (end - start) + " ms");
 				command += "\t\"" + zMax                 + "\",  // last plane\n";
 				command += "\t\"" + fMin                 + "\",  // first frame\n";
 				command += "\t\"" + fMax                 + "\",  // last frame\n";
-				command += "\t\"" + zProject             + "\",  // zProjection?\n";
+				command += "\t\"" + yMin                 + "\",  // minimum y\n";
+				command += "\t\"" + yMax                 + "\",  // maximum y\n";
+				command += "\t\"" + xMin                 + "\",  // minimum x\n";
+				command += "\t\"" + xMax                 + "\",  // maximum x\n";
+				command += "\t\"" + xDir                 + "\",  // direction which is displayed horizontally\n";
+				command += "\t\"" + yDir                 + "\",  // direction which is displayed vertically\n";
+				command += "\t\"" + zDir                 + "\",  // direction which is displayed in depth\n";
 				command += "\t\"" + virtual              + "\"); // virtual?";
+				command += "\t\"" + projectionMethod     + "\",  // projection method\n";
+				command += "\t\"" + projectionDir        + "\",  // projection axis\n";
 		
 				if(Recorder.record)
 					Recorder.recordString(command);
 			}
 		});
 		gd.showDialog();
+	}
+
+	public static void open(String xmlpath,
+				String sample,
+				String tpMin, String tpMax,
+				String region,
+				String angle,
+				String channel,
+				String zMin, String zMax,
+				String fMin, String fMax,
+				String yMin, String yMax,
+				String xMin, String xMax,
+				String xDir, String yDir, String zDir,
+				String virtual,
+				String projectionMethod,
+				String projectionDir) {
+				
+		open(xmlpath,
+			Integer.parseInt(sample),
+			Integer.parseInt(tpMin),
+			Integer.parseInt(tpMax),
+			Integer.parseInt(region),
+			Integer.parseInt(angle),
+			Integer.parseInt(channel),
+			Integer.parseInt(zMin),
+			Integer.parseInt(zMax),
+			Integer.parseInt(fMin),
+			Integer.parseInt(fMax),
+			Integer.parseInt(yMin),
+			Integer.parseInt(yMax),
+			Integer.parseInt(xMin),
+			Integer.parseInt(xMax),
+			Integer.parseInt(xDir),
+			Integer.parseInt(yDir),
+			Integer.parseInt(zDir),
+			Boolean.parseBoolean(virtual),
+			Integer.parseInt(projectionMethod),
+			Integer.parseInt(projectionDir));
+	}
+
+	public static void open(String xmlpath,
+				int sample,
+				int tpMin, int tpMax,
+				int region,
+				int angle,
+				int channel,
+				int zMin, int zMax,
+				int fMin, int fMax,
+				int yMin, int yMax,
+				int xMin, int xMax,
+				int xDir, int yDir, int zDir,
+				boolean virtual,
+				int projectionMethod,
+				int projectionDir) {
+		SPIMExperiment exp = null;
+		try {
+			exp = new SPIMExperiment(xmlpath);
+		} catch(Exception e) {
+			throw new RuntimeException("Cannot load experiment " + xmlpath, e);
+		}
+
+		exp.open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, yMin, yMax, xMin, xMax, xDir, yDir, zDir, virtual, projectionMethod, projectionDir).show();
 	}
 
 	public static void open(String xmlpath,
@@ -167,21 +229,6 @@ System.out.println("needed " + (end - start) + " ms");
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot load experiment " + xmlpath, e);
 		}
-
-		int nTimepoints = tpMax - tpMin + 1;
-		int nPlanes     = zMax - zMin + 1;
-		int nFrames     = fMax - fMin + 1;
-
-		if(projection != SPIMExperiment.NO_PROJECTION && (nFrames > 1 || nPlanes < 2))
-			throw new RuntimeException("Maximum projection is only possible for non-movie stacks");
-
-		int dimsWithMoreThanOne = 0;
-		if(nTimepoints > 1)            dimsWithMoreThanOne++;
-		if(projection == SPIMExperiment.NO_PROJECTION && nPlanes > 1) dimsWithMoreThanOne++;
-		if(nFrames > 1)                dimsWithMoreThanOne++;
-
-		if(dimsWithMoreThanOne > 1)
-			throw new RuntimeException("Only one dimension may contain more than one entry");
 
 		exp.open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, projection, virtual).show();
 	}

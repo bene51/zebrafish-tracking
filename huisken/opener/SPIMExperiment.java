@@ -16,8 +16,22 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+
+import java.nio.ByteBuffer;
+
+import java.nio.channels.FileChannel;
+
+import java.util.HashMap;
+
 
 public class SPIMExperiment {
+
+	public static final int X = 0;
+	public static final int Y = 1;
+	public static final int F = 2;
+	public static final int Z = 3;
+	public static final int T = 4;
 
 	public final int sampleStart, sampleEnd;
 	public final int timepointStart, timepointEnd;
@@ -108,9 +122,9 @@ public class SPIMExperiment {
 				int channel,
 				int zMin, int zMax,
 				int fMin, int fMax,
-				int projection,
+				int projectionMethod,
 				boolean virtual) {
-		return open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, 0, h - 1, 0, w - 1, projection, virtual);
+		return open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, 0, h - 1, 0, w - 1, projectionMethod, virtual);				
 	}
 
 	public ImagePlus open(int sample,
@@ -122,39 +136,203 @@ public class SPIMExperiment {
 				int fMin, int fMax,
 				int yMin, int yMax,
 				int xMin, int xMax,
-				int projection,
+				int projectionMethod,
 				boolean virtual) {
-		int nX          = xMax  - xMin  + 1;
-		int nY          = yMax  - yMin  + 1;
-		int nTimepoints = tpMax - tpMin + 1;
-		int nPlanes     = zMax  - zMin  + 1;
-		int nFrames     = fMax  - fMin  + 1;
-		int nFiles      = nTimepoints * nPlanes * nFrames;
-		int i = 0;
 
-		SPIMStack stack = null;
-		switch(projection) {
-			case NO_PROJECTION:  stack = virtual ? new SPIMVirtualStack(w, h, xMin, xMax, yMin, yMax)                        : new SPIMRegularStack(w, h, xMin, xMax, yMin, yMax);                        break;
-			case MAX_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, xMin, xMax, yMin, yMax, Blitter.MAX) : new SPIM_ProjectedRegularStack(w, h, xMin, xMax, yMin, yMax, Blitter.MAX); break;
-			case MIN_PROJECTION: stack = virtual ? new SPIM_ProjectedVirtualStack(w, h, xMin, xMax, yMin, yMax, Blitter.MIN) : new SPIM_ProjectedRegularStack(w, h, xMin, xMax, yMin, yMax, Blitter.MIN); break;
-			default: throw new IllegalArgumentException("Unsupported projection type");
+	
+		int xDir = X;
+		int yDir = Y;
+		int projectionDir = Z; // z is the default projection direction
+
+		// now look through the different dimensions and select an appropriate direction for z
+		int nTp = tpMax - tpMin + 1;
+		int nZ  =  zMax -  zMin + 1;
+		int nF  =  fMax -  fMin + 1;
+
+		int nDimensionsWithMoreThanOne = 0;
+		int zDir = -1;
+
+		if(nTp > 1) { zDir = T; nDimensionsWithMoreThanOne++; }
+		if(nF  > 1) { zDir = F; nDimensionsWithMoreThanOne++; }
+		if(nZ  > 1 && projectionMethod == NO_PROJECTION) { zDir = Z; nDimensionsWithMoreThanOne++; }
+
+		if(nDimensionsWithMoreThanOne > 1)
+			throw new IllegalArgumentException("Only one dimension of time, plane and frame may contain an interval");
+
+		if(zDir == -1)
+			zDir = T;
+
+		return open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, yMin, yMax, xMin, xMax, xDir, yDir, zDir, virtual, projectionMethod, projectionDir);
+	}
+
+	public ImagePlus open(int sample,
+				int tpMin, int tpMax,
+				int region,
+				int angle,
+				int channel,
+				int zMin, int zMax,
+				int fMin, int fMax,
+				int yMin, int yMax,
+				int xMin, int xMax,
+				int xDir,
+				int yDir,
+				int zDir,
+				boolean virtual,
+				int projectionMethod,
+				int projectionDir) {
+
+		if(projectionMethod == NO_PROJECTION)
+			return openNotProjected(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, yMin, yMax, xMin, xMax, xDir, yDir, zDir, virtual);
+
+		Projector projector = null;
+		switch(projectionMethod) {
+			case MIN_PROJECTION: projector = new MinimumProjector(); break;
+			case MAX_PROJECTION: projector = new MaximumProjector(); break;
+			default: throw new IllegalArgumentException("Unknown projection method: " + projectionMethod);
 		}
+		// TODO check that projection method is none of xdir, ydir, zdir and max-min+1 > 1
 
-		outer: for(int tp = tpMin; tp <= tpMax; tp++) {
-			for(int p = zMin; p <= zMax; p++) {
-				for(int f = fMin; f <= fMax; f++) {
-					if(IJ.escapePressed()) {
-						IJ.resetEscape();
-						break outer;
-					}
-					String path = getPath(sample, tp, region, angle, channel, p, f);
-					stack.addSlice(path, p == zMax);
-					IJ.showProgress(i++, nFiles);
+		final int D = 5;
+		final int[] MIN = new int[] { xMin, yMin, fMin, zMin, tpMin };
+		final int[] MAX = new int[] { xMax, yMax, fMax, zMax, tpMax };
+
+		int ws = MAX[xDir] - MIN[xDir] + 1;
+		int hs = MAX[yDir] - MIN[yDir] + 1;
+		SPIMStack stack = virtual ? new SPIMVirtualStack(ws, hs) : new SPIMRegularStack(ws, hs);
+
+		final int[] position = new int[D];
+		System.arraycopy(MIN, 0, position, 0, D);
+
+		if(xDir == X && yDir == Y) {
+			for(int z = MIN[zDir]; z <= MAX[zDir]; z++) {
+				position[zDir] = z;
+				if(IJ.escapePressed()) {
+					IJ.resetEscape();
+					break;
 				}
+				projector.reset();
+				for(int proj = MIN[projectionDir]; proj <= MAX[projectionDir]; proj++) {
+					position[projectionDir] = proj;
+					String path = getPath(sample, position[T], region, angle, channel, position[Z], position[F]);
+					ImageProcessor ip = openRaw(path, w, h, MIN[xDir], MAX[xDir], MIN[yDir], MAX[yDir]);
+					projector.add(ip);
+				}
+				stack.addSlice(projector.getProjection());
+				IJ.showProgress(z - MIN[zDir], MAX[zDir] - MIN[zDir] + 1);
+			}
+		}
+		else {
+			int[] ordered = new int[2];
+			ordered[0] = Math.min(xDir, yDir);
+			ordered[1] = Math.max(xDir, yDir);
+			for(int z = MIN[zDir]; z <= MAX[zDir]; z++) {
+				position[zDir] = z;
+				if(IJ.escapePressed()) {
+					IJ.resetEscape();
+					break;
+				}
+				projector.reset();
+				for(int proj = MIN[projectionDir]; proj <= MAX[projectionDir]; proj++) {
+					position[projectionDir] = proj;
+
+					ImageProcessor ip = new ShortProcessor(MAX[xDir] - MIN[xDir] + 1, MAX[yDir] - MIN[yDir] + 1);
+	
+					for(int i1 = MIN[ordered[1]]; i1 <= MAX[ordered[1]]; i1++) {
+						position[ordered[1]] = i1;
+						String path = getPath(sample, position[T], region, angle, channel, position[Z], position[F]);
+						ImageProcessor org = openRaw(path, w, h);
+						for(int i2 = MIN[ordered[0]]; i2 <= MAX[ordered[0]]; i2++) {
+							position[ordered[0]] = i2;
+							ip.set(position[xDir] - MIN[xDir], position[yDir] - MIN[yDir], org.get(position[X], position[Y]));
+						}
+					}
+					projector.add(ip);
+				}
+
+				stack.addSlice(projector.getProjection());
+				System.out.println((z - MIN[zDir]) + " / " + (MAX[zDir] - MIN[zDir] + 1));
+				IJ.showProgress(z - MIN[zDir], MAX[zDir] - MIN[zDir] + 1);
 			}
 		}
 		IJ.showProgress(1);
+
 		ImagePlus ret = new ImagePlus("SPIM", stack);
+		// TODO fix calibration
+		ret.getCalibration().pixelWidth = pw;
+		ret.getCalibration().pixelWidth = ph;
+		ret.getCalibration().pixelWidth = pd;
+		return ret;
+	}
+
+	public ImagePlus openNotProjected(int sample,
+				int tpMin, int tpMax,
+				int region,
+				int angle,
+				int channel,
+				int zMin, int zMax,
+				int fMin, int fMax,
+				int yMin, int yMax,
+				int xMin, int xMax,
+				int xDir,
+				int yDir,
+				int zDir,
+				boolean virtual) {
+
+		final int D = 5;
+		final int[] MIN = new int[] { xMin, yMin, fMin, zMin, tpMin };
+		final int[] MAX = new int[] { xMax, yMax, fMax, zMax, tpMax };
+
+		int ws = MAX[xDir] - MIN[xDir] + 1;
+		int hs = MAX[yDir] - MIN[yDir] + 1;
+		SPIMStack stack = virtual ? new SPIMVirtualStack(ws, hs) : new SPIMRegularStack(ws, hs);
+
+		final int[] position = new int[D];
+		System.arraycopy(MIN, 0, position, 0, D);
+
+		if(xDir == X && yDir == Y) {
+			stack.setRange(w, h, MIN[xDir], MIN[yDir]);
+			for(int z = MIN[zDir]; z <= MAX[zDir]; z++) {
+				if(IJ.escapePressed()) {
+					IJ.resetEscape();
+					break;
+				}
+				position[zDir] = z;
+				String path = getPath(sample, position[T], region, angle, channel, position[Z], position[F]);
+				stack.addSlice(path);
+				IJ.showProgress(z - MIN[zDir], MAX[zDir] - MIN[zDir] + 1);
+			}
+		}
+		else {
+			int[] ordered = new int[2];
+			ordered[0] = Math.min(xDir, yDir);
+			ordered[1] = Math.max(xDir, yDir);
+			for(int z = MIN[zDir]; z <= MAX[zDir]; z++) {
+				if(IJ.escapePressed()) {
+					IJ.resetEscape();
+					break;
+				}
+				position[zDir] = z;
+				ImageProcessor ip = new ShortProcessor(MAX[xDir] - MIN[xDir] + 1, MAX[yDir] - MIN[yDir] + 1);
+
+				for(int i1 = MIN[ordered[1]]; i1 <= MAX[ordered[1]]; i1++) {
+					position[ordered[1]] = i1;
+					String path = getPath(sample, position[T], region, angle, channel, position[Z], position[F]);
+					ImageProcessor org = openRaw(path, w, h);
+					for(int i2 = MIN[ordered[0]]; i2 <= MAX[ordered[0]]; i2++) {
+						position[ordered[0]] = i2;
+						ip.set(position[xDir] - MIN[xDir], position[yDir] - MIN[yDir], org.get(position[X], position[Y]));
+					}
+				}
+
+				stack.addSlice(ip);
+				System.out.println((z - MIN[zDir]) + " / " + (MAX[zDir] - MIN[zDir] + 1));
+				IJ.showProgress(z - MIN[zDir], MAX[zDir] - MIN[zDir] + 1);
+			}
+		}
+		IJ.showProgress(1);
+
+		ImagePlus ret = new ImagePlus("SPIM", stack);
+		// TODO fix calibration
 		ret.getCalibration().pixelWidth = pw;
 		ret.getCalibration().pixelWidth = ph;
 		ret.getCalibration().pixelWidth = pd;
@@ -229,6 +407,14 @@ public class SPIMExperiment {
 		}
 
 		return new ShortProcessor(w, h, pixels, null);
+	}
+
+	private HashMap<String, RandomAccessFile> cache = new HashMap<String, RandomAccessFile>();
+
+	private final void closeAllFiles() throws IOException {
+		for(RandomAccessFile f : cache.values())
+			f.close();
+		cache.clear();
 	}
 
 	public static void saveRaw(ImageProcessor ip, String path) {
