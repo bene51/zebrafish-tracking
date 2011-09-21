@@ -93,34 +93,39 @@ public class SPIM_Opener implements PlugIn {
 				new Thread() {
 					public void run() {
 long start = System.currentTimeMillis();						
+						try {
+							exp.open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, yMin, yMax, xMin, xMax, xDir, yDir, zDir, virtual, projectionMethod, projectionDir).show();
 long end = System.currentTimeMillis();
-						exp.open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, yMin, yMax, xMin, xMax, xDir, yDir, zDir, virtual, projectionMethod, projectionDir).show();
 System.out.println("needed " + (end - start) + " ms");
-						String command = "call(\"huisken.opener.SPIM_Opener.open\",\n";
-						command += "\t\"" + directory + filename + "\",  // path to xml\n";
-						command += "\t\"" + sample               + "\",  // sample\n";
-						command += "\t\"" + tpMin                + "\",  // first timepoint\n";
-						command += "\t\"" + tpMax                + "\",  // last timepoint\n";
-						command += "\t\"" + region               + "\",  // region\n";
-						command += "\t\"" + angle                + "\",  // angle\n";
-						command += "\t\"" + channel              + "\",  // channel\n";
-						command += "\t\"" + zMin                 + "\",  // first plane\n";
-						command += "\t\"" + zMax                 + "\",  // last plane\n";
-						command += "\t\"" + fMin                 + "\",  // first frame\n";
-						command += "\t\"" + fMax                 + "\",  // last frame\n";
-						command += "\t\"" + yMin                 + "\",  // minimum y\n";
-						command += "\t\"" + yMax                 + "\",  // maximum y\n";
-						command += "\t\"" + xMin                 + "\",  // minimum x\n";
-						command += "\t\"" + xMax                 + "\",  // maximum x\n";
-						command += "\t\"" + xDir                 + "\",  // direction which is displayed horizontally\n";
-						command += "\t\"" + yDir                 + "\",  // direction which is displayed vertically\n";
-						command += "\t\"" + zDir                 + "\",  // direction which is displayed in depth\n";
-						command += "\t\"" + virtual              + "\"); // virtual?";
-						command += "\t\"" + projectionMethod     + "\",  // projection method\n";
-						command += "\t\"" + projectionDir        + "\",  // projection axis\n";
-
-						if(Recorder.record)
-							Recorder.recordString(command);
+							String command = "call(\"huisken.opener.SPIM_Opener.open\",\n";
+							command += "\t\"" + directory + filename + "\",  // path to xml\n";
+							command += "\t\"" + sample               + "\",  // sample\n";
+							command += "\t\"" + tpMin                + "\",  // first timepoint\n";
+							command += "\t\"" + tpMax                + "\",  // last timepoint\n";
+							command += "\t\"" + region               + "\",  // region\n";
+							command += "\t\"" + angle                + "\",  // angle\n";
+							command += "\t\"" + channel              + "\",  // channel\n";
+							command += "\t\"" + zMin                 + "\",  // first plane\n";
+							command += "\t\"" + zMax                 + "\",  // last plane\n";
+							command += "\t\"" + fMin                 + "\",  // first frame\n";
+							command += "\t\"" + fMax                 + "\",  // last frame\n";
+							command += "\t\"" + yMin                 + "\",  // minimum y\n";
+							command += "\t\"" + yMax                 + "\",  // maximum y\n";
+							command += "\t\"" + xMin                 + "\",  // minimum x\n";
+							command += "\t\"" + xMax                 + "\",  // maximum x\n";
+							command += "\t\"" + xDir                 + "\",  // direction which is displayed horizontally\n";
+							command += "\t\"" + yDir                 + "\",  // direction which is displayed vertically\n";
+							command += "\t\"" + zDir                 + "\",  // direction which is displayed in depth\n";
+							command += "\t\"" + virtual              + "\"); // virtual?";
+							command += "\t\"" + projectionMethod     + "\",  // projection method\n";
+							command += "\t\"" + projectionDir        + "\",  // projection axis\n";
+	
+							if(Recorder.record)
+								Recorder.recordString(command);
+						} catch(Exception e) {
+							IJ.error(e.getMessage());
+							e.printStackTrace();
+						}
 					}
 				}.start();
 			}
