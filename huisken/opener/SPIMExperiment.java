@@ -46,9 +46,10 @@ public class SPIMExperiment {
 	public final String[] samples, regions, angles, channels;
 	public final String experimentName;
 
-	public static final int NO_PROJECTION = 0;
-	public static final int MAX_PROJECTION = 1;
-	public static final int MIN_PROJECTION = 2;
+	public static final int NO_PROJECTION          = 0;
+	public static final int MAX_PROJECTION         = 1;
+	public static final int MIN_PROJECTION         = 2;
+	public static final int GAUSSIAN_STACK_FOCUSER = 3;
 
 	public SPIMExperiment(String xmlfile) {
 		if(!xmlfile.endsWith(".xml"))
@@ -188,8 +189,9 @@ public class SPIMExperiment {
 
 		Projector projector = null;
 		switch(projectionMethod) {
-			case MIN_PROJECTION: projector = new MinimumProjector(); break;
-			case MAX_PROJECTION: projector = new MaximumProjector(); break;
+			case MIN_PROJECTION:         projector = new MinimumProjector(); break;
+			case MAX_PROJECTION:         projector = new MaximumProjector(); break;
+			case GAUSSIAN_STACK_FOCUSER: projector = new GaussianStackFocuser(); break;
 			default: throw new IllegalArgumentException("Unknown projection method: " + projectionMethod);
 		}
 		

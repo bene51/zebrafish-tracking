@@ -52,7 +52,7 @@ public class SPIM_Opener implements PlugIn {
 		gd.addChoice("Display_horizontally: ", dirs, dirs[0]);
 		gd.addChoice("Display_vertically: ", dirs, dirs[1]);
 		gd.addChoice("Display_in_depth: ", dirs, dirs[2]);
-		String[] projMethods = new String[] {"None", "Maximum", "Minimum"};
+		String[] projMethods = new String[] {"None", "Maximum", "Minimum", "Gaussian Stack Focuser"};
 		gd.addChoice("Projection Method", projMethods, "None");
 		gd.addChoice("Projection Direction", dirs, dirs[3]);
 		gd.addCheckbox("Use Virtual Stack", true);
