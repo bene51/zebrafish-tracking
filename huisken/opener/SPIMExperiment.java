@@ -265,11 +265,12 @@ public class SPIMExperiment {
 		}
 		IJ.showProgress(1);
 
+		double[] pdiffs = new double[] { pw, ph, 1, pd, 1 };
 		ImagePlus ret = new ImagePlus("SPIM", stack);
-		// TODO fix calibration
-		ret.getCalibration().pixelWidth = pw;
-		ret.getCalibration().pixelWidth = ph;
-		ret.getCalibration().pixelWidth = pd;
+
+		ret.getCalibration().pixelWidth = pdiffs[xDir];
+		ret.getCalibration().pixelWidth = pdiffs[yDir];
+		ret.getCalibration().pixelWidth = pdiffs[zDir];
 		return ret;
 	}
 
@@ -340,11 +341,12 @@ public class SPIMExperiment {
 		}
 		IJ.showProgress(1);
 
+		double[] pdiffs = new double[] { pw, ph, 1, pd, 1 };
 		ImagePlus ret = new ImagePlus("SPIM", stack);
-		// TODO fix calibration
-		ret.getCalibration().pixelWidth = pw;
-		ret.getCalibration().pixelWidth = ph;
-		ret.getCalibration().pixelWidth = pd;
+
+		ret.getCalibration().pixelWidth = pdiffs[xDir];
+		ret.getCalibration().pixelWidth = pdiffs[yDir];
+		ret.getCalibration().pixelWidth = pdiffs[zDir];
 		return ret;
 	}
 
