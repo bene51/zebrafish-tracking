@@ -44,6 +44,7 @@ public class SPIMExperiment {
 	public final double pw, ph, pd;
 	public final int w, h, d;
 	public final String[] samples, regions, angles, channels;
+	public final String experimentName;
 
 	public static final int NO_PROJECTION = 0;
 	public static final int MAX_PROJECTION = 1;
@@ -53,6 +54,7 @@ public class SPIMExperiment {
 		if(!xmlfile.endsWith(".xml"))
 			throw new IllegalArgumentException("Please select an xml file");
 		File experimentFolder = new File(xmlfile.substring(0, xmlfile.length() - 4));
+		experimentName = experimentFolder.getParentFile().getName() + " - " + experimentFolder.getName();
 		experimentFolder = new File(experimentFolder.getParent(), experimentFolder.getName());
 		if(!experimentFolder.exists() || !experimentFolder.isDirectory())
 			throw new IllegalArgumentException("No directory " + experimentFolder.getAbsolutePath());
@@ -266,7 +268,7 @@ public class SPIMExperiment {
 		IJ.showProgress(1);
 
 		double[] pdiffs = new double[] { pw, ph, 1, pd, 1 };
-		ImagePlus ret = new ImagePlus("SPIM", stack);
+		ImagePlus ret = new ImagePlus(experimentName, stack);
 
 		ret.getCalibration().pixelWidth = pdiffs[xDir];
 		ret.getCalibration().pixelWidth = pdiffs[yDir];
@@ -342,7 +344,7 @@ public class SPIMExperiment {
 		IJ.showProgress(1);
 
 		double[] pdiffs = new double[] { pw, ph, 1, pd, 1 };
-		ImagePlus ret = new ImagePlus("SPIM", stack);
+		ImagePlus ret = new ImagePlus(experimentName, stack);
 
 		ret.getCalibration().pixelWidth = pdiffs[xDir];
 		ret.getCalibration().pixelWidth = pdiffs[yDir];
