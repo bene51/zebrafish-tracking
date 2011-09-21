@@ -198,11 +198,11 @@ public class SPIMExperiment {
 		final int[] MAX = new int[] { xMax, yMax, fMax, zMax, tpMax };
 
 		// check that projection method is none of xdir, ydir, zdir and max-min+1 > 1
-		if(projectionMethod == xDir)
+		if(projectionDir == xDir)
 			throw new IllegalArgumentException("The projection direction cannot be the same as the dimension displayed in x direction");
-		if(projectionMethod == yDir)
+		if(projectionDir == yDir)
 			throw new IllegalArgumentException("The projection direction cannot be the same as the dimension displayed in y direction");
-		if(projectionMethod == zDir)
+		if(projectionDir == zDir)
 			throw new IllegalArgumentException("The projection direction cannot be the same as the dimension displayed in z direction");
 		if(MAX[projectionDir] - MIN[projectionDir] + 1 <= 1)
 			return openNotProjected(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, yMin, yMax, xMin, xMax, xDir, yDir, zDir, virtual);
