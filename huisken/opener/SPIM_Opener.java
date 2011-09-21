@@ -60,66 +60,69 @@ public class SPIM_Opener implements PlugIn {
 		gd.setActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				Vector choices = gd.getChoices();
-				int sample           = Integer.parseInt(((Choice)choices.get(0)).getSelectedItem().substring(1));
-				int region           = Integer.parseInt(((Choice)choices.get(1)).getSelectedItem().substring(1));
-				int angle            = Integer.parseInt(((Choice)choices.get(2)).getSelectedItem().substring(1));
-				int channel          = Integer.parseInt(((Choice)choices.get(3)).getSelectedItem().substring(1));
-				int xDir             = ((Choice)choices.get(4)).getSelectedIndex();
-				int yDir             = ((Choice)choices.get(5)).getSelectedIndex();
-				int zDir             = ((Choice)choices.get(6)).getSelectedIndex();
-				int projectionMethod = ((Choice)choices.get(7)).getSelectedIndex();
-				int projectionDir    = ((Choice)choices.get(8)).getSelectedIndex();
+				final int sample           = Integer.parseInt(((Choice)choices.get(0)).getSelectedItem().substring(1));
+				final int region           = Integer.parseInt(((Choice)choices.get(1)).getSelectedItem().substring(1));
+				final int angle            = Integer.parseInt(((Choice)choices.get(2)).getSelectedItem().substring(1));
+				final int channel          = Integer.parseInt(((Choice)choices.get(3)).getSelectedItem().substring(1));
+				final int xDir             = ((Choice)choices.get(4)).getSelectedIndex();
+				final int yDir             = ((Choice)choices.get(5)).getSelectedIndex();
+				final int zDir             = ((Choice)choices.get(6)).getSelectedIndex();
+				final int projectionMethod = ((Choice)choices.get(7)).getSelectedIndex();
+				final int projectionDir    = ((Choice)choices.get(8)).getSelectedIndex();
 
 				List<DoubleSlider> sliders = gd.getDoubleSliders();
 				DoubleSlider slider = sliders.get(0);
-				int tpMin = slider.getCurrentMin();
-				int tpMax = slider.getCurrentMax();
+				final int tpMin = slider.getCurrentMin();
+				final int tpMax = slider.getCurrentMax();
 				slider = sliders.get(1);
-				int xMin = slider.getCurrentMin();
-				int xMax = slider.getCurrentMax();
+				final int xMin = slider.getCurrentMin();
+				final int xMax = slider.getCurrentMax();
 				slider = sliders.get(2);
-				int yMin = slider.getCurrentMin();
-				int yMax = slider.getCurrentMax();
+				final int yMin = slider.getCurrentMin();
+				final int yMax = slider.getCurrentMax();
 				slider = sliders.get(3);
-				int zMin = slider.getCurrentMin();
-				int zMax = slider.getCurrentMax();
+				final int zMin = slider.getCurrentMin();
+				final int zMax = slider.getCurrentMax();
 				slider = sliders.get(4);
-				int fMin = slider.getCurrentMin();
-				int fMax = slider.getCurrentMax();
+				final int fMin = slider.getCurrentMin();
+				final int fMax = slider.getCurrentMax();
 
 				Vector checkboxes = gd.getCheckboxes();
-				boolean virtual = ((Checkbox)checkboxes.get(0)).getState();
+				final boolean virtual = ((Checkbox)checkboxes.get(0)).getState();
 
-long start = System.currentTimeMillis();
-				exp.open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, yMin, yMax, xMin, xMax, xDir, yDir, zDir, virtual, projectionMethod, projectionDir).show();
+				new Thread() {
+					public void run() {
+long start = System.currentTimeMillis();						
 long end = System.currentTimeMillis();
+						exp.open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, yMin, yMax, xMin, xMax, xDir, yDir, zDir, virtual, projectionMethod, projectionDir).show();
 System.out.println("needed " + (end - start) + " ms");
+						String command = "call(\"huisken.opener.SPIM_Opener.open\",\n";
+						command += "\t\"" + directory + filename + "\",  // path to xml\n";
+						command += "\t\"" + sample               + "\",  // sample\n";
+						command += "\t\"" + tpMin                + "\",  // first timepoint\n";
+						command += "\t\"" + tpMax                + "\",  // last timepoint\n";
+						command += "\t\"" + region               + "\",  // region\n";
+						command += "\t\"" + angle                + "\",  // angle\n";
+						command += "\t\"" + channel              + "\",  // channel\n";
+						command += "\t\"" + zMin                 + "\",  // first plane\n";
+						command += "\t\"" + zMax                 + "\",  // last plane\n";
+						command += "\t\"" + fMin                 + "\",  // first frame\n";
+						command += "\t\"" + fMax                 + "\",  // last frame\n";
+						command += "\t\"" + yMin                 + "\",  // minimum y\n";
+						command += "\t\"" + yMax                 + "\",  // maximum y\n";
+						command += "\t\"" + xMin                 + "\",  // minimum x\n";
+						command += "\t\"" + xMax                 + "\",  // maximum x\n";
+						command += "\t\"" + xDir                 + "\",  // direction which is displayed horizontally\n";
+						command += "\t\"" + yDir                 + "\",  // direction which is displayed vertically\n";
+						command += "\t\"" + zDir                 + "\",  // direction which is displayed in depth\n";
+						command += "\t\"" + virtual              + "\"); // virtual?";
+						command += "\t\"" + projectionMethod     + "\",  // projection method\n";
+						command += "\t\"" + projectionDir        + "\",  // projection axis\n";
 
-				String command = "call(\"huisken.opener.SPIM_Opener.open\",\n";
-				command += "\t\"" + directory + filename + "\",  // path to xml\n";
-				command += "\t\"" + sample               + "\",  // sample\n";
-				command += "\t\"" + tpMin                + "\",  // first timepoint\n";
-				command += "\t\"" + tpMax                + "\",  // last timepoint\n";
-				command += "\t\"" + region               + "\",  // region\n";
-				command += "\t\"" + angle                + "\",  // angle\n";
-				command += "\t\"" + channel              + "\",  // channel\n";
-				command += "\t\"" + zMin                 + "\",  // first plane\n";
-				command += "\t\"" + zMax                 + "\",  // last plane\n";
-				command += "\t\"" + fMin                 + "\",  // first frame\n";
-				command += "\t\"" + fMax                 + "\",  // last frame\n";
-				command += "\t\"" + yMin                 + "\",  // minimum y\n";
-				command += "\t\"" + yMax                 + "\",  // maximum y\n";
-				command += "\t\"" + xMin                 + "\",  // minimum x\n";
-				command += "\t\"" + xMax                 + "\",  // maximum x\n";
-				command += "\t\"" + xDir                 + "\",  // direction which is displayed horizontally\n";
-				command += "\t\"" + yDir                 + "\",  // direction which is displayed vertically\n";
-				command += "\t\"" + zDir                 + "\",  // direction which is displayed in depth\n";
-				command += "\t\"" + virtual              + "\"); // virtual?";
-				command += "\t\"" + projectionMethod     + "\",  // projection method\n";
-				command += "\t\"" + projectionDir        + "\",  // projection axis\n";
-		
-				if(Recorder.record)
-					Recorder.recordString(command);
+						if(Recorder.record)
+							Recorder.recordString(command);
+					}
+				}.start();
 			}
 		});
 		gd.showDialog();
