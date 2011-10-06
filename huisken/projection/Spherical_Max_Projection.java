@@ -225,7 +225,7 @@ public class Spherical_Max_Projection implements PlugIn {
 			new WaitForUserDialog("Fit sphere", "Adjust ROI and minimum threshold").show();
 			float threshold = (float)imp.getProcessor().getMinThreshold();
 			Fit_Sphere fs = new Fit_Sphere(imp);
-			fs.fit(FIT_SPHERE_THRESHOLD);
+			fs.fit(threshold);
 			fs.getControlImage().show();
 			fs.getCenter(centers[a]);
 			radius += fs.getRadius();
