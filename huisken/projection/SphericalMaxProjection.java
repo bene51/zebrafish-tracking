@@ -44,7 +44,7 @@ import vib.FastMatrix;
 public class SphericalMaxProjection {
 
 	// These fields are set in prepareForProjection();
-	private Point4[] lut;
+	private Point4[][] lut;
 	private float[] maxima;
 	private float[] weights;
 
@@ -328,8 +328,9 @@ public class SphericalMaxProjection {
 
 		Vector3f dx = new Vector3f();
 		Point3f pos = new Point3f();
-		Point3i imagePos = new Point3i();
-		ArrayList<Point4> correspondences = new ArrayList<Point4>();
+		ArrayList<Point4>[] correspondences = new ArrayList[d];
+		for(int i = 0; i < d; i++)
+			correspondences[i] = new ArrayList<Point4>();
 		weights = new float[sphere.nVertices];
 
 		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
@@ -357,38 +358,41 @@ public class SphericalMaxProjection {
 
 				// only add it if the pixel is inside the image
 				if(x >= 0 && x < w && y >= 0 && y < h && z >= 0 && z < d)
-					correspondences.add(new Point4(x, y, z, vIndex));
+					correspondences[z].add(new Point4(x, y, z, vIndex));
 			}
 		}
 
-		// sort according to ascending z coordinate
-		Collections.sort(correspondences, new Comparator<Point4>() {
+		final Comparator<Point4> comparator = new Comparator<Point4>() {
 			public int compare(Point4 p1, Point4 p2) {
 				if(p1.z < p2.z) return -1;
 				if(p1.z > p2.z) return +1;
 				return 0;
 			}
-		});
+		};
 
-		lut = new Point4[correspondences.size()];
-		correspondences.toArray(lut);
+		// sort according to ascending z coordinate and save
+		// in the lut
+		lut = new Point4[d][];
+		for(int i = 0; i < d; i++) {
+			Collections.sort(correspondences[i], comparator);
+			lut[i] = new Point4[correspondences[i].size()];
+			correspondences[i].toArray(lut[i]);
+		}
+	}
 	}
 
 	public void project(ImagePlus image) {
 		ImageStack stack = image.getStack();
 		int d = image.getStackSize();
 		maxima = new float[sphere.nVertices];
-		int lutIndex = 0;
 		for(int z = 0; z < d; z++) {
 			ImageProcessor ip = stack.getProcessor(z + 1);
-			Point4 p;
-			while(lutIndex < lut.length && (p = (Point4)lut[lutIndex++]).z == z) {
+			for(Point4 p : lut[z]) {
 				float v = ip.getf(p.x, p.y);
 				if(v > maxima[p.vIndex]) {
 					maxima[p.vIndex] = v;
 				}
 			}
-			lutIndex--;
 		}
 		for(int i = 0; i < maxima.length; i++)
 			maxima[i] *= weights[i];
@@ -454,9 +458,12 @@ public class SphericalMaxProjection {
 			System.arraycopy(this.maxima, 0, cp.maxima, 0, this.maxima.length);
 		}
 		if(this.lut != null) {
-			cp.lut = new Point4[this.lut.length];
-			for(int i = 0; i < this.lut.length; i++)
-				cp.lut[i] = this.lut[i].clone();
+			cp.lut = new Point4[this.lut.length][];
+			for(int z = 0; z < this.lut.length; z++) {
+				cp.lut[z] = new Point4[this.lut[z].length];
+				for(int i = 0; i < this.lut[z].length; i++)
+					cp.lut[z][i] = this.lut[z][i].clone();
+			}
 		}
 		return cp;
 	}
