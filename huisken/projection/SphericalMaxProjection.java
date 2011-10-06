@@ -233,7 +233,7 @@ public class SphericalMaxProjection {
 	}
 
 	public float[] getDistances() {
-		return maxima;
+		return distances;
 	}
 
 	public void addMaxima(float[] maxima) {
