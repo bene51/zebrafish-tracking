@@ -1,7 +1,6 @@
 package huisken.projection;
 
 import ij.ImagePlus;
-import ij.ImageStack;
 import ij.IJ;
 
 import ij.gui.Roi;

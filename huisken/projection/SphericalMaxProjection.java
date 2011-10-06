@@ -408,7 +408,6 @@ public class SphericalMaxProjection {
 		double ph = cal.pixelHeight;
 		double pd = cal.pixelDepth;
 		int w = image.getWidth(), h = image.getHeight();
-		int wh = w * h;
 		int d = image.getStackSize();
 		maxima = new float[sphere.nVertices];
 		distances = new float[sphere.nVertices];
@@ -435,8 +434,7 @@ public class SphericalMaxProjection {
 			maxima[i] *= weights[i];
 	}
 
-	Point3f tmp = new Point3f();
-	Point3f[] nn = new Point3f[3];
+	private final Point3f tmp = new Point3f();
 	// in radians
 	public float get(float longitude, float latitude) {
 		return get(Math.sin(longitude), Math.cos(longitude), Math.sin(latitude), Math.cos(latitude));
