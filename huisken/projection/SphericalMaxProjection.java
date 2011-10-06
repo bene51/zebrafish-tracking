@@ -2,43 +2,36 @@ package huisken.projection;
 
 import ij.ImagePlus;
 import ij.ImageStack;
-
-import ij.measure.Calibration;
-
 import ij.process.ImageProcessor;
 
-import java.io.DataOutputStream;
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.EOFException;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 
-import javax.vecmath.Point3i;
-import javax.vecmath.Point3f;
-import javax.vecmath.Vector3f;
 import javax.vecmath.Matrix4f;
+import javax.vecmath.Point3f;
+import javax.vecmath.Point3i;
+import javax.vecmath.Vector3f;
 
 import meshtools.IndexedTriangleMesh;
-
-import fiji.util.node.Leaf;
+import vib.FastMatrix;
 import fiji.util.KDTree;
 import fiji.util.NNearestNeighborSearch;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.DataInputStream;
-import java.io.EOFException;
-import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.PrintWriter;
-
-import vib.FastMatrix;
+import fiji.util.node.Leaf;
 
 
 public class SphericalMaxProjection {
