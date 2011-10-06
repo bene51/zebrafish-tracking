@@ -46,7 +46,6 @@ public class SphericalMaxProjection {
 	// These fields are set in prepareForProjection();
 	private Point4[] lut;
 	private float[] maxima;
-	private float[] distances;
 	private float[] weights;
 
 	// These fields must be set in the constructor and
@@ -187,10 +186,6 @@ public class SphericalMaxProjection {
 		saveFloatData(maxima, path);
 	}
 
-	public void saveDistances(String path) throws IOException {
-		saveFloatData(distances, path);
-	}
-
 	private void saveFloatData(float[] data, String path) throws IOException {
 		DataOutputStream out = new DataOutputStream(
 			new BufferedOutputStream(
@@ -202,10 +197,6 @@ public class SphericalMaxProjection {
 
 	public void loadMaxima(String file) throws IOException {
 		maxima = loadFloatData(file);
-	}
-
-	public void loadDistances(String file) throws IOException {
-		distances = loadFloatData(file);
 	}
 
 	private float[] loadFloatData(String file) throws IOException {
@@ -232,18 +223,9 @@ public class SphericalMaxProjection {
 		return maxima;
 	}
 
-	public float[] getDistances() {
-		return distances;
-	}
-
 	public void addMaxima(float[] maxima) {
 		for(int i = 0; i < this.maxima.length; i++)
 			this.maxima[i] += maxima[i];
-	}
-
-	public void addDistances(float[] distances) {
-		for(int i = 0; i < this.distances.length; i++)
-			this.distances[i] += distances[i];
 	}
 
 	public void smooth() {
@@ -342,15 +324,6 @@ public class SphericalMaxProjection {
 		}
 	}
 
-	public void scaleMaximaAndDistances(AngleWeighter weighter) {
-		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
-			Point3f vertex = sphere.getVertices()[vIndex];
-			double w = weighter.getWeight(vertex, center);
-			maxima[vIndex] *= w;
-			distances[vIndex] *= w;
-		}
-	}
-
 	public void prepareForProjection(int w, int h, int d, double pw, double ph, double pd, FusionWeight weighter) {
 
 		Vector3f dx = new Vector3f();
@@ -403,16 +376,9 @@ public class SphericalMaxProjection {
 
 	public void project(ImagePlus image) {
 		ImageStack stack = image.getStack();
-		Calibration cal = image.getCalibration();
-		double pw = cal.pixelWidth;
-		double ph = cal.pixelHeight;
-		double pd = cal.pixelDepth;
-		int w = image.getWidth(), h = image.getHeight();
 		int d = image.getStackSize();
 		maxima = new float[sphere.nVertices];
-		distances = new float[sphere.nVertices];
 		int lutIndex = 0;
-		Point3f rw = new Point3f();
 		for(int z = 0; z < d; z++) {
 			ImageProcessor ip = stack.getProcessor(z + 1);
 			Point4 p;
@@ -422,10 +388,6 @@ public class SphericalMaxProjection {
 					v = ip.getf(p.x, p.y);
 				if(v > maxima[p.vIndex]) {
 					maxima[p.vIndex] = v;
-					rw.set((float)pw * p.x,
-						(float)ph * p.y,
-						(float)pd * p.z);
-					distances[p.vIndex] = rw.distance(center);
 				}
 			}
 			lutIndex--;
@@ -492,10 +454,6 @@ public class SphericalMaxProjection {
 		if(this.maxima != null) {
 			cp.maxima = new float[this.maxima.length];
 			System.arraycopy(this.maxima, 0, cp.maxima, 0, this.maxima.length);
-		}
-		if(this.distances != null) {
-			cp.distances = new float[this.distances.length];
-			System.arraycopy(this.distances, 0, cp.distances, 0, this.distances.length);
 		}
 		if(this.lut != null) {
 			cp.lut = new Point4[this.lut.length];
