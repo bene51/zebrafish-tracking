@@ -348,16 +348,16 @@ public class SphericalMaxProjection {
 			int k = (int)Math.round(0.2f * radius / scale);
 
 			for(int i = -k; i <= k; i++) {
-				// TODO check if we are in the image at all
-
 				pos.scaleAdd(i * scale, dx, vertex);
 
 				// calculate the position in pixel dims
-				imagePos.x = (int)Math.round(pos.x / pw);
-				imagePos.y = (int)Math.round(pos.y / ph);
-				imagePos.z = (int)Math.round(pos.z / pd);
+				int x = (int)Math.round(pos.x / pw);
+				int y = (int)Math.round(pos.y / ph);
+				int z = (int)Math.round(pos.z / pd);
 
-				correspondences.add(new Point4(imagePos, vIndex));
+				// only add it if the pixel is inside the image
+				if(x >= 0 && x < w && y >= 0 && y < h && z >= 0 && z < d)
+					correspondences.add(new Point4(x, y, z, vIndex));
 			}
 		}
 
@@ -383,9 +383,7 @@ public class SphericalMaxProjection {
 			ImageProcessor ip = stack.getProcessor(z + 1);
 			Point4 p;
 			while(lutIndex < lut.length && (p = (Point4)lut[lutIndex++]).z == z) {
-				float v = 0;
-				if(p.x >= 0 && p.x < w && p.y >= 0 && p.y < h)
-					v = ip.getf(p.x, p.y);
+				float v = ip.getf(p.x, p.y);
 				if(v > maxima[p.vIndex]) {
 					maxima[p.vIndex] = v;
 				}
