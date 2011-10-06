@@ -379,6 +379,26 @@ public class SphericalMaxProjection {
 			correspondences[i].toArray(lut[i]);
 		}
 	}
+	
+	public void startProjectStack() {
+		maxima = new float[sphere.nVertices];
+	}
+	
+	public void finishProjectStack() {
+		for(int i = 0; i < maxima.length; i++)
+			maxima[i] *= weights[i];
+	}
+	
+	/*
+	 * z starts with 0;
+	 */
+	public void projectPlane(int z, ImageProcessor ip) {
+		for(Point4 p : lut[z]) {
+			float v = ip.getf(p.x, p.y);
+			if(v > maxima[p.vIndex]) {
+				maxima[p.vIndex] = v;
+			}
+		}
 	}
 
 	public void project(ImagePlus image) {
