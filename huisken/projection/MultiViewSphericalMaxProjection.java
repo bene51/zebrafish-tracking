@@ -2,6 +2,7 @@ package huisken.projection;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.process.ImageProcessor;
 
 import java.io.File;
 
@@ -16,6 +17,7 @@ public class MultiViewSphericalMaxProjection {
 	private final String outputdir;
 	private final int timepointStart, timepointInc, nTimepoints;
 	private final int angleStart, angleInc, nAngles;
+	private final int nPlanes;
 
 	private final SphericalMaxProjection[][] smp;
 	private final boolean saveSingleViews;
@@ -43,6 +45,7 @@ public class MultiViewSphericalMaxProjection {
 		this.angleStart = angleStart;
 		this.angleInc = angleInc;
 		this.nAngles = nAngles;
+		this.nPlanes = opener.getDepth();
 		this.saveSingleViews = saveSingleViews;
 
 
@@ -80,16 +83,19 @@ public class MultiViewSphericalMaxProjection {
 	}
 
 	class Iterator implements java.util.Iterator<Iterator> {
-		public int timepoint, angle, angleIndex;
+		public int timepoint, angle, angleIndex, plane;
 
 		public void reset() {
-			angle = angleStart - angleInc;
+			angle = angleStart;
 			timepoint = timepointStart;
+			plane = -1;
 		}
 
 		@Override
 		public boolean hasNext() {
-			return (angle + angleInc) < (angleStart + angleInc * nAngles) || (timepoint + timepointInc) < (timepointStart + timepointInc * nTimepoints);
+			return (plane + 1) < nPlanes ||
+				(angle + angleInc) < (angleStart + angleInc * nAngles) ||
+				(timepoint + timepointInc) < (timepointStart + timepointInc * nTimepoints);
 		}
 
 		@Override
@@ -99,20 +105,24 @@ public class MultiViewSphericalMaxProjection {
 
 		@Override
 		public Iterator next() {
-			angle += angleInc;
-			angleIndex++;
-			if(angle >= (angleStart + angleInc * nAngles)) {
-				angleIndex = 0;
-				angle = angleStart;
-				timepoint += timepointInc;
-				if(timepoint >= (timepointStart + timepointInc * nTimepoints))
-					return null;
+			plane ++;
+			if(plane >= nPlanes) {
+				plane = 0;
+				angle += angleInc;
+				angleIndex++;
+				if(angle >= (angleStart + angleInc * nAngles)) {
+					angleIndex = 0;
+					angle = angleStart;
+					timepoint += timepointInc;
+					if(timepoint >= (timepointStart + timepointInc * nTimepoints))
+						return null;
+				}
 			}
 			return this;
 		}
 	}
 
-	public void process(ImagePlus left, ImagePlus right) {
+	public void process(ImageProcessor left, ImageProcessor right) {
 		iterator = iterator.next();
 		if(iterator == null)
 			throw new RuntimeException("Finished");
@@ -120,21 +130,26 @@ public class MultiViewSphericalMaxProjection {
 		int a = iterator.angleIndex;
 		int angle = iterator.angle;
 		int tp = iterator.timepoint;
+		int p = iterator.plane;
 
-		// left ill
-		smp[a][0].startProjectStack();
-		for(int z = 0; z < left.getStackSize(); z++)
-			smp[a][0].projectPlane(z, left.getStack().getProcessor(z + 1));
-		smp[a][0].finishProjectStack();
+		// Start of stack
+		if(p == 0) {
+			smp[a][LEFT].startProjectStack();
+			smp[a][RIGHT].startProjectStack();
+		}
+		// Not end of stack
+		if(p < nPlanes) {
+			smp[a][LEFT].projectPlane(p, left);
+			smp[a][RIGHT].projectPlane(p, right);
+			return;
+		}
 
-		// right ill
-		smp[a][1].startProjectStack();
-		for(int z = 0; z < right.getStackSize(); z++)
-			smp[a][1].projectPlane(z, right.getStack().getProcessor(z + 1));
-		smp[a][1].finishProjectStack();
+		// End of stack, further process the projections
+		smp[a][LEFT].finishProjectStack();
+		smp[a][RIGHT].finishProjectStack();
 
 		// sum up left and right illumination
-		smp[a][0].addMaxima(smp[a][1].getMaxima());
+		smp[a][LEFT].addMaxima(smp[a][RIGHT].getMaxima());
 
 		// if specified, save the single views in separate folders
 		if(saveSingleViews) {
@@ -193,7 +208,10 @@ public class MultiViewSphericalMaxProjection {
 				// right ill
 				ImagePlus right = opener.openStack(tp, angle, RIGHT, 2, -1);
 
-				process(left, right);
+				for(int z = 0; z < nPlanes; z++) {
+					process(left.getStack().getProcessor(z + 1),
+						right.getStack().getProcessor(z + 1));
+				}
 			}
 		}
 	}
