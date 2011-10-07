@@ -1,7 +1,5 @@
 package huisken.projection;
 
-import ij.IJ;
-import ij.ImagePlus;
 import ij.process.ImageProcessor;
 
 import java.io.File;
@@ -13,7 +11,6 @@ import vib.FastMatrix;
 
 public class MultiViewSphericalMaxProjection {
 
-	private final Opener opener;
 	private final String outputdir;
 	private final int timepointStart, timepointInc, nTimepoints;
 	private final int angleStart, angleInc, nAngles;
@@ -27,17 +24,17 @@ public class MultiViewSphericalMaxProjection {
 	public static final int LEFT  = 0;
 	public static final int RIGHT = 0;
 
-	public MultiViewSphericalMaxProjection(Opener opener,
-			String outputdir,
+	public MultiViewSphericalMaxProjection(String outputdir,
 			int timepointStart, int timepointInc, int nTimepoints,
 			int angleStart, int angleInc, int nAngles,
+			int w, int h, int d,
+			double pw, double ph, double pd,
 			Point3f[] centers, float radius,
 			boolean saveSingleViews) {
 
 		if(!outputdir.endsWith(File.separator))
 			outputdir += File.separator;
 
-		this.opener = opener;
 		this.outputdir = outputdir;
 		this.timepointStart = timepointStart;
 		this.timepointInc = timepointInc;
@@ -45,7 +42,7 @@ public class MultiViewSphericalMaxProjection {
 		this.angleStart = angleStart;
 		this.angleInc = angleInc;
 		this.nAngles = nAngles;
-		this.nPlanes = opener.getDepth();
+		this.nPlanes = d;
 		this.saveSingleViews = saveSingleViews;
 
 
@@ -67,8 +64,7 @@ public class MultiViewSphericalMaxProjection {
 				transforms,
 				centers[0], radius,
 				angleStart, angleInc, nAngles,
-				opener.getWidth(), opener.getHeight(), opener.getDepth(),
-				opener.getPixelWidth(), opener.getPixelHeight(), opener.getPixelDepth());
+				w, h, d, pw, ph, pd);
 
 		// save the sphere geometry
 		String spherepath = new File(outputdir, "Sphere.obj").getAbsolutePath();
@@ -84,6 +80,10 @@ public class MultiViewSphericalMaxProjection {
 
 	class Iterator implements java.util.Iterator<Iterator> {
 		public int timepoint, angle, angleIndex, plane;
+
+		public Iterator() {
+			reset();
+		}
 
 		public void reset() {
 			angle = angleStart;
@@ -189,29 +189,6 @@ public class MultiViewSphericalMaxProjection {
 				smp[0][0].saveMaxima(vpath);
 			} catch(Exception e) {
 				throw new RuntimeException("Cannot save " + vpath);
-			}
-		}
-	}
-
-	public void process() {
-		iterator.reset();
-		// start the projections
-		for(int tp = timepointStart; tp < timepointStart + nTimepoints; tp += timepointInc) {
-			IJ.showStatus("Timepoint " + (tp - timepointStart + 1) + "/" + nTimepoints);
-
-			for(int a = 0; a < nAngles; a++) {
-				int angle = angleStart + a * angleInc;
-
-				// left ill
-				ImagePlus left = opener.openStack(tp, angle, LEFT, 2, -1);
-
-				// right ill
-				ImagePlus right = opener.openStack(tp, angle, RIGHT, 2, -1);
-
-				for(int z = 0; z < nPlanes; z++) {
-					process(left.getStack().getProcessor(z + 1),
-						right.getStack().getProcessor(z + 1));
-				}
 			}
 		}
 	}

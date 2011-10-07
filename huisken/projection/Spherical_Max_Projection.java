@@ -88,12 +88,34 @@ public class Spherical_Max_Projection implements PlugIn {
 		float radius = fitSpheres(fittingTimepoint, centers, angleStart, angleInc, nAngles);
 
 		MultiViewSphericalMaxProjection mmsmp = new MultiViewSphericalMaxProjection(
-				opener, outputdir, timepointStart, timepointInc, nTimepoints,
+				outputdir, timepointStart, timepointInc, nTimepoints,
 				angleStart, angleInc, nAngles,
+				opener.getWidth(), opener.getHeight(), opener.getDepth(),
+				opener.getPixelWidth(), opener.getPixelHeight(), opener.getPixelDepth(),
 				centers, radius,
 				saveSingleViews);
 
-		mmsmp.process();
+		int nPlanes = opener.getDepth();
+
+		// start the projections
+		for(int tp = timepointStart; tp < timepointStart + nTimepoints; tp += timepointInc) {
+			IJ.showStatus("Timepoint " + (tp - timepointStart + 1) + "/" + nTimepoints);
+
+			for(int a = 0; a < nAngles; a++) {
+				int angle = angleStart + a * angleInc;
+
+				// left ill
+				ImagePlus left = opener.openStack(tp, angle, MultiViewSphericalMaxProjection.LEFT, 2, -1);
+
+				// right ill
+				ImagePlus right = opener.openStack(tp, angle, MultiViewSphericalMaxProjection.RIGHT, 2, -1);
+
+				for(int z = 0; z < nPlanes; z++) {
+					mmsmp.process(left.getStack().getProcessor(z + 1),
+						right.getStack().getProcessor(z + 1));
+				}
+			}
+		}
 	}
 
 	private float fitSpheres(int timepoint, Point3f[] centers, int angleStart, int angleInc, int nAngles) {
