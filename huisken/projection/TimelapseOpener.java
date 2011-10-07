@@ -13,7 +13,8 @@ import java.util.TreeSet;
 
 public class TimelapseOpener {
 
-	public final String parentdir;
+	private final String parentdir;
+
 	public final double pw;
 	public final double ph;
 	public final double pd;
@@ -22,7 +23,6 @@ public class TimelapseOpener {
 	public final int h;
 	public final int d;
 
-	
 	public final int angleStart, angleInc, nAngles;
 	public final int timepointStart, timepointInc, nTimepoints;
 

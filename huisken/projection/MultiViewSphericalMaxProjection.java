@@ -20,14 +20,11 @@ public class MultiViewSphericalMaxProjection {
 	private final SphericalMaxProjection[][] smp;
 	private final boolean saveSingleViews;
 	private final AngleWeighter aw;
-	
-	
+
 	public MultiViewSphericalMaxProjection(TimelapseOpener opener,
 			String outputdir,
 			int timepointStart, int timepointInc, int nTimepoints,
 			int angleStart, int angleInc, int nAngles,
-			int w, int h, int d,
-			double pw, double ph, double pd,
 			Point3f[] centers, float radius,
 			boolean saveSingleViews) {
 		
@@ -63,8 +60,8 @@ public class MultiViewSphericalMaxProjection {
 				transforms,
 				centers[0], radius,
 				angleStart, angleInc, nAngles,
-				w, h, d,
-				pw, ph, pd);
+				opener.w, opener.h, opener.d,
+				opener.pw, opener.ph, opener.pd);
 
 		// save the sphere geometry
 		String spherepath = new File(outputdir, "Sphere.obj").getAbsolutePath();

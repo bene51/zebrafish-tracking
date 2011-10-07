@@ -89,8 +89,6 @@ public class Spherical_Max_Projection implements PlugIn {
 		MultiViewSphericalMaxProjection mmsmp = new MultiViewSphericalMaxProjection(
 				opener, outputdir, timepointStart, timepointInc, nTimepoints,
 				angleStart, angleInc, nAngles,
-				opener.w, opener.h, opener.d,
-				opener.pw, opener.ph, opener.pd,
 				centers, radius,
 				saveSingleViews);
 
