@@ -177,7 +177,7 @@ public class SphericalMaxProjection {
 		saveFloatData(maxima, path);
 	}
 
-	private void saveFloatData(float[] data, String path) throws IOException {
+	private static void saveFloatData(float[] data, String path) throws IOException {
 		DataOutputStream out = new DataOutputStream(
 			new BufferedOutputStream(
 				new FileOutputStream(path)));

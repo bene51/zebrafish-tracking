@@ -20,6 +20,10 @@ public class MultiViewSphericalMaxProjection {
 	private final SphericalMaxProjection[][] smp;
 	private final boolean saveSingleViews;
 	private final AngleWeighter aw;
+	private Iterator iterator;
+	
+	public static final int LEFT  = 0;
+	public static final int RIGHT = 0;
 
 	public MultiViewSphericalMaxProjection(Opener opener,
 			String outputdir,
@@ -72,9 +76,101 @@ public class MultiViewSphericalMaxProjection {
 		}
 
 		aw = new AngleWeighter(nAngles);
+		iterator = new Iterator();
+	}
+	
+	class Iterator implements java.util.Iterator<Iterator> {
+		public int timepoint, angle, angleIndex;
+
+		public void reset() {
+			angle = angleStart - angleInc;
+			timepoint = timepointStart;
+		}
+
+		public boolean hasNext() {
+			return (angle + angleInc) < (angleStart + angleInc * nAngles) || (timepoint + timepointInc) < (timepointStart + timepointInc * nTimepoints);
+		}
+
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+
+		public Iterator next() {
+			angle += angleInc;
+			angleIndex++;
+			if(angle >= (angleStart + angleInc * nAngles)) {
+				angleIndex = 0;
+				angle = angleStart;
+				timepoint += timepointInc;
+				if(timepoint >= (timepointStart + timepointInc * nTimepoints))
+					return null;
+			}
+			return this;
+		}
+	}
+	
+	public void process(ImagePlus left, ImagePlus right) {
+		iterator = iterator.next();
+		if(iterator == null)
+			throw new RuntimeException("Finished");
+
+		int a = iterator.angleIndex;
+		int angle = iterator.angle;
+		int tp = iterator.timepoint;
+
+		// left ill
+		smp[a][0].project(left);
+
+		// right ill
+		smp[a][1].project(right);
+
+		// sum up left and right illumination
+		smp[a][0].addMaxima(smp[a][1].getMaxima());
+
+		// if specified, save the single views in separate folders
+		if(saveSingleViews) {
+			String filename = String.format("tp%04d.tif", tp, angle);
+			String subfolder = String.format("angle%3d/", angle);
+			String vpath = new File(outputdir + subfolder, filename + ".vertices").getAbsolutePath();
+			File subf = new File(outputdir, subfolder);
+			if(!subf.exists()) {
+				subf.mkdir();
+				try {
+					smp[0][0].saveSphere(outputdir + subfolder + "Sphere.obj");
+				} catch(Exception e) {
+					throw new RuntimeException("Cannot save sphere: " + outputdir + subfolder + "Sphere.obj", e);
+				}
+			}
+
+			try {
+				smp[a][0].saveMaxima(vpath);
+			} catch(Exception e) {
+				throw new RuntimeException("Cannot save " + vpath);
+			}
+		}
+
+		// scale the resulting maxima according to angle
+		smp[a][0].scaleMaxima(aw);
+
+		// sum them all up
+		if(a > 0) {
+			smp[0][0].addMaxima(smp[a][0].getMaxima());
+		}
+		
+		// if it's the last angle, save the result
+		if(a == nAngles - 1) {
+			String filename = String.format("tp%04d.tif", tp);
+			String vpath = new File(outputdir, filename + ".vertices").getAbsolutePath();
+			try {
+				smp[0][0].saveMaxima(vpath);
+			} catch(Exception e) {
+				throw new RuntimeException("Cannot save " + vpath);
+			}
+		}
 	}
 	
 	public void process() {
+		iterator.reset();
 		// start the projections
 		for(int tp = timepointStart; tp < timepointStart + nTimepoints; tp += timepointInc) {
 			IJ.showStatus("Timepoint " + (tp - timepointStart + 1) + "/" + nTimepoints);
@@ -83,53 +179,12 @@ public class MultiViewSphericalMaxProjection {
 				int angle = angleStart + a * angleInc;
 
 				// left ill
-				ImagePlus image = opener.openStack(tp, angle, 0, 2, -1);
-				smp[a][0].project(image);
+				ImagePlus left = opener.openStack(tp, angle, LEFT, 2, -1);
 
 				// right ill
-				image = opener.openStack(tp, angle, 1, 2, -1);
-				smp[a][1].project(image);
-
-				// sum up left and right illumination
-				smp[a][0].addMaxima(smp[a][1].getMaxima());
-
-				// if specified, save the single views in separate folders
-				if(saveSingleViews) {
-					String filename = String.format("tp%04d.tif", tp, angle);
-					String subfolder = String.format("angle%3d/", angle);
-					String vpath = new File(outputdir + subfolder, filename + ".vertices").getAbsolutePath();
-					File subf = new File(outputdir, subfolder);
-					if(!subf.exists()) {
-						subf.mkdir();
-						try {
-							smp[0][0].saveSphere(outputdir + subfolder + "Sphere.obj");
-						} catch(Exception e) {
-							throw new RuntimeException("Cannot save sphere: " + outputdir + subfolder + "Sphere.obj", e);
-						}
-					}
-
-					try {
-						smp[a][0].saveMaxima(vpath);
-					} catch(Exception e) {
-						throw new RuntimeException("Cannot save " + vpath);
-					}
-				}
-
-				// scale the resulting maxima according to angle
-				smp[a][0].scaleMaxima(aw);
-
-				// sum them all up
-				if(a > 0) {
-					smp[0][0].addMaxima(smp[a][0].getMaxima());
-				}
-			}
-
-			String filename = String.format("tp%04d.tif", tp);
-			String vpath = new File(outputdir, filename + ".vertices").getAbsolutePath();
-			try {
-				smp[0][0].saveMaxima(vpath);
-			} catch(Exception e) {
-				throw new RuntimeException("Cannot save " + vpath);
+				ImagePlus right = opener.openStack(tp, angle, RIGHT, 2, -1);
+				
+				process(left, right);
 			}
 		}
 	}
