@@ -12,7 +12,7 @@ import vib.FastMatrix;
 
 public class MultiViewSphericalMaxProjection {
 	
-	private final TimelapseOpener opener;
+	private final Opener opener;
 	private final String outputdir;
 	private final int timepointStart, timepointInc, nTimepoints;
 	private final int angleStart, angleInc, nAngles;
@@ -21,7 +21,7 @@ public class MultiViewSphericalMaxProjection {
 	private final boolean saveSingleViews;
 	private final AngleWeighter aw;
 
-	public MultiViewSphericalMaxProjection(TimelapseOpener opener,
+	public MultiViewSphericalMaxProjection(Opener opener,
 			String outputdir,
 			int timepointStart, int timepointInc, int nTimepoints,
 			int angleStart, int angleInc, int nAngles,
@@ -60,8 +60,8 @@ public class MultiViewSphericalMaxProjection {
 				transforms,
 				centers[0], radius,
 				angleStart, angleInc, nAngles,
-				opener.w, opener.h, opener.d,
-				opener.pw, opener.ph, opener.pd);
+				opener.getWidth(), opener.getHeight(), opener.getDepth(),
+				opener.getPixelWidth(), opener.getPixelHeight(), opener.getPixelDepth());
 
 		// save the sphere geometry
 		String spherepath = new File(outputdir, "Sphere.obj").getAbsolutePath();

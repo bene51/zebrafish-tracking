@@ -51,22 +51,22 @@ public class Spherical_Max_Projection implements PlugIn {
 		}
 	}
 
-	private TimelapseOpener opener = null;
+	private Opener opener = null;
 
 	public void process(String datadir, String outputdir, int fittingTimepoint) {
-		TimelapseOpener opener = null;
+		Opener opener = null;
 		try {
-			opener = new TimelapseOpener(datadir, true);
+			opener = new OldTimelapseOpener(datadir, true);
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot open timelapse", e);
 		}
 		GenericDialog gd = new GenericDialog("Limit processing");
-		gd.addNumericField("Start_timepoint",      opener.timepointStart, 0);
-		gd.addNumericField("Timepoint_Increment",  opener.timepointInc, 0);
-		gd.addNumericField("Number_of_timepoints", opener.nTimepoints, 0);
-		gd.addNumericField("Start_angle",          opener.angleStart, 0);
-		gd.addNumericField("Angle_Increment",      opener.angleInc, 0);
-		gd.addNumericField("Number_of_angles",     opener.nAngles, 0);
+		gd.addNumericField("Start_timepoint",      opener.getTimepointStart(), 0);
+		gd.addNumericField("Timepoint_Increment",  opener.getTimepointInc(), 0);
+		gd.addNumericField("Number_of_timepoints", opener.getNTimepoints(), 0);
+		gd.addNumericField("Start_angle",          opener.getAngleStart(), 0);
+		gd.addNumericField("Angle_Increment",      opener.getAngleInc(), 0);
+		gd.addNumericField("Number_of_angles",     opener.getNAngles(), 0);
 		gd.addCheckbox("Also save single views", false);
 		gd.showDialog();
 		if(gd.wasCanceled())

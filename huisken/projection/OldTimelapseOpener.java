@@ -11,22 +11,14 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.TreeSet;
 
-public class TimelapseOpener {
+public class OldTimelapseOpener extends Opener {
 
 	private final String parentdir;
+	
+	private final int w, h, d, angleStart, angleInc, nAngles, timepointStart, timepointInc, nTimepoints;
+	private final double pw, ph, pd;
 
-	public final double pw;
-	public final double ph;
-	public final double pd;
-
-	public final int w;
-	public final int h;
-	public final int d;
-
-	public final int angleStart, angleInc, nAngles;
-	public final int timepointStart, timepointInc, nTimepoints;
-
-	public TimelapseOpener(String parentdir, boolean doublesided) {
+	public OldTimelapseOpener(String parentdir, boolean doublesided) {
 		if(!parentdir.endsWith(File.separator))
 			parentdir += File.separator;
 		this.parentdir = parentdir;
@@ -63,55 +55,36 @@ public class TimelapseOpener {
 		this.nAngles    = angles.size();
 		this.timepointStart = timepointsIt.next();
 		this.timepointInc   = timepointsIt.next() - timepointStart;
-		this.nTimepoints    = timepoints.size();
-
-	}
-
-	public TimelapseOpener(String parentdir, int w, int h, int d, double pw, double ph, double pd, int angleStart, int angleInc, int nAngles, int timepointStart, int timepointInc, int nTimepoints) {
-		this.w = w;
-		this.h = h;
-		this.d = d;
-		this.pw = pw;
-		this.ph = ph;
-		this.pd = pd;
-		this.angleStart = angleStart;
-		this.angleInc = angleInc;
-		this.nAngles = nAngles;
-		this.timepointStart = timepointStart;
-		this.timepointInc = timepointInc;
-		this.nTimepoints = nTimepoints;
-		if(!parentdir.endsWith(File.separator))
-			parentdir += File.separator;
-		this.parentdir = parentdir;
+		this.nTimepoints    = timepoints.size();	
 	}
 
 	public void print() {
 		System.out.println("parentdir = " + parentdir);
-		System.out.println("w = " + w);
-		System.out.println("h = " + h);
-		System.out.println("d = " + d);
-		System.out.println("pw = " + pw);
-		System.out.println("ph = " + ph);
-		System.out.println("pd = " + pd);
-		System.out.println("angleStart = " + angleStart);
-		System.out.println("angleInc = " + angleInc);
-		System.out.println("nAngles = " + nAngles);
-		System.out.println("timepointStart = " + timepointStart);
-		System.out.println("timepointInc = " + timepointInc);
-		System.out.println("nTimepoints = " + nTimepoints);
+		System.out.println("w = " + getWidth());
+		System.out.println("h = " + getHeight());
+		System.out.println("d = " + getDepth());
+		System.out.println("pw = " + getPixelWidth());
+		System.out.println("ph = " + getPixelHeight());
+		System.out.println("pd = " + getPixelDepth());
+		System.out.println("angleStart = " + getAngleStart());
+		System.out.println("angleInc = " + getAngleInc());
+		System.out.println("nAngles = " + getNAngles());
+		System.out.println("timepointStart = " + getTimepointStart());
+		System.out.println("timepointInc = " + getTimepointInc());
+		System.out.println("nTimepoints = " + getNTimepoints());
 	}
 
 	public ImagePlus openStack(int timepoint, int angle, int planeStart, int planeInc, int nPlanes) {
 		if(nPlanes < 0)
-			nPlanes = (d - planeStart) / planeInc;
+			nPlanes = (getDepth() - planeStart) / planeInc;
 	
 		String folderPattern = "tp%04d_view%d_angle%03d/";
 		String slicePattern = "0001_%04d.tif";
 
-		int view = 1 + (angle - angleStart) / angleInc;
+		int view = 1 + (angle - getAngleStart()) / getAngleInc();
 		String folder = parentdir + String.format(folderPattern, timepoint, view, angle);
 	
-		ImageStack stack = new ImageStack(w, h);
+		ImageStack stack = new ImageStack(getWidth(), getHeight());
 
 		for(int i = 0; i < nPlanes; i ++) {
 			int plane = planeStart + i * planeInc;	
@@ -123,9 +96,9 @@ public class TimelapseOpener {
 			IJ.showProgress(i, nPlanes);
 		}
 		ImagePlus imp = new ImagePlus(folder, stack);
-		imp.getCalibration().pixelWidth  = pw;
-		imp.getCalibration().pixelHeight = ph;
-		imp.getCalibration().pixelDepth  = pd;
+		imp.getCalibration().pixelWidth  = getPixelWidth();
+		imp.getCalibration().pixelHeight = getPixelHeight();
+		imp.getCalibration().pixelDepth  = getPixelDepth();
 		return imp;
 	}
 
@@ -138,7 +111,7 @@ public class TimelapseOpener {
 			String folder = parentdir + String.format(folderPattern, it.timepoint, it.view, it.angle);
 			System.out.println(folder);
 
-			for(int z = 0; z < d; z++) {
+			for(int z = 0; z < getDepth(); z++) {
 				int plane = z;
 				String filename = String.format(slicePattern, plane);
 				try {
@@ -161,7 +134,7 @@ public class TimelapseOpener {
 		while(it.next() != null) {
 			String folder = parentdir + String.format(folderPattern, it.timepoint, it.view, it.angle);
 
-			for(int z = 0; z < d; z++) {
+			for(int z = 0; z < getDepth(); z++) {
 				int plane = z;
 				String filename = String.format(slicePattern, plane);
 				ImagePlus imp = null;
@@ -194,7 +167,7 @@ public class TimelapseOpener {
 		while(it.next() != null) {
 			String folder = parentdir + String.format(folderPattern, it.timepoint, it.view, it.angle);
 
-			for(int z = 0; z < d; z++) {
+			for(int z = 0; z < getDepth(); z++) {
 				int plane = z;
 				String filename = String.format(slicePattern, plane);
 				ImageProcessor ip = null;
@@ -218,7 +191,7 @@ public class TimelapseOpener {
 		while(it.next() != null) {
 			String folder = parentdir + String.format(folderPattern, it.timepoint, it.view, it.angle);
 
-			for(int z = 0; z < d; z++) {
+			for(int z = 0; z < getDepth(); z++) {
 				int plane = z;
 				String filename = String.format(slicePattern, plane);
 				String alternate = String.format(slicePattern, plane - inc);
@@ -228,7 +201,8 @@ public class TimelapseOpener {
 	}
 
 	public Iterator iterator() {
-		return new Iterator(timepointStart, timepointInc, nTimepoints, angleStart, angleInc, nAngles);
+		return new Iterator(getTimepointStart(), getTimepointInc(), getNTimepoints(),
+				getAngleStart(), getAngleInc(), getNAngles());
 	}
 
 	// iterates outer: time and inner: angle
@@ -292,7 +266,7 @@ public class TimelapseOpener {
 
 	public static void main(String[] args) {
 		String parentdir = "/Users/huiskenlab/Documents/SPIMdata/Jan/4view_sox17/recording_002_tif/";
-		TimelapseOpener to = new TimelapseOpener(parentdir, true);
+		OldTimelapseOpener to = new OldTimelapseOpener(parentdir, true);
 		to.print();
 
 /*
@@ -311,5 +285,65 @@ public class TimelapseOpener {
 		// check if all files have a correct pixel range
 		to.checkPixels();
 */
+	}
+
+	@Override
+	public int getWidth() {
+		return w;
+	}
+
+	@Override
+	public int getHeight() {
+		return h;
+	}
+
+	@Override
+	public int getDepth() {
+		return d;
+	}
+
+	@Override
+	public int getAngleStart() {
+		return angleStart;
+	}
+
+	@Override
+	public int getAngleInc() {
+		return angleInc;
+	}
+
+	@Override
+	public int getNAngles() {
+		return nAngles;
+	}
+
+	@Override
+	public int getTimepointStart() {
+		return timepointStart;
+	}
+
+	@Override
+	public int getTimepointInc() {
+		return timepointInc;
+	}
+
+	@Override
+	public int getNTimepoints() {
+		return nTimepoints;
+	}
+
+	@Override
+	public double getPixelWidth() {
+		return pw;
+	}
+
+	@Override
+	public double getPixelHeight() {
+		return ph;
+	}
+
+	@Override
+	public double getPixelDepth() {
+		return pd;
 	}
 }
