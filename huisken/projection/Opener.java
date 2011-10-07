@@ -3,7 +3,7 @@ package huisken.projection;
 import ij.ImagePlus;
 
 public abstract class Opener {
-	
+
 	public abstract int getWidth();
 	public abstract int getHeight();
 	public abstract int getDepth();
@@ -16,6 +16,6 @@ public abstract class Opener {
 	public abstract double getPixelWidth();
 	public abstract double getPixelHeight();
 	public abstract double getPixelDepth();
-	
+
 	public abstract ImagePlus openStack(int timepoint, int angle, int planeStart, int planeInc, int nPlanes);
 }

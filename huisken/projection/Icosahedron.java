@@ -126,7 +126,7 @@ public class Icosahedron extends IndexedTriangleMesh {
 		univ.addCustomMesh(new CustomTriangleMesh(icosa.createMesh()), "icosahedron");
 
 		float r = 1f;
-		int subd = 5;	
+		int subd = 5;
 
 		IndexedTriangleMesh buckyball = icosa.createBuckyball(r, subd);
 		List<Point3f> spherepoints = Arrays.asList(buckyball.getVertices());

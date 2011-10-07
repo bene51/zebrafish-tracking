@@ -337,7 +337,7 @@ public class SphericalMaxProjection {
 			float scale = 1f / (float)Math.max(Math.abs(dx.x / pw), Math.max(
 					Math.abs(dx.y / ph), Math.abs(dx.z / pd)));
 
-			int k = (int)Math.round(0.2f * radius / scale);
+			int k = Math.round(0.2f * radius / scale);
 
 			for(int i = -k; i <= k; i++) {
 				pos.scaleAdd(i * scale, dx, vertex);
@@ -354,6 +354,7 @@ public class SphericalMaxProjection {
 		}
 
 		final Comparator<Point4> comparator = new Comparator<Point4>() {
+			@Override
 			public int compare(Point4 p1, Point4 p2) {
 				if(p1.z < p2.z) return -1;
 				if(p1.z > p2.z) return +1;
@@ -370,16 +371,16 @@ public class SphericalMaxProjection {
 			correspondences[i].toArray(lut[i]);
 		}
 	}
-	
+
 	public void startProjectStack() {
 		maxima = new float[sphere.nVertices];
 	}
-	
+
 	public void finishProjectStack() {
 		for(int i = 0; i < maxima.length; i++)
 			maxima[i] *= weights[i];
 	}
-	
+
 	/*
 	 * z starts with 0;
 	 */
@@ -441,6 +442,7 @@ public class SphericalMaxProjection {
 		ret[2] = vertexToIndex.get(nn[2].p);
 	}
 
+	@Override
 	public SphericalMaxProjection clone() {
 		SphericalMaxProjection cp = new SphericalMaxProjection(this.sphere, this.center, this.radius);
 		if(this.weights != null) {
@@ -476,6 +478,7 @@ public class SphericalMaxProjection {
 			this.vIndex = vIndex;
 		}
 
+		@Override
 		public Point4 clone() {
 			return new Point4(this.x, this.y, this.z, this.vIndex);
 		}

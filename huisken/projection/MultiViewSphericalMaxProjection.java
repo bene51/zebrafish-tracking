@@ -11,7 +11,7 @@ import meshtools.IndexedTriangleMesh;
 import vib.FastMatrix;
 
 public class MultiViewSphericalMaxProjection {
-	
+
 	private final Opener opener;
 	private final String outputdir;
 	private final int timepointStart, timepointInc, nTimepoints;
@@ -21,7 +21,7 @@ public class MultiViewSphericalMaxProjection {
 	private final boolean saveSingleViews;
 	private final AngleWeighter aw;
 	private Iterator iterator;
-	
+
 	public static final int LEFT  = 0;
 	public static final int RIGHT = 0;
 
@@ -31,7 +31,7 @@ public class MultiViewSphericalMaxProjection {
 			int angleStart, int angleInc, int nAngles,
 			Point3f[] centers, float radius,
 			boolean saveSingleViews) {
-		
+
 		if(!outputdir.endsWith(File.separator))
 			outputdir += File.separator;
 
@@ -44,7 +44,7 @@ public class MultiViewSphericalMaxProjection {
 		this.angleInc = angleInc;
 		this.nAngles = nAngles;
 		this.saveSingleViews = saveSingleViews;
-		
+
 
 		// calculate sphere transformations for each angle
 		FastMatrix[] transforms = new FastMatrix[nAngles];
@@ -78,7 +78,7 @@ public class MultiViewSphericalMaxProjection {
 		aw = new AngleWeighter(nAngles);
 		iterator = new Iterator();
 	}
-	
+
 	class Iterator implements java.util.Iterator<Iterator> {
 		public int timepoint, angle, angleIndex;
 
@@ -87,14 +87,17 @@ public class MultiViewSphericalMaxProjection {
 			timepoint = timepointStart;
 		}
 
+		@Override
 		public boolean hasNext() {
 			return (angle + angleInc) < (angleStart + angleInc * nAngles) || (timepoint + timepointInc) < (timepointStart + timepointInc * nTimepoints);
 		}
 
+		@Override
 		public void remove() {
 			throw new UnsupportedOperationException();
 		}
 
+		@Override
 		public Iterator next() {
 			angle += angleInc;
 			angleIndex++;
@@ -108,7 +111,7 @@ public class MultiViewSphericalMaxProjection {
 			return this;
 		}
 	}
-	
+
 	public void process(ImagePlus left, ImagePlus right) {
 		iterator = iterator.next();
 		if(iterator == null)
@@ -162,7 +165,7 @@ public class MultiViewSphericalMaxProjection {
 		if(a > 0) {
 			smp[0][0].addMaxima(smp[a][0].getMaxima());
 		}
-		
+
 		// if it's the last angle, save the result
 		if(a == nAngles - 1) {
 			String filename = String.format("tp%04d.tif", tp);
@@ -174,7 +177,7 @@ public class MultiViewSphericalMaxProjection {
 			}
 		}
 	}
-	
+
 	public void process() {
 		iterator.reset();
 		// start the projections
@@ -189,7 +192,7 @@ public class MultiViewSphericalMaxProjection {
 
 				// right ill
 				ImagePlus right = opener.openStack(tp, angle, RIGHT, 2, -1);
-				
+
 				process(left, right);
 			}
 		}

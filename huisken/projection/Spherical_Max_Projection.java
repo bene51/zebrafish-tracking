@@ -18,6 +18,7 @@ public class Spherical_Max_Projection implements PlugIn {
 
 	public static final float FIT_SPHERE_THRESHOLD = 1600f;
 
+	@Override
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Spherical_Max_Projection");
 		gd.addDirectoryField("Data directory", "");
@@ -71,7 +72,7 @@ public class Spherical_Max_Projection implements PlugIn {
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
-		
+
 		int timepointStart = (int)gd.getNextNumber();
 		int timepointInc   = (int)gd.getNextNumber();
 		int nTimepoints    = (int)gd.getNextNumber();
@@ -79,13 +80,13 @@ public class Spherical_Max_Projection implements PlugIn {
 		int angleInc       = (int)gd.getNextNumber();
 		int nAngles        = (int)gd.getNextNumber();
 		boolean saveSingleViews = gd.getNextBoolean();
-		
+
 		// fit the spheres to the specified timepoint
 		Point3f[] centers = new Point3f[nAngles];
 		for(int i = 0; i < centers.length; i++)
 			centers[i] = new Point3f();
 		float radius = fitSpheres(fittingTimepoint, centers, angleStart, angleInc, nAngles);
-		
+
 		MultiViewSphericalMaxProjection mmsmp = new MultiViewSphericalMaxProjection(
 				opener, outputdir, timepointStart, timepointInc, nTimepoints,
 				angleStart, angleInc, nAngles,

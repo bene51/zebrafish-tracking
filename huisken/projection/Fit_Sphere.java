@@ -1,29 +1,21 @@
 package huisken.projection;
 
-import ij.ImagePlus;
 import ij.IJ;
-
+import ij.ImagePlus;
 import ij.gui.Roi;
-
-import ij.plugin.filter.PlugInFilter;
-
+import ij.measure.Calibration;
 import ij.plugin.Duplicator;
-
+import ij.plugin.filter.PlugInFilter;
+import ij.process.ImageConverter;
 import ij.process.ImageProcessor;
 import ij.process.StackConverter;
-import ij.process.ImageConverter;
-
-import ij.measure.Calibration;
 
 import javax.vecmath.Point3f;
 
 import meshtools.IndexedTriangleMesh;
-
-import customnode.*;
-
 import vib.NaiveResampler;
-
 import Jama.Matrix;
+import customnode.MeshMaker;
 
 public class Fit_Sphere implements PlugInFilter {
 	private ImagePlus image;
@@ -35,6 +27,7 @@ public class Fit_Sphere implements PlugInFilter {
 		this.image = image;
 	}
 
+	@Override
 	public int setup(String arg, ImagePlus image) {
 		this.image = image;
 		return DOES_8G | DOES_16 | DOES_32;
@@ -50,6 +43,7 @@ public class Fit_Sphere implements PlugInFilter {
 		return r;
 	}
 
+	@Override
 	public void run(ImageProcessor ip) {
 		double threshold = IJ.getNumber(
 			"Threshold", 127);
@@ -67,7 +61,7 @@ public class Fit_Sphere implements PlugInFilter {
 		ImageConverter.setDoScaling(true);
 		new StackConverter(imp).convertToGray8();
 		imp = NaiveResampler.resample(imp, 4);
-		
+
 		IndexedTriangleMesh mesh = new IndexedTriangleMesh(
 			MeshMaker.createSphere(x0, y0, z0, r));
 		imp = mesh.createOverlay(imp, 0xff0000);

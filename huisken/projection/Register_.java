@@ -16,6 +16,7 @@ import javax.vecmath.Matrix4f;
 
 public class Register_ implements PlugIn {
 
+	@Override
 	public void run(String arg) {
 		String datadir = Prefs.get("register_sphere_proj.datadir", "");
 		String outputdir = Prefs.get("register_sphere_proj.outputdir", "");

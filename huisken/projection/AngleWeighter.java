@@ -17,7 +17,7 @@ public class AngleWeighter {
 	 *          Camera
 	 *            |
 	 *            |
-	 *            
+	 *
 	 *            x
 	 *         _________
 	 *      y /        /|
@@ -48,7 +48,7 @@ public class AngleWeighter {
 		double exp = 10 / overlap;
 		if(angle < 0) {
 			double t = angle + angleInc/2.0;
-			return (float)(1.0 / (1 + Math.exp(-exp * t))); 
+			return (float)(1.0 / (1 + Math.exp(-exp * t)));
 		} else {
 			double t = angle - angleInc/2.0;
 			return 1f - (float)(1.0 / (1 + Math.exp(-exp * t)));

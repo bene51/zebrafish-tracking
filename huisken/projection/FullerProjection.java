@@ -109,7 +109,7 @@ public class FullerProjection implements MapProjection {
 				nearest.sub(nearest, smp.center);
 				nearest.normalize();
 				Point3f ptmp = new Point3f();
-				ptmp.scaleAdd((float)smp.radius, nearest, smp.center);
+				ptmp.scaleAdd(smp.radius, nearest, smp.center);
 
 
 				smp.getThreeNearestVertexIndices(ptmp, vIndices[index]);

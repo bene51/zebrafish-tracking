@@ -14,7 +14,7 @@ import java.util.TreeSet;
 public class OldTimelapseOpener extends Opener {
 
 	private final String parentdir;
-	
+
 	private final int w, h, d, angleStart, angleInc, nAngles, timepointStart, timepointInc, nTimepoints;
 	private final double pw, ph, pd;
 
@@ -55,7 +55,7 @@ public class OldTimelapseOpener extends Opener {
 		this.nAngles    = angles.size();
 		this.timepointStart = timepointsIt.next();
 		this.timepointInc   = timepointsIt.next() - timepointStart;
-		this.nTimepoints    = timepoints.size();	
+		this.nTimepoints    = timepoints.size();
 	}
 
 	public void print() {
@@ -74,20 +74,21 @@ public class OldTimelapseOpener extends Opener {
 		System.out.println("nTimepoints = " + getNTimepoints());
 	}
 
+	@Override
 	public ImagePlus openStack(int timepoint, int angle, int planeStart, int planeInc, int nPlanes) {
 		if(nPlanes < 0)
 			nPlanes = (getDepth() - planeStart) / planeInc;
-	
+
 		String folderPattern = "tp%04d_view%d_angle%03d/";
 		String slicePattern = "0001_%04d.tif";
 
 		int view = 1 + (angle - getAngleStart()) / getAngleInc();
 		String folder = parentdir + String.format(folderPattern, timepoint, view, angle);
-	
+
 		ImageStack stack = new ImageStack(getWidth(), getHeight());
 
 		for(int i = 0; i < nPlanes; i ++) {
-			int plane = planeStart + i * planeInc;	
+			int plane = planeStart + i * planeInc;
 			String filename = String.format(slicePattern, plane);
 			ImagePlus imp = IJ.openImage(folder + filename);
 			if(imp == null)
@@ -121,7 +122,7 @@ public class OldTimelapseOpener extends Opener {
 					}
 				} catch(Exception e) {
 					IJ.log(folder + filename);
-				}	
+				}
 			}
 		}
 	}
@@ -182,7 +183,7 @@ public class OldTimelapseOpener extends Opener {
 			}
 		}
 	}
-	
+
 	public void correctPixels(int inc) {
 		String folderPattern = "tp%04d_view%d_angle%03d/";
 		String slicePattern = "0001_%04d.tif";
@@ -226,14 +227,17 @@ public class OldTimelapseOpener extends Opener {
 			timepoint = t0;
 		}
 
+		@Override
 		public boolean hasNext() {
 			return (angle + ainc) < (a0 + ainc * na) || (timepoint + tinc) < (t0 + tinc * nt);
 		}
 
+		@Override
 		public void remove() {
 			throw new UnsupportedOperationException();
 		}
 
+		@Override
 		public Iterator next() {
 			view++;
 			angle += ainc;

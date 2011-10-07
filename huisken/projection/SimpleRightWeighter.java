@@ -1,7 +1,6 @@
 package huisken.projection;
 
 import ij.ImagePlus;
-
 import ij.process.FloatProcessor;
 
 public class SimpleRightWeighter implements FusionWeight {
