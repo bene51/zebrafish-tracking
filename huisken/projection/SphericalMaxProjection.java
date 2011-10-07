@@ -1,7 +1,5 @@
 package huisken.projection;
 
-import ij.ImagePlus;
-import ij.ImageStack;
 import ij.process.ImageProcessor;
 
 import java.io.BufferedInputStream;
@@ -392,23 +390,6 @@ public class SphericalMaxProjection {
 				maxima[p.vIndex] = v;
 			}
 		}
-	}
-
-	public void project(ImagePlus image) {
-		ImageStack stack = image.getStack();
-		int d = image.getStackSize();
-		maxima = new float[sphere.nVertices];
-		for(int z = 0; z < d; z++) {
-			ImageProcessor ip = stack.getProcessor(z + 1);
-			for(Point4 p : lut[z]) {
-				float v = ip.getf(p.x, p.y);
-				if(v > maxima[p.vIndex]) {
-					maxima[p.vIndex] = v;
-				}
-			}
-		}
-		for(int i = 0; i < maxima.length; i++)
-			maxima[i] *= weights[i];
 	}
 
 	private final Point3f tmp = new Point3f();

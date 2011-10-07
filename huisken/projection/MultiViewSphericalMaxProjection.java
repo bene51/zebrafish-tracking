@@ -119,10 +119,16 @@ public class MultiViewSphericalMaxProjection {
 		int tp = iterator.timepoint;
 
 		// left ill
-		smp[a][0].project(left);
+		smp[a][0].startProjectStack();
+		for(int z = 0; z < left.getStackSize(); z++)
+			smp[a][0].projectPlane(z, left.getStack().getProcessor(z + 1));
+		smp[a][0].finishProjectStack();
 
 		// right ill
-		smp[a][1].project(right);
+		smp[a][1].startProjectStack();
+		for(int z = 0; z < right.getStackSize(); z++)
+			smp[a][1].projectPlane(z, right.getStack().getProcessor(z + 1));
+		smp[a][1].finishProjectStack();
 
 		// sum up left and right illumination
 		smp[a][0].addMaxima(smp[a][1].getMaxima());
