@@ -7,8 +7,6 @@ import ij.ImageStack;
 import ij.process.ImageProcessor;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.util.TreeSet;
 
 public class OldTimelapseOpener extends Opener {
@@ -18,7 +16,13 @@ public class OldTimelapseOpener extends Opener {
 	private final int w, h, d, angleStart, angleInc, nAngles, timepointStart, timepointInc, nTimepoints;
 	private final double pw, ph, pd;
 
+	private final boolean doublesided;
+
 	public OldTimelapseOpener(String parentdir, boolean doublesided) {
+		this.doublesided = doublesided;
+		if(!doublesided)
+			throw new UnsupportedOperationException("Only double-sided illumination is supported at the moment");
+
 		if(!parentdir.endsWith(File.separator))
 			parentdir += File.separator;
 		this.parentdir = parentdir;
@@ -31,7 +35,7 @@ public class OldTimelapseOpener extends Opener {
 		}
 		this.w = xml.width;
 		this.h = xml.height;
-		this.d = doublesided ? 2 * xml.depth : xml.depth;
+		this.d = xml.depth;
 		this.pw = xml.pw;
 		this.ph = xml.ph;
 		this.pd = xml.pd;
@@ -74,221 +78,41 @@ public class OldTimelapseOpener extends Opener {
 		System.out.println("nTimepoints = " + getNTimepoints());
 	}
 
+	/*
+	 * illumination is one of LEFT, RIGHT
+	 */
 	@Override
-	public ImagePlus openStack(int timepoint, int angle, int planeStart, int planeInc, int nPlanes) {
-		if(nPlanes < 0)
-			nPlanes = (getDepth() - planeStart) / planeInc;
-
+	public ImageProcessor openPlane(int timepoint, int angle, int plane, int illumination) {
 		String folderPattern = "tp%04d_view%d_angle%03d/";
 		String slicePattern = "0001_%04d.tif";
 
-		int view = 1 + (angle - getAngleStart()) / getAngleInc();
-		String folder = parentdir + String.format(folderPattern, timepoint, view, angle);
+		int p = doublesided ? plane : 2 * plane + illumination;
 
+		int view = 1 + (angle - getAngleStart()) / getAngleInc();
+		String file = parentdir
+				+ String.format(folderPattern, timepoint, view, angle)
+				+ String.format(slicePattern, p);
+
+		ImagePlus imp = IJ.openImage(file);
+		if(imp == null)
+			throw new RuntimeException("Cannot open " + (file));
+
+		return imp.getProcessor();
+	}
+
+	@Override
+	public ImagePlus openStack(int timepoint, int angle, int illumination) {
 		ImageStack stack = new ImageStack(getWidth(), getHeight());
 
-		for(int i = 0; i < nPlanes; i ++) {
-			int plane = planeStart + i * planeInc;
-			String filename = String.format(slicePattern, plane);
-			ImagePlus imp = IJ.openImage(folder + filename);
-			if(imp == null)
-				throw new RuntimeException("Cannot open " + (folder + filename));
-			stack.addSlice(filename, imp.getProcessor());
-			IJ.showProgress(i, nPlanes);
+		for(int z = 0; z < d; z ++) {
+			stack.addSlice("", openPlane(timepoint, angle, z, illumination));
+			IJ.showProgress(z + 1, d);
 		}
-		ImagePlus imp = new ImagePlus(folder, stack);
+		ImagePlus imp = new ImagePlus(parentdir, stack);
 		imp.getCalibration().pixelWidth  = getPixelWidth();
 		imp.getCalibration().pixelHeight = getPixelHeight();
 		imp.getCalibration().pixelDepth  = getPixelDepth();
 		return imp;
-	}
-
-	public void checkOpenable() {
-		String folderPattern = "tp%04d_view%d_angle%03d/";
-		String slicePattern = "0001_%04d.tif";
-
-		Iterator it = iterator();
-		while(it.next() != null) {
-			String folder = parentdir + String.format(folderPattern, it.timepoint, it.view, it.angle);
-			System.out.println(folder);
-
-			for(int z = 0; z < getDepth(); z++) {
-				int plane = z;
-				String filename = String.format(slicePattern, plane);
-				try {
-					ImagePlus imp = IJ.openImage(folder + filename);
-					if(imp == null) {
-						IJ.log(folder + filename);
-					}
-				} catch(Exception e) {
-					IJ.log(folder + filename);
-				}
-			}
-		}
-	}
-
-	public void correctNonOpenable(int inc) {
-		String folderPattern = "tp%04d_view%d_angle%03d/";
-		String slicePattern = "0001_%04d.tif";
-
-		Iterator it = iterator();
-		while(it.next() != null) {
-			String folder = parentdir + String.format(folderPattern, it.timepoint, it.view, it.angle);
-
-			for(int z = 0; z < getDepth(); z++) {
-				int plane = z;
-				String filename = String.format(slicePattern, plane);
-				ImagePlus imp = null;
-				try {
-					imp = IJ.openImage(folder + filename);
-				} catch(Exception e) {
-					imp = null;
-				}
-				if(imp != null)
-					continue;
-
-				IJ.log(folder + filename);
-				if(new File(folder, filename).renameTo(new File(folder, filename + ".orig"))) {
-					if(plane >= inc)
-						copyFile(new File(folder, String.format(slicePattern, plane - inc)), new File(folder, filename));
-					else
-						copyFile(new File(folder, String.format(slicePattern, plane + inc)), new File(folder, filename));
-				} else {
-					IJ.log("Could not rename " + (folder + filename));
-				}
-			}
-		}
-	}
-
-	public void checkPixels() {
-		String folderPattern = "tp%04d_view%d_angle%03d/";
-		String slicePattern = "0001_%04d.tif";
-
-		Iterator it = iterator();
-		while(it.next() != null) {
-			String folder = parentdir + String.format(folderPattern, it.timepoint, it.view, it.angle);
-
-			for(int z = 0; z < getDepth(); z++) {
-				int plane = z;
-				String filename = String.format(slicePattern, plane);
-				ImageProcessor ip = null;
-				try {
-					ip = IJ.openImage(folder + filename).getProcessor();
-					double max = ip.getMax();
-					if(max > 1 << 14)
-						IJ.log(folder + filename + ": " + max);
-				} catch(Exception e) {
-					IJ.log("Cannot open " + folder + filename);
-				}
-			}
-		}
-	}
-
-	public void correctPixels(int inc) {
-		String folderPattern = "tp%04d_view%d_angle%03d/";
-		String slicePattern = "0001_%04d.tif";
-
-		Iterator it = iterator();
-		while(it.next() != null) {
-			String folder = parentdir + String.format(folderPattern, it.timepoint, it.view, it.angle);
-
-			for(int z = 0; z < getDepth(); z++) {
-				int plane = z;
-				String filename = String.format(slicePattern, plane);
-				String alternate = String.format(slicePattern, plane - inc);
-				Correct.correct(folder + filename, folder + alternate, 1 << 15);
-			}
-		}
-	}
-
-	public Iterator iterator() {
-		return new Iterator(getTimepointStart(), getTimepointInc(), getNTimepoints(),
-				getAngleStart(), getAngleInc(), getNAngles());
-	}
-
-	// iterates outer: time and inner: angle
-	public class Iterator implements java.util.Iterator<Iterator> {
-		public final int t0, nt, tinc, a0, na, ainc;
-		public int timepoint, angle, view;
-
-		public Iterator(int t0, int tinc, int nt, int a0, int ainc, int na) {
-			this.t0 = t0;
-			this.nt = nt;
-			this.tinc = tinc;
-			this.a0 = a0;
-			this.na = na;
-			this.ainc = ainc;
-			reset();
-		}
-
-		public void reset() {
-			view = 0;
-			angle = a0 - ainc;
-			timepoint = t0;
-		}
-
-		@Override
-		public boolean hasNext() {
-			return (angle + ainc) < (a0 + ainc * na) || (timepoint + tinc) < (t0 + tinc * nt);
-		}
-
-		@Override
-		public void remove() {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public Iterator next() {
-			view++;
-			angle += ainc;
-			if(angle >= (a0 + ainc * na)) {
-				angle = a0;
-				view = 1;
-				timepoint += tinc;
-				if(timepoint >= (t0 + tinc * nt))
-					return null;
-			}
-			return this;
-		}
-	}
-
-	private static void copyFile(File in, File out) {
-		try {
-			FileInputStream fis = new FileInputStream(in);
-			FileOutputStream fos = new FileOutputStream(out);
-			int read = 0;
-			byte[] buffer = new byte[1024];
-			while((read = fis.read(buffer)) != -1) {
-				fos.write(buffer, 0, read);
-			}
-			fis.close();
-			fos.close();
-		} catch(Exception e) {
-			throw new RuntimeException("Error copying " + in, e);
-		}
-	}
-
-	public static void main(String[] args) {
-		String parentdir = "/Users/huiskenlab/Documents/SPIMdata/Jan/4view_sox17/recording_002_tif/";
-		OldTimelapseOpener to = new OldTimelapseOpener(parentdir, true);
-		to.print();
-
-/*
-		// open an example stack
-		to.openStack(40, 0, 0, 2, -1).show();
-
-		// check correct iteration
-		Iterator it = to.iterator();
-		while(it.next() != null)
-			System.out.println("timepoint = " + it.timepoint + " angle = " + it.angle + " view = " + it.view);
-
-		// check if all files can be opened
-		to.checkOpenable();
-
-
-		// check if all files have a correct pixel range
-		to.checkPixels();
-*/
 	}
 
 	@Override

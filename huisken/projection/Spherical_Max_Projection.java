@@ -103,16 +103,10 @@ public class Spherical_Max_Projection implements PlugIn {
 
 			for(int a = 0; a < nAngles; a++) {
 				int angle = angleStart + a * angleInc;
-
-				// left ill
-				ImagePlus left = opener.openStack(tp, angle, MultiViewSphericalMaxProjection.LEFT, 2, -1);
-
-				// right ill
-				ImagePlus right = opener.openStack(tp, angle, MultiViewSphericalMaxProjection.RIGHT, 2, -1);
-
 				for(int z = 0; z < nPlanes; z++) {
-					mmsmp.process(left.getStack().getProcessor(z + 1),
-						right.getStack().getProcessor(z + 1));
+					ImageProcessor left  = opener.openPlane(tp, angle, z, Opener.LEFT);
+					ImageProcessor right = opener.openPlane(tp, angle, z, Opener.RIGHT);
+					mmsmp.process(left, right);
 				}
 			}
 		}
@@ -124,7 +118,7 @@ public class Spherical_Max_Projection implements PlugIn {
 			int angle = angleStart + angleInc * a;
 
 			// left illumination
-			ImagePlus imp = opener.openStack(timepoint, angle, 0, 2, -1);
+			ImagePlus imp = opener.openStack(timepoint, angle, Opener.LEFT);
 			limitAreaForFitSphere(imp, FIT_SPHERE_THRESHOLD);
 			imp.show();
 			IJ.runMacro("setThreshold(" + FIT_SPHERE_THRESHOLD + ", 16000);");

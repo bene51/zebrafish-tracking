@@ -21,8 +21,8 @@ public class MultiViewSphericalMaxProjection {
 	private final AngleWeighter aw;
 	private Iterator iterator;
 
-	public static final int LEFT  = 0;
-	public static final int RIGHT = 0;
+	public static final int LEFT  = Opener.LEFT;
+	public static final int RIGHT = Opener.RIGHT;
 
 	public MultiViewSphericalMaxProjection(String outputdir,
 			int timepointStart, int timepointInc, int nTimepoints,
