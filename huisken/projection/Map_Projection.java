@@ -93,9 +93,6 @@ public class Map_Projection implements PlugIn {
 			files[i] = datadir + File.separator + files[i];
 		Arrays.sort(files);
 
-		int nVertices = smp.getSphere().nVertices;
-		float[] maxima = new float[nVertices];
-
 		for(String file : files) {
 			smp.loadMaxima(file);
 			String filename = new File(file).getName();

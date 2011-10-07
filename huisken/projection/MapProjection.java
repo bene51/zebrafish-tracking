@@ -1,7 +1,5 @@
 package huisken.projection;
 
-import ij.ImagePlus;
-
 import ij.process.ImageProcessor;
 
 public interface MapProjection {

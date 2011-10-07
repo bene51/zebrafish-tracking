@@ -1,23 +1,13 @@
 package huisken.projection;
 
-import ij.ImagePlus;
-
-import meshtools.ICP;
-import meshtools.IndexedTriangleMesh;
-
-import vib.FastMatrix;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
 
-import java.io.File;
-
-import java.util.Collections;
-import java.util.ArrayList;
-import java.util.Arrays;
-
 import math3d.JacobiDouble;
-
 import meshtools.PointMatch;
 import meshtools.PointOctree;
 

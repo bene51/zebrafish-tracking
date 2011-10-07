@@ -1,21 +1,15 @@
 package huisken.projection;
 
 import huisken.util.XMLReader;
-
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
-
 import ij.process.ImageProcessor;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
-
 import java.util.TreeSet;
-
-
 
 public class TimelapseOpener {
 

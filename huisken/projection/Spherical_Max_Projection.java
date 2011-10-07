@@ -1,29 +1,18 @@
 package huisken.projection;
 
 import fiji.util.gui.GenericDialogPlus;
-
 import huisken.fusion.HistogramFeatures;
-
 import ij.IJ;
 import ij.ImagePlus;
-
 import ij.gui.GenericDialog;
 import ij.gui.Roi;
 import ij.gui.WaitForUserDialog;
-
 import ij.plugin.PlugIn;
-
 import ij.process.ImageProcessor;
 
 import java.io.File;
 
-import meshtools.IndexedTriangleMesh;
-
-import vib.FastMatrix;
-
 import javax.vecmath.Point3f;
-
-
 
 public class Spherical_Max_Projection implements PlugIn {
 

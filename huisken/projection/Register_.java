@@ -1,16 +1,12 @@
 package huisken.projection;
 
 import fiji.util.gui.GenericDialogPlus;
-
 import ij.IJ;
-import ij.ImagePlus;
 import ij.Prefs;
-
 import ij.plugin.PlugIn;
 
 import java.io.File;
 import java.io.IOException;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

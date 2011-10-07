@@ -24,7 +24,6 @@ import java.util.HashMap;
 
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
-import javax.vecmath.Point3i;
 import javax.vecmath.Vector3f;
 
 import meshtools.IndexedTriangleMesh;
@@ -32,7 +31,6 @@ import vib.FastMatrix;
 import fiji.util.KDTree;
 import fiji.util.NNearestNeighborSearch;
 import fiji.util.node.Leaf;
-
 
 public class SphericalMaxProjection {
 
@@ -321,6 +319,8 @@ public class SphericalMaxProjection {
 
 		Vector3f dx = new Vector3f();
 		Point3f pos = new Point3f();
+
+		@SuppressWarnings("unchecked")
 		ArrayList<Point4>[] correspondences = new ArrayList[d];
 		for(int i = 0; i < d; i++)
 			correspondences[i] = new ArrayList<Point4>();
@@ -488,10 +488,6 @@ public class SphericalMaxProjection {
 		final int vIndex;
 		final int x, y, z;
 
-		public Point4(Point3i p, int vIndex) {
-			this(p.x, p.y, p.z, vIndex);
-		}
-
 		public Point4(int x, int y, int z, int vIndex) {
 			this.x = x;
 			this.y = y;
@@ -513,6 +509,7 @@ public class SphericalMaxProjection {
 			this.p = p;
 		}
 
+		@SuppressWarnings("unused")
 		public Node3D(final Node3D node) {
 			this.p = (Point3f)node.p.clone();
 		}
@@ -522,6 +519,7 @@ public class SphericalMaxProjection {
 			return true;
 		}
 
+		@SuppressWarnings("unused")
 		public boolean equals(final Node3D o) {
 	                 return p.equals(o.p);
 		}
