@@ -52,8 +52,6 @@ public class Spherical_Max_Projection implements PlugIn {
 		}
 	}
 
-	private Opener opener = null;
-
 	public void process(String datadir, String outputdir, int fittingTimepoint) {
 		Opener opener = null;
 		try {
@@ -85,7 +83,7 @@ public class Spherical_Max_Projection implements PlugIn {
 		Point3f[] centers = new Point3f[nAngles];
 		for(int i = 0; i < centers.length; i++)
 			centers[i] = new Point3f();
-		float radius = fitSpheres(fittingTimepoint, centers, angleStart, angleInc, nAngles);
+		float radius = fitSpheres(opener, fittingTimepoint, centers, angleStart, angleInc, nAngles);
 
 		MultiViewSphericalMaxProjection mmsmp = new MultiViewSphericalMaxProjection(
 				outputdir, timepointStart, timepointInc, nTimepoints,
@@ -112,7 +110,7 @@ public class Spherical_Max_Projection implements PlugIn {
 		}
 	}
 
-	private float fitSpheres(int timepoint, Point3f[] centers, int angleStart, int angleInc, int nAngles) {
+	private float fitSpheres(Opener opener, int timepoint, Point3f[] centers, int angleStart, int angleInc, int nAngles) {
 		float radius = 0;
 		for(int a = 0; a < nAngles; a++) {
 			int angle = angleStart + angleInc * a;
