@@ -9,17 +9,12 @@ import javax.vecmath.Vector3f;
 public class TriangleSubdivision {
 
 	private final Point3f p1;
-	private final Point3f p2;
-	private final Point3f p3;
-
 	private final Vector3f v21;
 	private final Vector3f v31;
 	private final int subd;
 
 	public TriangleSubdivision(Point3f p1, Point3f p2, Point3f p3, int subd) {
 		this.p1 = p1;
-		this.p2 = p2;
-		this.p3 = p3;
 		this.subd = subd;
 		v21 = new Vector3f();
 		v21.sub(p2, p1);

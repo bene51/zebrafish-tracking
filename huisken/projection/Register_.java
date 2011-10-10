@@ -1,16 +1,12 @@
 package huisken.projection;
 
 import fiji.util.gui.GenericDialogPlus;
-
 import ij.IJ;
-import ij.ImagePlus;
 import ij.Prefs;
-
 import ij.plugin.PlugIn;
 
 import java.io.File;
 import java.io.IOException;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -20,6 +16,7 @@ import javax.vecmath.Matrix4f;
 
 public class Register_ implements PlugIn {
 
+	@Override
 	public void run(String arg) {
 		String datadir = Prefs.get("register_sphere_proj.datadir", "");
 		String outputdir = Prefs.get("register_sphere_proj.outputdir", "");

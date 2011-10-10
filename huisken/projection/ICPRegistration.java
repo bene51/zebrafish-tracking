@@ -1,23 +1,13 @@
 package huisken.projection;
 
-import ij.ImagePlus;
-
-import meshtools.ICP;
-import meshtools.IndexedTriangleMesh;
-
-import vib.FastMatrix;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
 
-import java.io.File;
-
-import java.util.Collections;
-import java.util.ArrayList;
-import java.util.Arrays;
-
 import math3d.JacobiDouble;
-
 import meshtools.PointMatch;
 import meshtools.PointOctree;
 
@@ -131,12 +121,12 @@ public class ICPRegistration {
 		c1x = c1y = c1z = c2x = c2y = c2z = 0;
 
 		for (PointMatch m : pm) {
-			c1x += (double)m.p1.x;
-			c1y += (double)m.p1.y;
-			c1z += (double)m.p1.z;
-			c2x += (double)m.p2.x;
-			c2y += (double)m.p2.y;
-			c2z += (double)m.p2.z;
+			c1x += m.p1.x;
+			c1y += m.p1.y;
+			c1z += m.p1.z;
+			c2x += m.p2.x;
+			c2y += m.p2.y;
+			c2z += m.p2.z;
 		}
 		c1x /= pm.size();
 		c1y /= pm.size();
@@ -149,12 +139,12 @@ public class ICPRegistration {
 		double Sxx, Sxy, Sxz, Syx, Syy, Syz, Szx, Szy, Szz;
 		Sxx = Sxy = Sxz = Syx = Syy = Syz = Szx = Szy = Szz = 0;
 		for (PointMatch m : pm) {
-			double x1 = (double)m.p1.x - c1x;
-			double y1 = (double)m.p1.y - c1y;
-			double z1 = (double)m.p1.z - c1z;
-			double x2 = (double)m.p2.x - c2x;
-			double y2 = (double)m.p2.y - c2y;
-			double z2 = (double)m.p2.z - c2z;
+			double x1 = m.p1.x - c1x;
+			double y1 = m.p1.y - c1y;
+			double z1 = m.p1.z - c1z;
+			double x2 = m.p2.x - c2x;
+			double y2 = m.p2.y - c2y;
+			double z2 = m.p2.z - c2z;
 			Sxx += x1 * x2;
 			Sxy += x1 * y2;
 			Sxz += x1 * z2;

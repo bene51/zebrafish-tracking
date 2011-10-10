@@ -1,7 +1,5 @@
 package huisken.projection;
 
-import ij.ImagePlus;
-
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
@@ -14,7 +12,7 @@ public class MercatorProjection implements MapProjection {
 	private int h;
 
 	private int[][] vIndices;
-	private float[][] vertexWeights; 
+	private float[][] vertexWeights;
 
 	@Override
 	public void prepareForProjection(SphericalMaxProjection smp, int w) {
@@ -38,7 +36,7 @@ public class MercatorProjection implements MapProjection {
 			sinLongs[x] = (float)Math.sin(fx);
 			cosLongs[x] = (float)Math.cos(fx);
 		}
-		
+
 		float[] sinLats = new float[h];
 		float[] cosLats = new float[h];
 		for(int y = 0; y < h; y++) {
@@ -55,9 +53,9 @@ public class MercatorProjection implements MapProjection {
 			for(int x = 0; x < w; x++) {
 				int index = y * w + x;
 
-				p.x = (float)(smp.center.x + smp.radius * cosLats[y] * cosLongs[x]);
-				p.y = (float)(smp.center.y + smp.radius * cosLats[y] * sinLongs[x]);
-				p.z = (float)(smp.center.z + smp.radius * sinLats[y]);
+				p.x = (smp.center.x + smp.radius * cosLats[y] * cosLongs[x]);
+				p.y = (smp.center.y + smp.radius * cosLats[y] * sinLongs[x]);
+				p.z = (smp.center.z + smp.radius * sinLats[y]);
 
 				smp.getThreeNearestVertexIndices(p, vIndices[index]);
 
@@ -84,7 +82,7 @@ public class MercatorProjection implements MapProjection {
 				float v0 = vertexWeights[index][0] * maxima[vIndices[index][0]];
 				float v1 = vertexWeights[index][1] * maxima[vIndices[index][1]];
 				float v2 = vertexWeights[index][2] * maxima[vIndices[index][2]];
-				
+
 				ip.setf(x, y, v0 + v1 + v2);
 			}
 		}

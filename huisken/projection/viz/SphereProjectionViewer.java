@@ -1,37 +1,24 @@
 package huisken.projection.viz;
 
 import fiji.util.gui.GenericDialogPlus;
-
 import ij.IJ;
-
 import ij.gui.GenericDialog;
-
 import ij.plugin.PlugIn;
-
-import ij3d.*;
-
+import ij3d.Image3DUniverse;
 import ij3d.behaviors.InteractiveBehavior;
 
 import java.awt.TextField;
-
+import java.awt.event.KeyEvent;
 import java.awt.event.TextEvent;
 import java.awt.event.TextListener;
-import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
 import java.io.File;
-
-import java.util.ArrayList;
-import java.util.Scanner;
-
-import javax.vecmath.Point3f;
+import java.io.IOException;
 
 
 public class SphereProjectionViewer implements PlugIn {
+	@Override
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Sphere Projection Viewer");
 		gd.addDirectoryField("Data directory", "");
@@ -39,7 +26,7 @@ public class SphereProjectionViewer implements PlugIn {
 		if(gd.wasCanceled())
 			return;
 		String dir = gd.getNextString();
-		
+
 		String objfile = dir + File.separator + "Sphere.obj";
 		if(dir == null || objfile == null)
 			return;
@@ -75,12 +62,13 @@ public class SphereProjectionViewer implements PlugIn {
 	private static class CustomBehavior extends InteractiveBehavior {
 
 		private CustomContent cc;
-		
+
 		CustomBehavior(Image3DUniverse univ, CustomContent cc) {
 			super(univ);
 			this.cc = cc;
 		}
-	
+
+		@Override
 		public void doProcess(KeyEvent e) {
 			if(e.getID() != KeyEvent.KEY_PRESSED)
 				return;
@@ -93,6 +81,7 @@ public class SphereProjectionViewer implements PlugIn {
 				gd.addSlider("Maximum", 0, 1 << 14, oldMax);
 				gd.setModal(false);
 				gd.addWindowListener(new WindowAdapter() {
+					@Override
 					public void windowClosed(WindowEvent e) {
 						if(gd.wasCanceled()) {
 							cc.setDisplayedMinimum(oldMin);
@@ -103,6 +92,7 @@ public class SphereProjectionViewer implements PlugIn {
 				final TextField minTF = (TextField)gd.getNumericFields().get(0);
 				final TextField maxTF = (TextField)gd.getNumericFields().get(1);
 				minTF.addTextListener(new TextListener() {
+					@Override
 					public void textValueChanged(TextEvent e) {
 						try {
 							cc.setDisplayedMinimum(Integer.parseInt(minTF.getText()));
@@ -110,6 +100,7 @@ public class SphereProjectionViewer implements PlugIn {
 					}
 				});
 				maxTF.addTextListener(new TextListener() {
+					@Override
 					public void textValueChanged(TextEvent e) {
 						try {
 							cc.setDisplayedMaximum(Integer.parseInt(maxTF.getText()));

@@ -2,7 +2,6 @@ package huisken.projection;
 
 import ij.IJ;
 import ij.ImagePlus;
-
 import ij.process.Blitter;
 import ij.process.ImageProcessor;
 
@@ -47,7 +46,7 @@ public class Correct {
 			return;
 		}
 
-		
+
 		// copy bad region
 		ap.setRoi(0, firstbad, w, lastbad - firstbad);
 		ap = ap.crop();

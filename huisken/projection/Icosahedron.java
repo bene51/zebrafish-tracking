@@ -1,25 +1,19 @@
 package huisken.projection;
 
-import customnode.CustomPointMesh;
-import customnode.CustomTriangleMesh;
-
 import ij3d.Image3DUniverse;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 
-import meshtools.IndexedTriangleMesh;
-
+import javax.vecmath.Color3f;
 import javax.vecmath.Point3f;
 import javax.vecmath.Vector3f;
-import javax.vecmath.Color3f;
 
+import meshtools.IndexedTriangleMesh;
 import meshtools.PointOctree;
+import customnode.CustomPointMesh;
+import customnode.CustomTriangleMesh;
 
 public class Icosahedron extends IndexedTriangleMesh {
 
@@ -132,7 +126,7 @@ public class Icosahedron extends IndexedTriangleMesh {
 		univ.addCustomMesh(new CustomTriangleMesh(icosa.createMesh()), "icosahedron");
 
 		float r = 1f;
-		int subd = 5;	
+		int subd = 5;
 
 		IndexedTriangleMesh buckyball = icosa.createBuckyball(r, subd);
 		List<Point3f> spherepoints = Arrays.asList(buckyball.getVertices());

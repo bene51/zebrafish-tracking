@@ -1,52 +1,40 @@
 package huisken.projection;
 
-import ij.ImagePlus;
-import ij.ImageStack;
-
-import ij.measure.Calibration;
-
 import ij.process.ImageProcessor;
 
-import java.io.DataOutputStream;
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.EOFException;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 
-import javax.vecmath.Point3i;
+import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
 import javax.vecmath.Vector3f;
-import javax.vecmath.Matrix4f;
 
 import meshtools.IndexedTriangleMesh;
-
-import fiji.util.node.Leaf;
+import vib.FastMatrix;
 import fiji.util.KDTree;
 import fiji.util.NNearestNeighborSearch;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.DataInputStream;
-import java.io.EOFException;
-import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.PrintWriter;
-
-import vib.FastMatrix;
-
+import fiji.util.node.Leaf;
 
 public class SphericalMaxProjection {
 
 	// These fields are set in prepareForProjection();
-	private Point4[] lut;
+	private Point4[][] lut;
 	private float[] maxima;
-	private float[] distances;
 	private float[] weights;
 
 	// These fields must be set in the constructor and
@@ -187,11 +175,7 @@ public class SphericalMaxProjection {
 		saveFloatData(maxima, path);
 	}
 
-	public void saveDistances(String path) throws IOException {
-		saveFloatData(distances, path);
-	}
-
-	private void saveFloatData(float[] data, String path) throws IOException {
+	private static void saveFloatData(float[] data, String path) throws IOException {
 		DataOutputStream out = new DataOutputStream(
 			new BufferedOutputStream(
 				new FileOutputStream(path)));
@@ -202,10 +186,6 @@ public class SphericalMaxProjection {
 
 	public void loadMaxima(String file) throws IOException {
 		maxima = loadFloatData(file);
-	}
-
-	public void loadDistances(String file) throws IOException {
-		distances = loadFloatData(file);
 	}
 
 	private float[] loadFloatData(String file) throws IOException {
@@ -232,18 +212,9 @@ public class SphericalMaxProjection {
 		return maxima;
 	}
 
-	public float[] getDistances() {
-		return maxima;
-	}
-
 	public void addMaxima(float[] maxima) {
 		for(int i = 0; i < this.maxima.length; i++)
 			this.maxima[i] += maxima[i];
-	}
-
-	public void addDistances(float[] distances) {
-		for(int i = 0; i < this.distances.length; i++)
-			this.distances[i] += distances[i];
 	}
 
 	public void smooth() {
@@ -342,21 +313,15 @@ public class SphericalMaxProjection {
 		}
 	}
 
-	public void scaleMaximaAndDistances(AngleWeighter weighter) {
-		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
-			Point3f vertex = sphere.getVertices()[vIndex];
-			double w = weighter.getWeight(vertex, center);
-			maxima[vIndex] *= w;
-			distances[vIndex] *= w;
-		}
-	}
-
 	public void prepareForProjection(int w, int h, int d, double pw, double ph, double pd, FusionWeight weighter) {
 
 		Vector3f dx = new Vector3f();
 		Point3f pos = new Point3f();
-		Point3i imagePos = new Point3i();
-		ArrayList<Point4> correspondences = new ArrayList<Point4>();
+
+		@SuppressWarnings("unchecked")
+		ArrayList<Point4>[] correspondences = new ArrayList[d];
+		for(int i = 0; i < d; i++)
+			correspondences[i] = new ArrayList<Point4>();
 		weights = new float[sphere.nVertices];
 
 		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
@@ -372,71 +337,63 @@ public class SphericalMaxProjection {
 			float scale = 1f / (float)Math.max(Math.abs(dx.x / pw), Math.max(
 					Math.abs(dx.y / ph), Math.abs(dx.z / pd)));
 
-			int k = (int)Math.round(0.2f * radius / scale);
+			int k = Math.round(0.2f * radius / scale);
 
 			for(int i = -k; i <= k; i++) {
-				// TODO check if we are in the image at all
-
 				pos.scaleAdd(i * scale, dx, vertex);
 
 				// calculate the position in pixel dims
-				imagePos.x = (int)Math.round(pos.x / pw);
-				imagePos.y = (int)Math.round(pos.y / ph);
-				imagePos.z = (int)Math.round(pos.z / pd);
+				int x = (int)Math.round(pos.x / pw);
+				int y = (int)Math.round(pos.y / ph);
+				int z = (int)Math.round(pos.z / pd);
 
-				correspondences.add(new Point4(imagePos, vIndex));
+				// only add it if the pixel is inside the image
+				if(x >= 0 && x < w && y >= 0 && y < h && z >= 0 && z < d)
+					correspondences[z].add(new Point4(x, y, z, vIndex));
 			}
 		}
 
-		// sort according to ascending z coordinate
-		Collections.sort(correspondences, new Comparator<Point4>() {
+		final Comparator<Point4> comparator = new Comparator<Point4>() {
+			@Override
 			public int compare(Point4 p1, Point4 p2) {
 				if(p1.z < p2.z) return -1;
 				if(p1.z > p2.z) return +1;
 				return 0;
 			}
-		});
+		};
 
-		lut = new Point4[correspondences.size()];
-		correspondences.toArray(lut);
+		// sort according to ascending z coordinate and save
+		// in the lut
+		lut = new Point4[d][];
+		for(int i = 0; i < d; i++) {
+			Collections.sort(correspondences[i], comparator);
+			lut[i] = new Point4[correspondences[i].size()];
+			correspondences[i].toArray(lut[i]);
+		}
 	}
 
-	public void project(ImagePlus image) {
-		ImageStack stack = image.getStack();
-		Calibration cal = image.getCalibration();
-		double pw = cal.pixelWidth;
-		double ph = cal.pixelHeight;
-		double pd = cal.pixelDepth;
-		int w = image.getWidth(), h = image.getHeight();
-		int wh = w * h;
-		int d = image.getStackSize();
+	public void startProjectStack() {
 		maxima = new float[sphere.nVertices];
-		distances = new float[sphere.nVertices];
-		int lutIndex = 0;
-		Point3f rw = new Point3f();
-		for(int z = 0; z < d; z++) {
-			ImageProcessor ip = stack.getProcessor(z + 1);
-			Point4 p;
-			while(lutIndex < lut.length && (p = (Point4)lut[lutIndex++]).z == z) {
-				float v = 0;
-				if(p.x >= 0 && p.x < w && p.y >= 0 && p.y < h)
-					v = ip.getf(p.x, p.y);
-				if(v > maxima[p.vIndex]) {
-					maxima[p.vIndex] = v;
-					rw.set((float)pw * p.x,
-						(float)ph * p.y,
-						(float)pd * p.z);
-					distances[p.vIndex] = rw.distance(center);
-				}
-			}
-			lutIndex--;
-		}
+	}
+
+	public void finishProjectStack() {
 		for(int i = 0; i < maxima.length; i++)
 			maxima[i] *= weights[i];
 	}
 
-	Point3f tmp = new Point3f();
-	Point3f[] nn = new Point3f[3];
+	/*
+	 * z starts with 0;
+	 */
+	public void projectPlane(int z, ImageProcessor ip) {
+		for(Point4 p : lut[z]) {
+			float v = ip.getf(p.x, p.y);
+			if(v > maxima[p.vIndex]) {
+				maxima[p.vIndex] = v;
+			}
+		}
+	}
+
+	private final Point3f tmp = new Point3f();
 	// in radians
 	public float get(float longitude, float latitude) {
 		return get(Math.sin(longitude), Math.cos(longitude), Math.sin(latitude), Math.cos(latitude));
@@ -485,6 +442,7 @@ public class SphericalMaxProjection {
 		ret[2] = vertexToIndex.get(nn[2].p);
 	}
 
+	@Override
 	public SphericalMaxProjection clone() {
 		SphericalMaxProjection cp = new SphericalMaxProjection(this.sphere, this.center, this.radius);
 		if(this.weights != null) {
@@ -495,14 +453,13 @@ public class SphericalMaxProjection {
 			cp.maxima = new float[this.maxima.length];
 			System.arraycopy(this.maxima, 0, cp.maxima, 0, this.maxima.length);
 		}
-		if(this.distances != null) {
-			cp.distances = new float[this.distances.length];
-			System.arraycopy(this.distances, 0, cp.distances, 0, this.distances.length);
-		}
 		if(this.lut != null) {
-			cp.lut = new Point4[this.lut.length];
-			for(int i = 0; i < this.lut.length; i++)
-				cp.lut[i] = this.lut[i].clone();
+			cp.lut = new Point4[this.lut.length][];
+			for(int z = 0; z < this.lut.length; z++) {
+				cp.lut[z] = new Point4[this.lut[z].length];
+				for(int i = 0; i < this.lut[z].length; i++)
+					cp.lut[z][i] = this.lut[z][i].clone();
+			}
 		}
 		return cp;
 	}
@@ -514,10 +471,6 @@ public class SphericalMaxProjection {
 		final int vIndex;
 		final int x, y, z;
 
-		public Point4(Point3i p, int vIndex) {
-			this(p.x, p.y, p.z, vIndex);
-		}
-
 		public Point4(int x, int y, int z, int vIndex) {
 			this.x = x;
 			this.y = y;
@@ -525,6 +478,7 @@ public class SphericalMaxProjection {
 			this.vIndex = vIndex;
 		}
 
+		@Override
 		public Point4 clone() {
 			return new Point4(this.x, this.y, this.z, this.vIndex);
 		}
@@ -539,6 +493,7 @@ public class SphericalMaxProjection {
 			this.p = p;
 		}
 
+		@SuppressWarnings("unused")
 		public Node3D(final Node3D node) {
 			this.p = (Point3f)node.p.clone();
 		}
@@ -548,6 +503,7 @@ public class SphericalMaxProjection {
 			return true;
 		}
 
+		@SuppressWarnings("unused")
 		public boolean equals(final Node3D o) {
 	                 return p.equals(o.p);
 		}

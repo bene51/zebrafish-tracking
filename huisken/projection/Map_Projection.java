@@ -1,15 +1,12 @@
 package huisken.projection;
 
 import fiji.util.gui.GenericDialogPlus;
-
 import ij.IJ;
 import ij.ImagePlus;
-
 import ij.plugin.PlugIn;
 
 import java.io.File;
 import java.io.IOException;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -24,6 +21,7 @@ public class Map_Projection implements PlugIn {
 
 	public static final String[] MAP_TYPES = new String[] {"Mercator", "Gall-Peter", "Fuller", "Polar transform"};
 
+	@Override
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Create 2D Maps");
 		gd.addDirectoryField("Data directory", "");
@@ -92,9 +90,6 @@ public class Map_Projection implements PlugIn {
 		for(int i = 0; i < files.length; i++)
 			files[i] = datadir + File.separator + files[i];
 		Arrays.sort(files);
-
-		int nVertices = smp.getSphere().nVertices;
-		float[] maxima = new float[nVertices];
 
 		for(String file : files) {
 			smp.loadMaxima(file);

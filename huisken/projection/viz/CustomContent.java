@@ -1,32 +1,23 @@
 package huisken.projection.viz;
 
-import customnode.CustomTriangleMesh;
-import customnode.CustomMeshNode;
-
 import huisken.projection.SphericalMaxProjection;
-
-import javax.vecmath.Point3f;
-import javax.vecmath.Color3f;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Arrays;
-
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
-import java.io.EOFException;
-import java.io.FileInputStream;
-import java.io.IOException;
-
-import javax.media.j3d.GeometryArray;
-import javax.media.j3d.TriangleArray;
-import javax.media.j3d.IndexedTriangleArray;
-
-import ij3d.Image3DUniverse;
-import ij3d.ContentInstant;
 import ij3d.Content;
+import ij3d.ContentInstant;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import javax.media.j3d.GeometryArray;
+import javax.media.j3d.IndexedTriangleArray;
+import javax.media.j3d.TriangleArray;
+import javax.vecmath.Color3f;
+import javax.vecmath.Point3f;
+
+import customnode.CustomMeshNode;
+import customnode.CustomTriangleMesh;
 
 public class CustomContent extends Content {
 
@@ -68,7 +59,7 @@ public class CustomContent extends Content {
 		}
 		mesh = new CustomIndexedTriangleMesh(smp.getSphere().getVertices(), colors, smp.getSphere().getFaces());
 		CustomMeshNode node = new CustomMeshNode(mesh);
-	
+
 		ContentInstant content = getInstant(0);
 		content.display(node);
 
@@ -119,7 +110,7 @@ public class CustomContent extends Content {
 
 	public void setDisplayedMaximum(float max) {
 		displayedMaximum = max;
-		updateDisplayRange();	
+		updateDisplayRange();
 	}
 
 	private void updateDisplayRange() {
