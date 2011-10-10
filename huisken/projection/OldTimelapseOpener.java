@@ -86,7 +86,7 @@ public class OldTimelapseOpener extends Opener {
 		String folderPattern = "tp%04d_view%d_angle%03d/";
 		String slicePattern = "0001_%04d.tif";
 
-		int p = doublesided ? plane : 2 * plane + illumination;
+		int p = doublesided ? 2 * plane + illumination : plane;
 
 		int view = 1 + (angle - getAngleStart()) / getAngleInc();
 		String file = parentdir
