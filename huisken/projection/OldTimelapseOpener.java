@@ -3,7 +3,6 @@ package huisken.projection;
 import huisken.util.XMLReader;
 import ij.IJ;
 import ij.ImagePlus;
-import ij.ImageStack;
 import ij.process.ImageProcessor;
 
 import java.io.File;
@@ -98,21 +97,6 @@ public class OldTimelapseOpener extends Opener {
 			throw new RuntimeException("Cannot open " + (file));
 
 		return imp.getProcessor();
-	}
-
-	@Override
-	public ImagePlus openStack(int timepoint, int angle, int illumination) {
-		ImageStack stack = new ImageStack(getWidth(), getHeight());
-
-		for(int z = 0; z < d; z ++) {
-			stack.addSlice("", openPlane(timepoint, angle, z, illumination));
-			IJ.showProgress(z + 1, d);
-		}
-		ImagePlus imp = new ImagePlus(parentdir, stack);
-		imp.getCalibration().pixelWidth  = getPixelWidth();
-		imp.getCalibration().pixelHeight = getPixelHeight();
-		imp.getCalibration().pixelDepth  = getPixelDepth();
-		return imp;
 	}
 
 	@Override

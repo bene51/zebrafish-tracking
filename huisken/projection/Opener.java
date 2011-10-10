@@ -1,6 +1,8 @@
 package huisken.projection;
 
+import ij.IJ;
 import ij.ImagePlus;
+import ij.ImageStack;
 import ij.process.ImageProcessor;
 
 public abstract class Opener {
@@ -21,7 +23,20 @@ public abstract class Opener {
 	public abstract double getPixelHeight();
 	public abstract double getPixelDepth();
 
-	public abstract ImagePlus openStack(int timepoint, int angle, int illumination);
+	public ImagePlus openStack(int timepoint, int angle, int illumination) {
+		ImageStack stack = new ImageStack(getWidth(), getHeight());
+
+		int d = getDepth();
+		for(int z = 0; z < d; z ++) {
+			stack.addSlice("", openPlane(timepoint, angle, z, illumination));
+			IJ.showProgress(z + 1, d);
+		}
+		ImagePlus imp = new ImagePlus("", stack);
+		imp.getCalibration().pixelWidth  = getPixelWidth();
+		imp.getCalibration().pixelHeight = getPixelHeight();
+		imp.getCalibration().pixelDepth  = getPixelDepth();
+		return imp;
+	}
 
 	public abstract ImageProcessor openPlane(int timepoint, int angle, int plane, int illumination);
 }
