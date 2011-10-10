@@ -2,28 +2,25 @@ package huisken.micha;
 
 import ij.IJ;
 import ij.ImagePlus;
-
 import ij.gui.PolygonRoi;
 import ij.gui.Roi;
-
 import ij.measure.ResultsTable;
-
 import ij.plugin.filter.PlugInFilter;
-
 import ij.process.ImageProcessor;
 
 import java.awt.Polygon;
 
-
-
 public class Roi_Profiles implements PlugInFilter {
 	protected ImagePlus image;
 
+	@Override
 	public int setup(String arg, ImagePlus image) {
 		this.image = image;
 		return DOES_8G | DOES_16 | DOES_32;
 	}
 
+	@SuppressWarnings("deprecation")
+	@Override
 	public void run(ImageProcessor ip) {
 		Roi roi = image.getRoi();
 		if(!(roi instanceof PolygonRoi)) {
@@ -81,21 +78,16 @@ public class Roi_Profiles implements PlugInFilter {
 
 	private static final class LineIterator {
 
-		int x1, y1;
 		int x2, y2;
 		int dx, dy;
 		boolean finished;
 		double x, y, dx_dt, dy_dt;
-
-		public LineIterator() {}
 
 		public LineIterator(int x1, int y1, int x2, int y2) {
 			init(x1, y1, x2, y2);
 		}
 
 		public void init(int x1, int y1, int x2, int y2) {
-			this.x1 = x1; this.x2 = x2;
-			this.y1 = y1; this.y2 = y2;
 			this.x = x1;
 			this.y = y1;
 
