@@ -18,17 +18,24 @@ public class Spherical_Max_Projection implements PlugIn {
 
 	public static final float FIT_SPHERE_THRESHOLD = 1600f;
 
+	public static final int OLD_FOLDER_STRUCTURE = 0;
+	public static final int New_FOLDER_STRUCTURE = 1;
+
 	@Override
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Spherical_Max_Projection");
 		gd.addDirectoryField("Data directory", "");
 		gd.addNumericField("Timepoint used for sphere fitting", 1, 0);
+		String[] types = new String[] { "New folder structure", "Old folder structure" };
+		gd.addChoice("Data source", types, types[0]);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
 
 		File datadir = new File(gd.getNextString());
 		int fittingTimepoint = (int)gd.getNextNumber();
+		int source = gd.getNextChoiceIndex();
+
 		if(!datadir.isDirectory()) {
 			IJ.error(datadir + " is not a directory");
 			return;
@@ -45,17 +52,20 @@ public class Spherical_Max_Projection implements PlugIn {
 		}
 
 		try {
-			process(datadir.getAbsolutePath(), outputdir.getAbsolutePath(), fittingTimepoint);
+			process(source, datadir.getAbsolutePath(), outputdir.getAbsolutePath(), fittingTimepoint);
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
 		}
 	}
 
-	public void process(String datadir, String outputdir, int fittingTimepoint) {
+	public void process(int source, String datadir, String outputdir, int fittingTimepoint) {
 		Opener opener = null;
 		try {
-			opener = new OldTimelapseOpener(datadir, true);
+			switch(source) {
+			case New_FOLDER_STRUCTURE: opener = new NewTimelapseOpener(datadir, true); break;
+			case OLD_FOLDER_STRUCTURE: opener = new OldTimelapseOpener(datadir, true); break;
+			}
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot open timelapse", e);
 		}
