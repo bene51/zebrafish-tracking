@@ -38,7 +38,7 @@ public class SphereProjectionViewer implements PlugIn {
 		}
 	}
 
-	public void show(String objfile, String vertexDir) {
+	public static Image3DUniverse show(String objfile, String vertexDir) {
 
 		// load mesh
 		CustomContent content = null;
@@ -53,9 +53,11 @@ public class SphereProjectionViewer implements PlugIn {
 		univ.show();
 
 		univ.addContent(content);
+
+		return univ;
 	}
 
-	public CustomContent readMesh(String objpath, String vertexDir) throws IOException {
+	public static CustomContent readMesh(String objpath, String vertexDir) throws IOException {
 		return new CustomContent(objpath, vertexDir);
 	}
 

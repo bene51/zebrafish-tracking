@@ -1,9 +1,12 @@
 package huisken.projection;
 
 import fiji.util.gui.GenericDialogPlus;
+import huisken.projection.viz.SphereProjectionViewer;
 import ij.IJ;
 import ij.Prefs;
+import ij.gui.WaitForUserDialog;
 import ij.plugin.PlugIn;
+import ij3d.Image3DUniverse;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import javax.media.j3d.Transform3D;
 import javax.vecmath.Matrix4f;
 
 
@@ -35,15 +39,24 @@ public class Register_ implements PlugIn {
 		Prefs.set("register_sphere_proj.outputdir", outputdir);
 		Prefs.savePreferences();
 
+		Matrix4f initial = new Matrix4f();
+		Image3DUniverse univ = SphereProjectionViewer.show(datadir + "/Sphere.obj", datadir);
+		new WaitForUserDialog("",
+			"Please rotate the sphere to the desired orientation, then click OK").show();
+		Transform3D trans = new Transform3D();
+		univ.getContent("bla").getLocalRotate(trans);
+		trans.get(initial);
+		univ.close();
+
 		try {
-			register(datadir, outputdir, threshold);
+			register(datadir, outputdir, threshold, initial);
 		} catch(Exception e) {
-			IJ.error(e.getMessage());
+		IJ.error(e.getMessage());
 			e.printStackTrace();
 		}
 	}
 
-	public void register(String dataDirectory, String outputDirectory, float threshold) throws IOException {
+	public void register(String dataDirectory, String outputDirectory, float threshold, Matrix4f initial) throws IOException {
 		// check and create files and folders
 		if(!new File(dataDirectory).isDirectory())
 			throw new IllegalArgumentException(dataDirectory + " is not a directory");
@@ -80,7 +93,10 @@ public class Register_ implements PlugIn {
 		// load spherical maximum projection for source and reference
 		SphericalMaxProjection src = new SphericalMaxProjection(objfile.getAbsolutePath());
 		SphericalMaxProjection tgt = new SphericalMaxProjection(objfile.getAbsolutePath());
+
+		// save the first time point, the reference, which is not transformed
 		tgt.loadMaxima(dataDirectory + files[0]);
+		tgt.applyTransform(initial);
 		tgt.saveMaxima(outputDirectory + files[0]);
 
 		// save sphere
@@ -100,7 +116,8 @@ public class Register_ implements PlugIn {
 			mat.setIdentity();
 			new ICPRegistration(tgt, src, threshold).register(mat, src.center);
 			overall.mul(mat, overall);
-			srcOrig.applyTransform(overall);
+			mat.mul(initial, overall);
+			srcOrig.applyTransform(mat);
 			srcOrig.saveMaxima(outputDirectory + files[i]);
 			IJ.showProgress(i, files.length);
 		}
