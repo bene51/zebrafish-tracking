@@ -282,10 +282,7 @@ public class SphericalMaxProjection {
 			p.set(vertices[i]);
 			inverse.apply(p.x, p.y, p.z);
 			p.set((float)inverse.x, (float)inverse.y, (float)inverse.z);
-			p.sub(center); // TODO transform the center too?
-			double lat = Math.asin(p.z / radius);
-			double lon = Math.atan2(p.y / radius, p.x / radius);
-			newmaxima[i] = get((float)lon, (float)lat);
+			newmaxima[i] = getValueOfNearestNeighbor(p); // get((float)lon, (float)lat);
 		}
 		maxima = newmaxima;
 	}
@@ -297,10 +294,7 @@ public class SphericalMaxProjection {
 		for(int i = 0; i < vertices.length; i++) {
 			p.set(vertices[i]);
 			inverse.transform(p);
-			p.sub(center); // TODO transform the center too?
-			double lat = Math.asin(p.z / radius);
-			double lon = Math.atan2(p.y / radius, p.x / radius);
-			newmaxima[i] = get((float)lon, (float)lat);
+			newmaxima[i] = getValueOfNearestNeighbor(p); // ((float)lon, (float)lat);
 		}
 		maxima = newmaxima;
 	}
