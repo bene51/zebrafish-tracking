@@ -14,24 +14,25 @@ import meshtools.PointOctree;
 
 public class ICPRegistration {
 
-	public static final float THRESHOLD = 1600f;
+	private final float maximaThreshold;
 
 	private final SphericalMaxProjection tgt;
 	private final SphericalMaxProjection src;
 
 	// assume the maxima are loaded
-	public ICPRegistration(SphericalMaxProjection tgt, SphericalMaxProjection src) {
+	public ICPRegistration(SphericalMaxProjection tgt, SphericalMaxProjection src, float maximaThreshold) {
 		this.tgt = tgt;
 		this.src = src;
+		this.maximaThreshold = maximaThreshold;
 	}
 
-	private static Point3f[] filter(SphericalMaxProjection mesh) {
+	private static Point3f[] filter(SphericalMaxProjection mesh, float maximaThreshold) {
 		float[] maxima = mesh.getMaxima();
 		boolean[] isMax = mesh.isMaximum();
 		Point3f[] vertices = mesh.getSphere().getVertices();
 		ArrayList<Point3f> pts = new ArrayList<Point3f>();
 		for(int i = 0; i < maxima.length; i++)
-			if(isMax[i] && maxima[i] > THRESHOLD)
+			if(isMax[i] && maxima[i] > maximaThreshold)
 				pts.add(new Point3f(vertices[i]));
 		Point3f[] ret = new Point3f[pts.size()];
 		pts.toArray(ret);
@@ -39,8 +40,8 @@ public class ICPRegistration {
 	}
 
 	public float register(Matrix4f mat, Point3f cor) {
-		Point3f[] sSphere = filter(src);
-		Point3f[] tSphere = filter(tgt);
+		Point3f[] sSphere = filter(src, maximaThreshold);
+		Point3f[] tSphere = filter(tgt, maximaThreshold);
 		float mse = icp(sSphere, tSphere, mat, cor, 500, 0.8f);
 		System.out.println(mat);
 		return mse;

@@ -23,25 +23,27 @@ public class Register_ implements PlugIn {
 		GenericDialogPlus gd = new GenericDialogPlus("Register sphere projections");
 		gd.addDirectoryField("Data directory", datadir);
 		gd.addDirectoryField("Output directory", outputdir);
+		gd.addNumericField("Threshold for maxima", Spherical_Max_Projection.FIT_SPHERE_THRESHOLD, 3);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
 		datadir = gd.getNextString();
 		outputdir = gd.getNextString();
+		float threshold = (float)gd.getNextNumber();
 
 		Prefs.set("register_sphere_proj.datadir", datadir);
 		Prefs.set("register_sphere_proj.outputdir", outputdir);
 		Prefs.savePreferences();
 
 		try {
-			register(datadir, outputdir);
+			register(datadir, outputdir, threshold);
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
 		}
 	}
 
-	public void register(String dataDirectory, String outputDirectory) throws IOException {
+	public void register(String dataDirectory, String outputDirectory, float threshold) throws IOException {
 		// check and create files and folders
 		if(!new File(dataDirectory).isDirectory())
 			throw new IllegalArgumentException(dataDirectory + " is not a directory");
@@ -96,7 +98,7 @@ public class Register_ implements PlugIn {
 			src.smooth();
 			Matrix4f mat = new Matrix4f();
 			mat.setIdentity();
-			new ICPRegistration(tgt, src).register(mat, src.center);
+			new ICPRegistration(tgt, src, threshold).register(mat, src.center);
 			overall.mul(mat, overall);
 			srcOrig.applyTransform(overall);
 			srcOrig.saveMaxima(outputDirectory + files[i]);
