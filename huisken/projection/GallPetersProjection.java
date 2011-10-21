@@ -32,7 +32,7 @@ public class GallPetersProjection implements MapProjection {
 		float[] sinLongs = new float[w];
 		float[] cosLongs = new float[w];
 		for(int x = 0; x < w; x++) {
-			double fx = x * dx;
+			double fx = dx * x;
 			sinLongs[x] = (float)Math.sin(fx);
 			cosLongs[x] = (float)Math.cos(fx);
 		}
@@ -40,7 +40,7 @@ public class GallPetersProjection implements MapProjection {
 		float[] sinLats = new float[h];
 		float[] cosLats = new float[h];
 		for(int y = 0; y < h; y++) {
-			double fy = dx * (y - h2);
+			double fy = -dx * (y - h2);
 			// sinLats[y] = (float)Math.sin(Math.asin(fy / 2.0));
 			sinLats[y] = (float)(fy / 2.0);
 			cosLats[y] = (float)Math.cos(Math.asin(fy / 2.0));
@@ -54,9 +54,7 @@ public class GallPetersProjection implements MapProjection {
 			for(int x = 0; x < w; x++) {
 				int index = y * w + x;
 
-				p.x = (smp.center.x + smp.radius * cosLats[y] * cosLongs[x]);
-				p.y = (smp.center.y + smp.radius * cosLats[y] * sinLongs[x]);
-				p.z = (smp.center.z + smp.radius * sinLats[y]);
+				smp.getPoint(sinLongs[x], cosLongs[x], sinLats[y], cosLats[y], p);
 
 				smp.getThreeNearestVertexIndices(p, vIndices[index]);
 

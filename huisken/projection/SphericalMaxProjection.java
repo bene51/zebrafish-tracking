@@ -398,15 +398,23 @@ public class SphericalMaxProjection {
 		return get(Math.sin(longitude), Math.cos(longitude), Math.sin(latitude), Math.cos(latitude));
 	}
 
-	public float get(double sinLong, double cosLong, double sinLat, double cosLat) {
-		// get point on sphere
-		tmp.x = (float)(center.x + radius * cosLat * cosLong);
-		tmp.y = (float)(center.y + radius * cosLat * sinLong);
-		tmp.z = (float)(center.z + radius * sinLat);
-		return get(tmp);
+	public void getPoint(float longitude, float latitude, Point3f ret) {
+		getPoint(Math.sin(longitude), Math.cos(longitude), Math.sin(latitude), Math.cos(latitude), ret);
 	}
 
-	public float get(Point3f p) {
+	public void getPoint(double sinLong, double cosLong, double sinLat, double cosLat, Point3f ret) {
+		ret.z = (float)(center.z + radius * cosLat * cosLong);
+		ret.x = (float)(center.x - radius * cosLat * sinLong);
+		ret.y = (float)(center.y - radius * sinLat);
+	}
+
+	public float get(double sinLong, double cosLong, double sinLat, double cosLat) {
+		// get point on sphere
+		getPoint(sinLong, cosLong, sinLat, cosLat, tmp);
+		return getValueOfNearestNeighbor(tmp);
+	}
+
+	public float getValueOfNearestNeighbor(Point3f p) {
 		// get three nearest neighbors
 		Node3D[] nn = nnSearch.findNNearestNeighbors(new Node3D(p), 3);
 		int i0 = vertexToIndex.get(nn[0].p);

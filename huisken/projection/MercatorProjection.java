@@ -40,7 +40,7 @@ public class MercatorProjection implements MapProjection {
 		float[] sinLats = new float[h];
 		float[] cosLats = new float[h];
 		for(int y = 0; y < h; y++) {
-			double fy = dx * (y-h2);
+			double fy = -dx * (y-h2);
 			sinLats[y] = (float)Math.sin(2 * Math.atan(Math.exp(fy)) - Math.PI / 2);
 			cosLats[y] = (float)Math.cos(2 * Math.atan(Math.exp(fy)) - Math.PI / 2);
 		}
@@ -53,9 +53,7 @@ public class MercatorProjection implements MapProjection {
 			for(int x = 0; x < w; x++) {
 				int index = y * w + x;
 
-				p.x = (smp.center.x + smp.radius * cosLats[y] * cosLongs[x]);
-				p.y = (smp.center.y + smp.radius * cosLats[y] * sinLongs[x]);
-				p.z = (smp.center.z + smp.radius * sinLats[y]);
+				smp.getPoint(sinLongs[x], cosLongs[x], sinLats[y], cosLats[y], p);
 
 				smp.getThreeNearestVertexIndices(p, vIndices[index]);
 
