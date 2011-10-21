@@ -108,8 +108,7 @@ public class SphericalMaxProjection {
 
 	private static IndexedTriangleMesh createSphere(Point3f center, float radius, int subd) {
 		// calculate the sphere coordinates
-		float tao = 1.61803399f;
-		Icosahedron icosa = new Icosahedron(tao, radius);
+		Icosahedron icosa = new Icosahedron(radius);
 
 		IndexedTriangleMesh sphere = icosa.createBuckyball(radius, subd);
 		for(Point3f p : sphere.getVertices())

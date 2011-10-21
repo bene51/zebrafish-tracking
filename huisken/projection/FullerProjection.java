@@ -54,8 +54,7 @@ public class FullerProjection implements MapProjection {
 		double s = w / 5.5;
 		this.h = (int)Math.round(3 * BLA * s);
 
-		float tao = 1.61803399f;
-		Icosahedron icosa = new Icosahedron(tao, smp.radius);
+		Icosahedron icosa = new Icosahedron(smp.radius);
 		for(Point3f p : icosa.getVertices())
 			p.add(smp.center);
 		IndexedTriangleMesh flatIcosa = icosa.createFlatVersion((float)s);

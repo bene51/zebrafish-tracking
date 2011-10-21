@@ -17,12 +17,14 @@ import customnode.CustomTriangleMesh;
 
 public class Icosahedron extends IndexedTriangleMesh {
 
-	public static Point3f[] createVertices(float tao, float r) {
+	private static final float TAO = 1.61803399f;
+
+	public static Point3f[] createVertices(float r) {
 		Point3f[] v = new Point3f[] {
-			new Point3f(1, tao, 0), new Point3f(-1, tao, 0), new Point3f(1, -tao, 0), new Point3f(-1, -tao, 0),
-			new Point3f(0, 1, tao), new Point3f(0, -1, tao), new Point3f(0, 1, -tao), new Point3f(0, -1, -tao),
-			new Point3f(tao, 0, 1), new Point3f(-tao, 0, 1), new Point3f(tao, 0, -1), new Point3f(-tao, 0, -1)};
-		float scale = (float)Math.sqrt((r * r) / (1f + tao * tao));
+			new Point3f(1, TAO, 0), new Point3f(-1, TAO, 0), new Point3f(1, -TAO, 0), new Point3f(-1, -TAO, 0),
+			new Point3f(0, 1, TAO), new Point3f(0, -1, TAO), new Point3f(0, 1, -TAO), new Point3f(0, -1, -TAO),
+			new Point3f(TAO, 0, 1), new Point3f(-TAO, 0, 1), new Point3f(TAO, 0, -1), new Point3f(-TAO, 0, -1)};
+		float scale = (float)Math.sqrt((r * r) / (1f + TAO * TAO));
 		for(Point3f p : v)
 			p.scale(scale);
 		return v;
@@ -37,8 +39,8 @@ public class Icosahedron extends IndexedTriangleMesh {
 			3, 11, 7, 11, 6, 7, 6, 0, 10, 9, 1, 11};
 	}
 
-	public Icosahedron(float tao, float r) {
-		super(createVertices(tao, r), createFaces());
+	public Icosahedron(float r) {
+		super(createVertices(r), createFaces());
 	}
 
 	public IndexedTriangleMesh createFlatVersion(float s) {
@@ -118,11 +120,10 @@ public class Icosahedron extends IndexedTriangleMesh {
 	}
 
 	public static void main(String[] args) {
-		float tao = 1.61803399f;
 		Image3DUniverse univ = new Image3DUniverse();
 		univ.show();
 
-		Icosahedron icosa = new Icosahedron(tao, 1f);
+		Icosahedron icosa = new Icosahedron(1f);
 		univ.addCustomMesh(new CustomTriangleMesh(icosa.createMesh()), "icosahedron");
 
 		float r = 1f;
