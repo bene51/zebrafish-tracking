@@ -1,6 +1,7 @@
 package huisken.projection.viz;
 
 import huisken.projection.SphericalMaxProjection;
+import huisken.projection.Spherical_Max_Projection;
 import ij3d.Content;
 import ij3d.ContentInstant;
 
@@ -30,6 +31,8 @@ public class CustomContent extends Content {
 	private final SphericalMaxProjection smp;
 
 	private boolean showMaxima = false;
+
+	private float maximaThreshold = Spherical_Max_Projection.FIT_SPHERE_THRESHOLD;
 
 	public CustomContent(String objfile, String vertexDir) throws IOException {
 
@@ -67,6 +70,10 @@ public class CustomContent extends Content {
 		displayedMaximum = getCurrentMaximum();
 	}
 
+	public boolean areMaximaShown() {
+		return showMaxima;
+	}
+
 	public void toggleShowMaxima() {
 		showMaxima = !showMaxima;
 		updateDisplayRange();
@@ -75,6 +82,14 @@ public class CustomContent extends Content {
 	public void smooth() {
 		smp.smooth();
 		updateDisplayRange();
+	}
+
+	public float getMaximaThreshold() {
+		return maximaThreshold;
+	}
+
+	public void setMaximaThreshold(float maximaThreshold) {
+		this.maximaThreshold = maximaThreshold;
 	}
 
 	public float getDisplayedMinimum() {
@@ -117,7 +132,7 @@ public class CustomContent extends Content {
 		float[] maxima = smp.getMaxima();
 		boolean[] isMax = smp.isMaximum();
 		for(int i = 0; i < mesh.colors.length; i++) {
-			if(showMaxima && isMax[i] && maxima[i] > 1600)
+			if(showMaxima && isMax[i] && maxima[i] > maximaThreshold)
 				mesh.colors[i].set(1, 0, 0);
 			else {
 				float v = maxima[i];

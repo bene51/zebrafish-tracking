@@ -114,6 +114,12 @@ public class SphereProjectionViewer implements PlugIn {
 				cc.smooth();
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_M) {
+				if(!cc.areMaximaShown()) {
+					float th = cc.getMaximaThreshold();
+					th = (float)IJ.getNumber("Threshold for detected maxima", th);
+					if(th != IJ.CANCELED)
+						cc.setMaximaThreshold(th);
+				}
 				cc.toggleShowMaxima();
 			}
 		}
