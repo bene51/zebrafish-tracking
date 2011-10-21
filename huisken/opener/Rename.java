@@ -1,21 +1,18 @@
 package huisken.opener;
 
 import fiji.util.gui.GenericDialogPlus;
-
-import ij.plugin.PlugIn;
 import ij.IJ;
-
 import ij.gui.GenericDialog;
+import ij.plugin.PlugIn;
 
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-
 import java.io.File;
-
 import java.util.ArrayList;
 
 
 public class Rename implements PlugIn {
+	@Override
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Rename");
 		gd.addDirectoryField("Directory", "");
@@ -38,6 +35,7 @@ public class Rename implements PlugIn {
 		gd2.setModal(false);
 		gd2.showDialog();
 		gd2.addWindowListener(new WindowAdapter() {
+			@Override
 			public void windowClosed(WindowEvent e) {
 				System.out.println("Closing");
 				if(gd2.wasOKed()) {
@@ -73,7 +71,7 @@ public class Rename implements PlugIn {
 	public void rename(ArrayList<File> src, ArrayList<File> dst) {
 		int N = src.size();
 		// folder.rename(new File(folder.getParentFile(), replacement));
-	
+
 		for(int i = 0; i < N; i++) {
 			if(dst.get(i).exists()) {
 				IJ.log("Not renaming "  + src.get(i).getAbsolutePath() + " because target file exists alreadz.");
