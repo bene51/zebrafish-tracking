@@ -18,8 +18,8 @@ public class Spherical_Max_Projection implements PlugIn {
 
 	public static final float FIT_SPHERE_THRESHOLD = 1600f;
 
-	public static final int OLD_FOLDER_STRUCTURE = 0;
-	public static final int New_FOLDER_STRUCTURE = 1;
+	public static final int OLD_FOLDER_STRUCTURE = 1;
+	public static final int New_FOLDER_STRUCTURE = 0;
 
 	@Override
 	public void run(String arg) {
