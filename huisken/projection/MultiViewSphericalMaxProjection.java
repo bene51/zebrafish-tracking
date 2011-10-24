@@ -86,6 +86,7 @@ public class MultiViewSphericalMaxProjection {
 		}
 
 		public void reset() {
+			angleIndex = 0;
 			angle = angleStart;
 			timepoint = timepointStart;
 			plane = -1;
@@ -137,12 +138,15 @@ public class MultiViewSphericalMaxProjection {
 			smp[a][LEFT].startProjectStack();
 			smp[a][RIGHT].startProjectStack();
 		}
-		// Not end of stack
-		if(p < nPlanes) {
-			smp[a][LEFT].projectPlane(p, left);
-			smp[a][RIGHT].projectPlane(p, right);
+
+		// do the projection
+		smp[a][LEFT].projectPlane(p, left);
+		smp[a][RIGHT].projectPlane(p, right);
+
+
+		// Not end of stack: nothing else to do
+		if(p < nPlanes - 1)
 			return;
-		}
 
 		// End of stack, further process the projections
 		smp[a][LEFT].finishProjectStack();
