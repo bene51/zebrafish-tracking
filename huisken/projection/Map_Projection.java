@@ -14,12 +14,13 @@ import java.util.List;
 
 public class Map_Projection implements PlugIn {
 
-	public static final int MERCATOR  = 0;
-	public static final int GALLPETER = 1;
-	public static final int FULLER    = 2;
-	public static final int POLAR     = 3;
+	public static final int MERCATOR   = 0;
+	public static final int GALLPETER  = 1;
+	public static final int FULLER     = 2;
+	public static final int POLAR      = 3;
+	public static final int KAVRAYSKIY = 4;
 
-	public static final String[] MAP_TYPES = new String[] {"Mercator", "Gall-Peter", "Fuller", "Polar transform"};
+	public static final String[] MAP_TYPES = new String[] {"Mercator", "Gall-Peter", "Fuller", "Polar transform", "Kavrayskiy"};
 
 	@Override
 	public void run(String arg) {
@@ -71,10 +72,11 @@ public class Map_Projection implements PlugIn {
 	public void createProjections(SphericalMaxProjection smp, String datadir, int mapType, int width, String outputdir) throws IOException {
 		MapProjection proj = null;
 		switch(mapType) {
-			case MERCATOR:  proj = new MercatorProjection();   break;
-			case GALLPETER: proj = new GallPetersProjection(); break;
-			case FULLER:    proj = new FullerProjection();     break;
-			case POLAR:     proj = new PolarTransform();       break;
+			case MERCATOR:   proj = new MercatorProjection();   break;
+			case GALLPETER:  proj = new GallPetersProjection(); break;
+			case FULLER:     proj = new FullerProjection();     break;
+			case POLAR:      proj = new PolarTransform();       break;
+			case KAVRAYSKIY: proj = new KavrayskiyProjection(); break;
 			default: throw new IllegalArgumentException("Unsupported map type: " + mapType);
 		}
 		proj.prepareForProjection(smp, width);
