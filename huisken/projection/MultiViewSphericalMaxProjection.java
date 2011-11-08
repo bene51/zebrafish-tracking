@@ -48,7 +48,7 @@ public class MultiViewSphericalMaxProjection {
 
 		// calculate sphere transformations for each angle
 		FastMatrix[] transforms = new FastMatrix[nAngles];
-		for(int a = 1; a < nAngles; a++) {
+		for(int a = 0; a < nAngles; a++) {
 			double angle = angleStart + angleInc * a;
 			angle = angle * Math.PI / 180.0;
 			transforms[a] = FastMatrix.translate(
@@ -204,8 +204,7 @@ public class MultiViewSphericalMaxProjection {
 	}
 
 	/**
-	 * @param transform Array with one transformation for each angle; the first entry
-	 *                  in this array is ignored (it is assumed to be the identity matrix.
+	 * @param transform Array with one transformation for each angle;
 	 */
 	private SphericalMaxProjection[][] initSphericalMaximumProjection(
 			FastMatrix[] transform,
@@ -223,7 +222,7 @@ public class MultiViewSphericalMaxProjection {
 		SphericalMaxProjection[][] smp = new SphericalMaxProjection[nAngles][2];
 
 		// 0 degree, left illumination
-		smp[0][0] = new SphericalMaxProjection(center, radius, subd);
+		smp[0][0] = new SphericalMaxProjection(center, radius, subd, transform[0]);
 		smp[0][0].prepareForProjection(w, h, d, pw, ph, pd, new SimpleLeftWeighter(center.x));
 
 		IndexedTriangleMesh sphere = smp[0][0].getSphere();

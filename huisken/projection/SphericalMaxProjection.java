@@ -45,8 +45,8 @@ public class SphericalMaxProjection {
 	private final HashMap<Point3f, Integer> vertexToIndex;
 	private final NNearestNeighborSearch<Node3D> nnSearch;
 
-	public SphericalMaxProjection(Point3f center, float radius, int subd) {
-		this(createSphere(center, radius, subd), center, radius);
+	public SphericalMaxProjection(Point3f center, float radius, int subd, FastMatrix transform) {
+		this(createSphere(center, radius, subd), center, radius, transform);
 	}
 
 	public SphericalMaxProjection(IndexedTriangleMesh sphere, Point3f center, float radius) {
