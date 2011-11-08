@@ -5,16 +5,21 @@ import huisken.projection.Spherical_Max_Projection;
 import ij3d.Content;
 import ij3d.ContentInstant;
 
+import java.awt.Polygon;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import javax.media.j3d.Canvas3D;
 import javax.media.j3d.GeometryArray;
 import javax.media.j3d.IndexedTriangleArray;
+import javax.media.j3d.Transform3D;
 import javax.media.j3d.TriangleArray;
 import javax.vecmath.Color3f;
+import javax.vecmath.Point2d;
+import javax.vecmath.Point3d;
 import javax.vecmath.Point3f;
 
 import customnode.CustomMeshNode;
@@ -268,6 +273,43 @@ public class CustomContent extends Content {
 			ta.setCapability(GeometryArray.ALLOW_INTERSECT);
 
 			return ta;
+		}
+
+		private Point2d p2d = new Point2d();
+		private boolean roiContains(Point3f p, Transform3D volToIP, Canvas3D canvas, Polygon polygon) {
+			Point3d locInImagePlate = new Point3d(p);
+			volToIP.transform(locInImagePlate);
+			canvas.getPixelLocationFromImagePlate(locInImagePlate, p2d);
+			return polygon.contains(p2d.x, p2d.y);
+		}
+
+		@Override
+		public void retain(Canvas3D canvas, Polygon polygon) {
+			Transform3D volToIP = new Transform3D();
+			canvas.getImagePlateToVworld(volToIP);
+			volToIP.invert();
+
+			Transform3D toVWorld = new Transform3D();
+			this.getLocalToVworld(toVWorld);
+			volToIP.mul(toVWorld);
+
+			ArrayList<Integer> f = new ArrayList<Integer>();
+			for(int i = 0; i < faces.length; i += 3) {
+				Point3f p1 = vertices[faces[i]];
+				Point3f p2 = vertices[faces[i + 1]];
+				Point3f p3 = vertices[faces[i + 2]];
+				if(roiContains(p1, volToIP, canvas, polygon) ||
+						roiContains(p2, volToIP, canvas, polygon) ||
+						roiContains(p3, volToIP, canvas, polygon)) {
+					f.add(faces[i]);
+					f.add(faces[i + 1]);
+					f.add(faces[i + 2]);
+				}
+			}
+			faces = new int[f.size()];
+			for(int i = 0; i < faces.length; i++)
+				faces[i] = f.get(i);
+			update();
 		}
 	}
 }
