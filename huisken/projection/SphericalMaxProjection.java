@@ -106,6 +106,14 @@ public class SphericalMaxProjection {
 			vertexToIndex.put(sphere.getVertices()[i], i);
 	}
 
+	public Point3f getCenter() {
+		return center;
+	}
+
+	public float getRadius() {
+		return radius;
+	}
+
 	private static IndexedTriangleMesh createSphere(Point3f center, float radius, int subd) {
 		// calculate the sphere coordinates
 		Icosahedron icosa = new Icosahedron(radius);
