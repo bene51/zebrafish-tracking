@@ -235,8 +235,8 @@ public class CustomContent extends Content {
 
 			min.x = min.y = min.z = Float.MAX_VALUE;
 			max.x = max.y = max.z = Float.MIN_VALUE;
-			for(int i = 0; i < vertices.length; i++) {
-				Point3f p = vertices[i];
+			for(int i = 0; i < faces.length; i++) {
+				Point3f p = vertices[faces[i]];
 				if(p.x < min.x) min.x = p.x;
 				if(p.y < min.y) min.y = p.y;
 				if(p.z < min.z) min.z = p.z;
