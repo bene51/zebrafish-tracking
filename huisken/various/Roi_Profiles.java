@@ -1,4 +1,4 @@
-package huisken.micha;
+package huisken.various;
 
 import ij.IJ;
 import ij.ImagePlus;

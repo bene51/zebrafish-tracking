@@ -1,4 +1,4 @@
-package huisken.kymo;
+package huisken.various;
 
 import ij.ImagePlus;
 import ij.ImageStack;
