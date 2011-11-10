@@ -124,10 +124,12 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 				min = Integer.parseInt(minTF.getText());
 				max = Integer.parseInt(maxTF.getText());
 			} catch(Exception e) {
+				e.printStackTrace();
 			}
 			at.nextPreviewImage(pixels);
 			convertTo8(pixels, gray, min, max);
 			provider.setImage(image);
+			System.out.println("server: provide next image");
 		}
 		at.finishPreview();
 	}
