@@ -6,8 +6,8 @@ import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.InputStreamReader;
-import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -18,16 +18,21 @@ public class ImageProvider implements PlugInFilter {
 	public void run(int port) throws Exception {
 		ServerSocket serverSocket = new ServerSocket(port);
 		Socket clientSocket = serverSocket.accept();
-		ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
+		DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
 		BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		String inputLine;
-
 		while ((inputLine = in.readLine()) != null) {
 			if(inputLine.equals("close")) {
 				break;
 			}
 			if(inputLine.equals("getImage")) {
-				out.writeObject(new ImageWrapper(getImage()));
+				double mean = getImage().getProcessor().getStatistics().mean;
+				System.out.println("writing image to socket: mean = " + mean);
+				ImagePlus im = getImage();
+				out.writeInt(im.getWidth());
+				out.writeInt(im.getHeight());
+				out.write((byte[])im.getProcessor().getPixels());
+				out.flush();
 			}
 		}
 		System.out.println("Shutting down server");

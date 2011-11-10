@@ -6,7 +6,7 @@ import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
 import ij.process.ByteProcessor;
 
-import java.io.ObjectInputStream;
+import java.io.DataInputStream;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -15,7 +15,7 @@ public class ImageReceiver implements PlugIn {
 
 	private Socket socket;
 	private PrintWriter out;
-	private ObjectInputStream in;
+	private DataInputStream in;
 
 	@Override
 	public void run(String args) {
@@ -27,9 +27,20 @@ public class ImageReceiver implements PlugIn {
 			return;
 		String host = gd.getNextString();
 		int port = (int)gd.getNextNumber();
+		ImagePlus image = null;
 		try {
 			start(host, port);
-			getImage().show();
+			while(!IJ.escapePressed()) {
+				Thread.sleep(50);
+				if(image == null) {
+					image = getImage();
+					image.show();
+				}
+				else {
+					image.setProcessor(getImage().getProcessor());
+					image.updateAndDraw();
+				}
+			}
 			stop();
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
@@ -42,14 +53,20 @@ public class ImageReceiver implements PlugIn {
 			throw new RuntimeException("Already running");
 		socket = new Socket(InetAddress.getByName(host), port);
 		out = new PrintWriter(socket.getOutputStream(), true);
-		in = new ObjectInputStream(socket.getInputStream());
+		in = new DataInputStream(socket.getInputStream());
 	}
 
 	public ImagePlus getImage() throws Exception {
 		out.println("getImage");
-		ImageWrapper im = (ImageWrapper)in.readObject();
-		byte[] data = im.getData();
-		ByteProcessor ip = new ByteProcessor(im.w, im.h, data, null);
+		int w = in.readInt();
+		int h = in.readInt();
+		byte[] data = new byte[w * h];
+		int read = 0;
+		while(read < data.length)
+			read += in.read(data, read, data.length - read);
+		ByteProcessor ip = new ByteProcessor(w, h, data, null);
+		double mean = ip.getStatistics().mean;
+		System.out.println("reading image from socket mean = " + mean);
 		return new ImagePlus("Received", ip);
 	}
 
