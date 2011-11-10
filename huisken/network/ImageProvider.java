@@ -30,6 +30,7 @@ public class ImageProvider implements PlugInFilter {
 				out.writeObject(new ImageWrapper(getImage()));
 			}
 		}
+		System.out.println("Shutting down server");
 		clientSocket.close();
 	}
 
