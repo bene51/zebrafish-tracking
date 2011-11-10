@@ -9,6 +9,7 @@ import ij.process.ShortProcessor;
 import java.io.ObjectInputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.net.InetAddress;
 
 public class ImageReceiver implements PlugIn {
 
@@ -39,7 +40,7 @@ public class ImageReceiver implements PlugIn {
 	public void start(String host, int port) throws Exception {
 		if(socket != null)
 			throw new RuntimeException("Already running");
-		socket = new Socket(host, port);
+		socket = new Socket(InetAddress.getByName(host), port);
 		out = new PrintWriter(socket.getOutputStream(), true);
 		in = new ObjectInputStream(socket.getInputStream());
 	}
