@@ -45,7 +45,7 @@ public class ImageReceiver implements PlugIn {
 
 	public ImagePlus getImage() throws Exception {
 		out.println("getImage");
-		return (ImagePlus)in.readObject();
+		return ((ImageWrapper)in.readObject()).getImage();
 	}
 
 	public void stop() throws Exception {

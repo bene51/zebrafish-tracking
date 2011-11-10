@@ -27,7 +27,7 @@ public class ImageProvider implements PlugInFilter {
 				break;
 			}
 			if(inputLine.equals("getImage")) {
-				out.writeObject(getImage());
+				out.writeObject(new ImageWrapper(getImage()));
 			}
 		}
 		clientSocket.close();
