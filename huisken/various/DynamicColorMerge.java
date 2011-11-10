@@ -3,9 +3,9 @@ package huisken.various;
 import huisken.network.ImageProvider;
 import huisken.network.ImageReceiver;
 import ij.ImagePlus;
+import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
 import ij.process.ImageProcessor;
-import ij.process.ShortProcessor;
 
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
@@ -13,6 +13,7 @@ import java.awt.event.ActionListener;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
@@ -26,6 +27,7 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 	private JCheckBox serverCB;
 	private JTextField serverTF;
 	private JTextField portTF;
+	private JTextField minTF, maxTF;
 
 	private Thread thread;
 	private boolean running = false;
@@ -46,14 +48,18 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 		serverTF = new JTextField("localhost");
 		portTF = new JTextField("4444");
 		serverCB = new JCheckBox("Server mode?");
-
-
+		minTF = new JTextField("0");
+		maxTF = new JTextField("4000");
 
 		// Initialize the GUI
 		JPanel mergePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 		mergePanel.add(serverCB);
 		mergePanel.add(serverTF);
 		mergePanel.add(portTF);
+		mergePanel.add(new JLabel("Min"));
+		mergePanel.add(minTF);
+		mergePanel.add(new JLabel("Max"));
+		mergePanel.add(maxTF);
 		mergePanel.add(merge);
 		mergePanel.setName("Merging");
 		return mergePanel;
@@ -106,13 +112,16 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 		int ah = at.AT_GetInt("AOIHeight");
 		int nPixels = aw * ah;
 		short[] pixels = new short[nPixels];
-		ImageProcessor ip = new ShortProcessor(aw, ah, pixels, null);
+		byte[] gray = new byte[nPixels];
+		ImageProcessor ip = new ByteProcessor(aw, ah, gray, null);
 		ImagePlus image = new ImagePlus("", ip);
 
 		at.startPreview();
 		while(running) {
+			int min = Integer.parseInt(minTF.getText());
+			int max = Integer.parseInt(maxTF.getText());
 			at.nextPreviewImage(pixels);
-			ip.resetMinAndMax();
+			convertTo8(pixels, gray, min, max);
 			provider.setImage(image);
 		}
 		at.finishPreview();
@@ -138,8 +147,8 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 		int ah = at.AT_GetInt("AOIHeight");
 		int nPixels = aw * ah;
 		short[] pixels = new short[nPixels];
-		ImageProcessor ip = new ShortProcessor(aw, ah, pixels, null);
-		ImagePlus image = new ImagePlus("", ip);
+		byte[] gray = new byte[nPixels];
+		ImageProcessor ip = new ByteProcessor(aw, ah, gray, null);
 
 		ImageProcessor merged = new ColorProcessor(aw, ah);
 		ImagePlus result = new ImagePlus("Merge", merged);
@@ -147,9 +156,11 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 
 		at.startPreview();
 		while(running) {
+			int min = Integer.parseInt(minTF.getText());
+			int max = Integer.parseInt(maxTF.getText());
 			at.nextPreviewImage(pixels);
+			convertTo8(pixels, gray, min, max);
 			System.out.println("Received next image from camera");
-			ip.resetMinAndMax();
 			ImagePlus second = null;
 			try {
 				second = receiver.getImage();
@@ -157,18 +168,14 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-			ShortProcessor r = (ShortProcessor)image.getProcessor();
-			ShortProcessor g = (ShortProcessor)second.getProcessor();
+			ByteProcessor r = (ByteProcessor)ip;
+			ByteProcessor g = (ByteProcessor)second.getProcessor();
 			int w = r.getWidth();
 			int h = r.getHeight();
 			int wh = w * h;
-			double scale1 = 256.0 / (r.getMax() - r.getMin() + 1);
-			double scale2 = 256.0 / (g.getMax() - g.getMin() + 1);
 			for(int i = 0; i < wh; i++) {
 				int red   = r.get(i);
-				red = (int)(red * scale1 + 0.5);
 				int green = g.get(i);
-				green = (int)(green * scale2 + 0.5);
 
 				int merge = 0xff000000 + (red << 16) + (green << 8);
 				merged.set(i, merge);
@@ -181,5 +188,14 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 			e.printStackTrace();
 		}
 		at.finishPreview();
+	}
+
+	private static final void convertTo8(short[] in, byte[] out, int min, int max) {
+		double scale = 256.0 / (max - min + 1);
+		for(int i = 0; i < in.length; i++) {
+			int v = in[i] & 0xffff;
+			v = (int)(v * scale + 0.5);
+			out[i] = (byte)v;
+		}
 	}
 }

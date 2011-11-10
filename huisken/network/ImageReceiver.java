@@ -4,12 +4,12 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
-import ij.process.ShortProcessor;
+import ij.process.ByteProcessor;
 
 import java.io.ObjectInputStream;
 import java.io.PrintWriter;
-import java.net.Socket;
 import java.net.InetAddress;
+import java.net.Socket;
 
 public class ImageReceiver implements PlugIn {
 
@@ -48,8 +48,8 @@ public class ImageReceiver implements PlugIn {
 	public ImagePlus getImage() throws Exception {
 		out.println("getImage");
 		ImageWrapper im = (ImageWrapper)in.readObject();
-		short[] data = im.getData();
-		ShortProcessor ip = new ShortProcessor(im.w, im.h, data, null);
+		byte[] data = im.getData();
+		ByteProcessor ip = new ByteProcessor(im.w, im.h, data, null);
 		return new ImagePlus("Received", ip);
 	}
 

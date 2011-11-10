@@ -6,18 +6,18 @@ import java.io.Serializable;
 
 public class ImageWrapper implements Serializable {
 
-	private short[] data;
+	private byte[] data;
 	public final int w, h;
 
 	public ImageWrapper(ImagePlus image) {
-		if(image.getType() != ImagePlus.GRAY16)
-			throw new IllegalArgumentException("Only 16bit images are supported at the moment");
-		this.data = (short[])image.getProcessor().getPixels();
+		if(image.getType() != ImagePlus.GRAY8)
+			throw new IllegalArgumentException("Only 8-bit images are supported at the moment");
+		this.data = (byte[])image.getProcessor().getPixels();
 		this.w = image.getWidth();
 		this.h = image.getHeight();
 	}
 
-	public short[] getData() {
+	public byte[] getData() {
 		return data;
 	}
 

@@ -57,6 +57,6 @@ public class ImageProvider implements PlugInFilter {
 	@Override
 	public int setup(String arg, ImagePlus imp) {
 		this.image = imp;
-		return DOES_ALL;
+		return DOES_8G;
 	}
 }
