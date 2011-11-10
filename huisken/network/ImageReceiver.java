@@ -4,6 +4,7 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
+import ij.process.ShortProcessor;
 
 import java.io.ObjectInputStream;
 import java.io.PrintWriter;
@@ -45,7 +46,10 @@ public class ImageReceiver implements PlugIn {
 
 	public ImagePlus getImage() throws Exception {
 		out.println("getImage");
-		return (ImagePlus)in.readObject();
+		ImageWrapper im = (ImageWrapper)in.readObject();
+		short[] data = im.getData();
+		ShortProcessor ip = new ShortProcessor(im.w, im.h, data, null);
+		return new ImagePlus("Received", ip);
 	}
 
 	public void stop() throws Exception {
