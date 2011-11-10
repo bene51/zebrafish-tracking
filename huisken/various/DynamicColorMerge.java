@@ -51,6 +51,9 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 
 		// Initialize the GUI
 		JPanel mergePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		mergePanel.add(serverCB);
+		mergePanel.add(serverTF);
+		mergePanel.add(portTF);
 		mergePanel.add(merge);
 		mergePanel.setName("Merging");
 		return mergePanel;
