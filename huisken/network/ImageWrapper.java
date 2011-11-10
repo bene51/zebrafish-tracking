@@ -6,7 +6,6 @@ import java.io.Serializable;
 
 public class ImageWrapper implements Serializable {
 
-<<<<<<< .merge_file_eQgyYK
 	private short[] data;
 	public final int w, h;
 
@@ -23,18 +22,4 @@ public class ImageWrapper implements Serializable {
 	}
 
 	private static final long serialVersionUID = 424050848692912672L;
-=======
-	private ImagePlus image;
-
-	public ImageWrapper(ImagePlus image) {
-		this.image = image;
-	}
-
-	public ImagePlus getImage() {
-		return image;
-	}
-
-	private static final long serialVersionUID = 424050848692912672L;
-
->>>>>>> .merge_file_xpc6q4
 }
