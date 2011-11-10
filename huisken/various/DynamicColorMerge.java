@@ -119,6 +119,7 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 	}
 
 	public void startClient(final String host, final int port) {
+		System.out.println("Starting client");
 		// start camera
 		final ImageReceiver receiver = new ImageReceiver();
 		new Thread() {
@@ -147,10 +148,12 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 		at.startPreview();
 		while(running) {
 			at.nextPreviewImage(pixels);
+			System.out.println("Received next image from camera");
 			ip.resetMinAndMax();
 			ImagePlus second = null;
 			try {
 				second = receiver.getImage();
+				System.out.println("Received next image from server");
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -170,6 +173,7 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 				int merge = 0xff000000 + (red << 16) + (green << 8);
 				merged.set(i, merge);
 			}
+			result.updateAndDraw();
 		}
 		try {
 			receiver.stop();
