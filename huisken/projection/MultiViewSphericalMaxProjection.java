@@ -76,7 +76,7 @@ public class MultiViewSphericalMaxProjection {
 	}
 
 	class Iterator implements java.util.Iterator<Iterator> {
-		public int timepoint, angle, angleIndex, plane;
+		public int timepoint, angle, angleIndex, plane, illumination;
 
 		public Iterator() {
 			reset();
@@ -87,11 +87,13 @@ public class MultiViewSphericalMaxProjection {
 			angle = angleStart;
 			timepoint = timepointStart;
 			plane = -1;
+			illumination = RIGHT;
 		}
 
 		@Override
 		public boolean hasNext() {
-			return (plane + 1) < nPlanes ||
+			return  illumination == LEFT ||
+				(plane + 1) < nPlanes ||
 				(angle + angleInc) < (angleStart + angleInc * nAngles) ||
 				(timepoint + timepointInc) < (timepointStart + timepointInc * nTimepoints);
 		}
@@ -103,73 +105,110 @@ public class MultiViewSphericalMaxProjection {
 
 		@Override
 		public Iterator next() {
-			plane ++;
-			if(plane >= nPlanes) {
-				plane = 0;
-				angle += angleInc;
-				angleIndex++;
-				if(angle >= (angleStart + angleInc * nAngles)) {
-					angleIndex = 0;
-					angle = angleStart;
-					timepoint += timepointInc;
-					if(timepoint >= (timepointStart + timepointInc * nTimepoints))
-						return null;
+			illumination++;
+			if(illumination > RIGHT) {
+				illumination = LEFT;
+				plane++;
+				if(plane >= nPlanes) {
+					plane = 0;
+					angle += angleInc;
+					angleIndex++;
+					if(angle >= (angleStart + angleInc * nAngles)) {
+						angleIndex = 0;
+						angle = angleStart;
+						timepoint += timepointInc;
+						if(timepoint >= (timepointStart + timepointInc * nTimepoints))
+							return null;
+					}
 				}
 			}
 			return this;
 		}
 	}
 
-	public void process(ImageProcessor left, ImageProcessor right) {
+//	public void process(ImageProcessor left, ImageProcessor right) {
+//		iterator = iterator.next();
+//		if(iterator == null)
+//			throw new RuntimeException("Finished");
+//
+//		int a = iterator.angleIndex;
+//		int tp = iterator.timepoint;
+//		int p = iterator.plane;
+//
+//		// Start of stack
+//		if(p == 0) {
+//			smp[a][LEFT].startProjectStack();
+//			smp[a][RIGHT].startProjectStack();
+//		}
+//
+//		// do the projection
+//		smp[a][LEFT].projectPlane(p, left);
+//		smp[a][RIGHT].projectPlane(p, right);
+//
+//
+//		// Not end of stack: nothing else to do
+//		if(p < nPlanes - 1)
+//			return;
+//
+//		// End of stack, further process the projections
+//		smp[a][LEFT].finishProjectStack();
+//		smp[a][RIGHT].finishProjectStack();
+//
+//		// sum up left and right illumination
+//		smp[a][LEFT].addMaxima(smp[a][RIGHT].getMaxima());
+//
+//		// scale the resulting maxima according to angle
+//		smp[a][0].scaleMaxima(aw);
+//
+//		// sum them all up
+//		if(a > 0) {
+//			smp[0][0].addMaxima(smp[a][0].getMaxima());
+//		}
+//
+//		// if it's the last angle, save the result
+//		if(a == nAngles - 1) {
+//			String filename = String.format("tp%04d.tif", tp);
+//			String vpath = new File(outputdir, filename + ".vertices").getAbsolutePath();
+//			try {
+//				smp[0][0].saveMaxima(vpath);
+//			} catch(Exception e) {
+//				throw new RuntimeException("Cannot save " + vpath);
+//			}
+//		}
+//	}
+
+	public void process(ImageProcessor ip) {
 		iterator = iterator.next();
 		if(iterator == null)
 			throw new RuntimeException("Finished");
 
 		int a = iterator.angleIndex;
+		int angle = iterator.angle;
 		int tp = iterator.timepoint;
 		int p = iterator.plane;
+		int ill = iterator.illumination;
 
 		// Start of stack
-		if(p == 0) {
-			smp[a][LEFT].startProjectStack();
-			smp[a][RIGHT].startProjectStack();
-		}
+		if(p == 0)
+			smp[a][ill].startProjectStack();
 
 		// do the projection
-		smp[a][LEFT].projectPlane(p, left);
-		smp[a][RIGHT].projectPlane(p, right);
-
+		smp[a][ill].projectPlane(p, ip);
 
 		// Not end of stack: nothing else to do
 		if(p < nPlanes - 1)
 			return;
 
-		// End of stack, further process the projections
-		smp[a][LEFT].finishProjectStack();
-		smp[a][RIGHT].finishProjectStack();
-
-		// sum up left and right illumination
-		smp[a][LEFT].addMaxima(smp[a][RIGHT].getMaxima());
-
-		// scale the resulting maxima according to angle
-		smp[a][0].scaleMaxima(aw);
-
-		// sum them all up
-		if(a > 0) {
-			smp[0][0].addMaxima(smp[a][0].getMaxima());
-		}
-
-		// if it's the last angle, save the result
-		if(a == nAngles - 1) {
-			String filename = String.format("tp%04d.tif", tp);
-			String vpath = new File(outputdir, filename + ".vertices").getAbsolutePath();
-			try {
-				smp[0][0].saveMaxima(vpath);
-			} catch(Exception e) {
-				throw new RuntimeException("Cannot save " + vpath);
-			}
+		// save the result
+		String filename = String.format("tp%04d_a%04d_ill%d.vertices", tp, angle, ill);
+		String vpath = new File(outputdir, filename).getAbsolutePath();
+		try {
+			smp[a][ill].saveMaxima(vpath);
+		} catch(Exception e) {
+			throw new RuntimeException("Cannot save " + vpath);
 		}
 	}
+
 
 	private static FastMatrix rotateY(double rad, Point3f center) {
 		FastMatrix rot = FastMatrix.rotate(rad, 1);
@@ -200,12 +239,12 @@ public class MultiViewSphericalMaxProjection {
 		// all other angles
 		for(int a = 0; a < nAngles; a++) {
 			// left illumination
-			smp[a][0] = new SphericalMaxProjection(sphere, center, radius, transform[a]);
-			smp[a][0].prepareForProjection(w, h, d, pw, ph, pd, new SimpleLeftWeighter(center.x));
+			smp[a][LEFT] = new SphericalMaxProjection(sphere, center, radius, transform[a]);
+			smp[a][LEFT].prepareForProjection(w, h, d, pw, ph, pd, new SimpleLeftWeighter(center.x));
 
 			// right illumination
-			smp[a][1] = new SphericalMaxProjection(sphere, center, radius, transform[a]);
-			smp[a][1].prepareForProjection(w, h, d, pw, ph, pd, new SimpleRightWeighter(center.x));
+			smp[a][RIGHT] = new SphericalMaxProjection(sphere, center, radius, transform[a]);
+			smp[a][RIGHT].prepareForProjection(w, h, d, pw, ph, pd, new SimpleRightWeighter(center.x));
 		}
 
 		return smp;

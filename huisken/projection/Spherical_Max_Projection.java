@@ -109,9 +109,10 @@ public class Spherical_Max_Projection implements PlugIn {
 			for(int a = 0; a < nAngles; a++) {
 				int angle = angleStart + a * angleInc;
 				for(int z = 0; z < nPlanes; z++) {
-					ImageProcessor left  = opener.openPlane(tp, angle, z, Opener.LEFT);
-					ImageProcessor right = opener.openPlane(tp, angle, z, Opener.RIGHT);
-					mmsmp.process(left, right);
+					ImageProcessor ip  = opener.openPlane(tp, angle, z, Opener.LEFT);
+					mmsmp.process(ip);
+					ip  = opener.openPlane(tp, angle, z, Opener.RIGHT);
+					mmsmp.process(ip);
 				}
 			}
 		}
