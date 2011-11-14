@@ -219,20 +219,12 @@ public class MultiViewSphericalMaxProjection {
 		int subd = (int)Math.round(radius / (Math.min(pw, Math.min(ph, pd))));
 		subd /= 4;
 
+		IndexedTriangleMesh sphere = createSphere(center, radius, subd);
+
 		SphericalMaxProjection[][] smp = new SphericalMaxProjection[nAngles][2];
 
-		// 0 degree, left illumination
-		smp[0][0] = new SphericalMaxProjection(center, radius, subd, transform[0]);
-		smp[0][0].prepareForProjection(w, h, d, pw, ph, pd, new SimpleLeftWeighter(center.x));
-
-		IndexedTriangleMesh sphere = smp[0][0].getSphere();
-
-		// 0 degree, right handed illumination
-		smp[0][1] = new SphericalMaxProjection(sphere, center, radius);
-		smp[0][1].prepareForProjection(w, h, d, pw, ph, pd, new SimpleRightWeighter(center.x));
-
 		// all other angles
-		for(int a = 1; a < nAngles; a++) {
+		for(int a = 0; a < nAngles; a++) {
 			// left illumination
 			smp[a][0] = new SphericalMaxProjection(sphere, center, radius, transform[a]);
 			smp[a][0].prepareForProjection(w, h, d, pw, ph, pd, new SimpleLeftWeighter(center.x));
@@ -243,5 +235,15 @@ public class MultiViewSphericalMaxProjection {
 		}
 
 		return smp;
+	}
+
+	private static IndexedTriangleMesh createSphere(Point3f center, float radius, int subd) {
+		// calculate the sphere coordinates
+		Icosahedron icosa = new Icosahedron(radius);
+
+		IndexedTriangleMesh sphere = icosa.createBuckyball(radius, subd);
+		for(Point3f p : sphere.getVertices())
+			p.add(center);
+		return sphere;
 	}
 }
