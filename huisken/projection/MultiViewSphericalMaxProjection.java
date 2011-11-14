@@ -17,7 +17,6 @@ public class MultiViewSphericalMaxProjection {
 	private final int nPlanes;
 
 	private final SphericalMaxProjection[][] smp;
-	private final boolean saveSingleViews;
 	private final AngleWeighter aw;
 	private Iterator iterator;
 
@@ -29,8 +28,7 @@ public class MultiViewSphericalMaxProjection {
 			int angleStart, int angleInc, int nAngles,
 			int w, int h, int d,
 			double pw, double ph, double pd,
-			Point3f[] centers, float radius,
-			boolean saveSingleViews) {
+			Point3f[] centers, float radius) {
 
 		if(!outputdir.endsWith(File.separator))
 			outputdir += File.separator;
@@ -43,7 +41,6 @@ public class MultiViewSphericalMaxProjection {
 		this.angleInc = angleInc;
 		this.nAngles = nAngles;
 		this.nPlanes = d;
-		this.saveSingleViews = saveSingleViews;
 
 
 		// calculate sphere transformations for each angle
@@ -129,7 +126,6 @@ public class MultiViewSphericalMaxProjection {
 			throw new RuntimeException("Finished");
 
 		int a = iterator.angleIndex;
-		int angle = iterator.angle;
 		int tp = iterator.timepoint;
 		int p = iterator.plane;
 
@@ -154,28 +150,6 @@ public class MultiViewSphericalMaxProjection {
 
 		// sum up left and right illumination
 		smp[a][LEFT].addMaxima(smp[a][RIGHT].getMaxima());
-
-		// if specified, save the single views in separate folders
-		if(saveSingleViews) {
-			String filename = String.format("tp%04d.tif", tp, angle);
-			String subfolder = String.format("angle%3d/", angle);
-			String vpath = new File(outputdir + subfolder, filename + ".vertices").getAbsolutePath();
-			File subf = new File(outputdir, subfolder);
-			if(!subf.exists()) {
-				subf.mkdir();
-				try {
-					smp[0][0].saveSphere(outputdir + subfolder + "Sphere.obj");
-				} catch(Exception e) {
-					throw new RuntimeException("Cannot save sphere: " + outputdir + subfolder + "Sphere.obj", e);
-				}
-			}
-
-			try {
-				smp[a][0].saveMaxima(vpath);
-			} catch(Exception e) {
-				throw new RuntimeException("Cannot save " + vpath);
-			}
-		}
 
 		// scale the resulting maxima according to angle
 		smp[a][0].scaleMaxima(aw);
