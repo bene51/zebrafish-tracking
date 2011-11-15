@@ -190,7 +190,7 @@ public class MultiViewSphericalMaxProjection {
 
 		// Start of stack
 		if(p == 0)
-			smp[a][ill].startProjectStack();
+			smp[a][ill].resetMaxima();
 
 		// do the projection
 		smp[a][ill].projectPlane(p, ip);

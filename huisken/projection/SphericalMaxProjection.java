@@ -359,7 +359,7 @@ public class SphericalMaxProjection {
 		}
 	}
 
-	public void startProjectStack() {
+	public void resetMaxima() {
 		maxima = new float[sphere.nVertices];
 	}
 
