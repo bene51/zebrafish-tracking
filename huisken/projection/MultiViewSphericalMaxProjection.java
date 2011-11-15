@@ -71,7 +71,7 @@ public class MultiViewSphericalMaxProjection {
 			throw new RuntimeException("Cannot save sphere: " + spherepath, e);
 		}
 
-		aw = new AngleWeighter(nAngles);
+		aw = new AngleWeighter(nAngles, centers[0]);
 		iterator = new Iterator();
 	}
 

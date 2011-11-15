@@ -293,10 +293,10 @@ public class SphericalMaxProjection {
 		maxima = newmaxima;
 	}
 
-	public void scaleMaxima(AngleWeighter weighter) {
+	public void scaleMaxima(FusionWeight weighter) {
 		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
 			Point3f vertex = sphere.getVertices()[vIndex];
-			maxima[vIndex] *= weighter.getWeight(vertex, center);
+			maxima[vIndex] *= weighter.getWeight(vertex.x, vertex.y, vertex.z);
 		}
 	}
 

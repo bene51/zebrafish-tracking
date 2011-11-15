@@ -2,14 +2,14 @@ package huisken.projection;
 
 import javax.vecmath.Point3f;
 
-public class AngleWeighter {
+public class AngleWeighter implements FusionWeight {
 
-	public final int nAngles;
 	public final int angleInc;
+	private final Point3f center;
 
-	public AngleWeighter(int nAngles) {
-		this.nAngles = nAngles;
+	public AngleWeighter(int nAngles, Point3f center) {
 		this.angleInc = 360 / nAngles;
+		this.center = center;
 	}
 
 
@@ -28,10 +28,11 @@ public class AngleWeighter {
 	 *      |________|/
 	 */
 	public static final double overlap = 10;
-	public float getWeight(Point3f p, Point3f center) {
+	@Override
+	public float getWeight(float px, float py, float pz) {
 
-		double dz = p.z - center.z;
-		double dx = p.x - center.x;
+		double dz = pz - center.z;
+		double dx = px - center.x;
 
 		double angle = 180.0 * Math.atan2(-dx, -dz) / Math.PI;
 
