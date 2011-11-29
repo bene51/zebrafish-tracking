@@ -49,7 +49,10 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 		portTF = new JTextField("4444");
 		serverCB = new JCheckBox("Server mode?");
 		minTF = new JTextField("0");
+		minTF.setColumns(5);
 		maxTF = new JTextField("4000");
+		maxTF.setColumns(5);
+
 
 		// Initialize the GUI
 		JPanel mergePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -201,7 +204,7 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 		double scale = 256.0 / (max - min + 1);
 		for(int i = 0; i < in.length; i++) {
 			int v = in[i] & 0xffff;
-			v = (int)(v * scale + 0.5);
+			v = (in - min) / (max - min) * 255;
 			out[i] = (byte)v;
 		}
 	}
