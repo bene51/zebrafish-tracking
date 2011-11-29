@@ -76,7 +76,6 @@ public class Spherical_Max_Projection implements PlugIn {
 		gd.addNumericField("Start_angle",          opener.getAngleStart(), 0);
 		gd.addNumericField("Angle_Increment",      opener.getAngleInc(), 0);
 		gd.addNumericField("Number_of_angles",     opener.getNAngles(), 0);
-		gd.addCheckbox("Also save single views", false);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
@@ -87,7 +86,6 @@ public class Spherical_Max_Projection implements PlugIn {
 		int angleStart     = (int)gd.getNextNumber();
 		int angleInc       = (int)gd.getNextNumber();
 		int nAngles        = (int)gd.getNextNumber();
-		boolean saveSingleViews = gd.getNextBoolean();
 
 		// fit the spheres to the specified timepoint
 		Point3f[] centers = new Point3f[nAngles];
@@ -100,8 +98,7 @@ public class Spherical_Max_Projection implements PlugIn {
 				angleStart, angleInc, nAngles,
 				opener.getWidth(), opener.getHeight(), opener.getDepth(),
 				opener.getPixelWidth(), opener.getPixelHeight(), opener.getPixelDepth(),
-				centers, radius,
-				saveSingleViews);
+				centers, radius);
 
 		int nPlanes = opener.getDepth();
 
@@ -112,9 +109,10 @@ public class Spherical_Max_Projection implements PlugIn {
 			for(int a = 0; a < nAngles; a++) {
 				int angle = angleStart + a * angleInc;
 				for(int z = 0; z < nPlanes; z++) {
-					ImageProcessor left  = opener.openPlane(tp, angle, z, Opener.LEFT);
-					ImageProcessor right = opener.openPlane(tp, angle, z, Opener.RIGHT);
-					mmsmp.process(left, right);
+					ImageProcessor ip  = opener.openPlane(tp, angle, z, Opener.LEFT);
+					mmsmp.process(ip);
+					ip  = opener.openPlane(tp, angle, z, Opener.RIGHT);
+					mmsmp.process(ip);
 				}
 			}
 		}

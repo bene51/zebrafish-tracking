@@ -45,10 +45,6 @@ public class SphericalMaxProjection {
 	private final HashMap<Point3f, Integer> vertexToIndex;
 	private final NNearestNeighborSearch<Node3D> nnSearch;
 
-	public SphericalMaxProjection(Point3f center, float radius, int subd, FastMatrix transform) {
-		this(createSphere(center, radius, subd), center, radius, transform);
-	}
-
 	public SphericalMaxProjection(IndexedTriangleMesh sphere, Point3f center, float radius) {
 		this(sphere, center, radius, null);
 	}
@@ -112,16 +108,6 @@ public class SphericalMaxProjection {
 
 	public float getRadius() {
 		return radius;
-	}
-
-	private static IndexedTriangleMesh createSphere(Point3f center, float radius, int subd) {
-		// calculate the sphere coordinates
-		Icosahedron icosa = new Icosahedron(radius);
-
-		IndexedTriangleMesh sphere = icosa.createBuckyball(radius, subd);
-		for(Point3f p : sphere.getVertices())
-			p.add(center);
-		return sphere;
 	}
 
 	public static void saveSphere(IndexedTriangleMesh sphere, String objpath) throws IOException {
@@ -546,31 +532,5 @@ public class SphericalMaxProjection {
 		public int getNumDimensions() {
 			return 3;
 		}
-	}
-
-	public static void main(String[] args) throws Exception {
-		IndexedTriangleMesh mesh1 = createSphere(new Point3f(0, 0, 0), 1f, 5);
-		System.out.println("created");
-		saveSphere(mesh1, "/tmp/Sphere.obj");
-		System.out.println("saved");
-		IndexedTriangleMesh mesh2 = loadSphere("/tmp/Sphere.obj");
-		System.out.println("loaded");
-		if(mesh1.nVertices != mesh2.nVertices)
-			throw new RuntimeException("Not the same number of vertices");
-		for(int i = 0; i < mesh1.nVertices; i++) {
-			Point3f p1 = mesh1.getVertices()[i];
-			Point3f p2 = mesh2.getVertices()[i];
-			if(!p1.equals(p2))
-				throw new RuntimeException("Vertex positions do not match: " + p1 + " " + p2);
-		}
-		if(mesh1.nFaces != mesh2.nFaces)
-			throw new RuntimeException("Not the same number of faces");
-		for(int i = 0; i < mesh1.nFaces; i++) {
-			int p1 = mesh1.getFaces()[i];
-			int p2 = mesh2.getFaces()[i];
-			if(p1 != p2)
-				throw new RuntimeException("Faces do not match: " + p1 + " " + p2);
-		}
-		System.out.println("finished");
 	}
 }
