@@ -204,7 +204,7 @@ public class DynamicColorMerge extends AbstractCameraApplication {
 		double scale = 256.0 / (max - min + 1);
 		for(int i = 0; i < in.length; i++) {
 			int v = in[i] & 0xffff;
-			v = (in - min) / (max - min) * 255;
+			v = (in[i] - min) / (max - min) * 255;
 			out[i] = (byte)v;
 		}
 	}
