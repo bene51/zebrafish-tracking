@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svnroot/jmapprojlib/!svn/ver/12/JMapProjLib/src/coordsys
+END
+esri
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svnroot/jmapprojlib/!svn/ver/12/JMapProjLib/src/coordsys/esri
+END
+world
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svnroot/jmapprojlib/!svn/ver/12/JMapProjLib/src/coordsys/world
+END
+nad27
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svnroot/jmapprojlib/!svn/ver/12/JMapProjLib/src/coordsys/nad27
+END
+nad83
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svnroot/jmapprojlib/!svn/ver/12/JMapProjLib/src/coordsys/nad83
+END
+epsg
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svnroot/jmapprojlib/!svn/ver/12/JMapProjLib/src/coordsys/epsg
+END
