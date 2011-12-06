@@ -17,7 +17,6 @@ public class MultiViewSphericalMaxProjection {
 	private final int nPlanes;
 
 	private final SphericalMaxProjection[][] smp;
-	private final AngleWeighter aw;
 	private Iterator iterator;
 
 	public static final int LEFT  = Opener.LEFT;
@@ -71,7 +70,6 @@ public class MultiViewSphericalMaxProjection {
 			throw new RuntimeException("Cannot save sphere: " + spherepath, e);
 		}
 
-		aw = new AngleWeighter(nAngles, centers[0]);
 		iterator = new Iterator();
 	}
 

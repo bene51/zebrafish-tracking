@@ -35,7 +35,6 @@ public class SphericalMaxProjection {
 	// These fields are set in prepareForProjection();
 	private Point4[][] lut;
 	private float[] maxima;
-	private float[] weights;
 
 	// These fields must be set in the constructor and
 	// contain info about the sphere geometry
@@ -309,12 +308,11 @@ public class SphericalMaxProjection {
 		ArrayList<Point4>[] correspondences = new ArrayList[d];
 		for(int i = 0; i < d; i++)
 			correspondences[i] = new ArrayList<Point4>();
-		weights = new float[sphere.nVertices];
 
 		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
 			Point3f vertex = sphere.getVertices()[vIndex];
-			weights[vIndex] = weighter.getWeight(vertex.x, vertex.y, vertex.z);
-			if(weights[vIndex] == 0)
+			float weight = weighter.getWeight(vertex.x, vertex.y, vertex.z);
+			if(weight == 0)
 				continue;
 
 			dx.sub(vertex, center);
@@ -361,11 +359,6 @@ public class SphericalMaxProjection {
 
 	public void resetMaxima() {
 		maxima = new float[sphere.nVertices];
-	}
-
-	public void finishProjectStack() {
-		for(int i = 0; i < maxima.length; i++)
-			maxima[i] *= weights[i];
 	}
 
 	/*
@@ -440,10 +433,6 @@ public class SphericalMaxProjection {
 	@Override
 	public SphericalMaxProjection clone() {
 		SphericalMaxProjection cp = new SphericalMaxProjection(this.sphere, this.center, this.radius);
-		if(this.weights != null) {
-			cp.weights = new float[this.weights.length];
-			System.arraycopy(this.weights, 0, cp.weights, 0, this.weights.length);
-		}
 		if(this.maxima != null) {
 			cp.maxima = new float[this.maxima.length];
 			System.arraycopy(this.maxima, 0, cp.maxima, 0, this.maxima.length);
