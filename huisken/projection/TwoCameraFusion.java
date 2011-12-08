@@ -9,6 +9,7 @@ import javax.vecmath.Point3f;
 
 import Jama.Matrix;
 
+// TODO CAMERA1 and CAMER2 are exchanged.
 public class TwoCameraFusion {
 
 	private static final int LEFT    = TwoCameraSphericalMaxProjection.LEFT;

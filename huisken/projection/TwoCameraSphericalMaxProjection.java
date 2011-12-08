@@ -37,7 +37,7 @@ public class TwoCameraSphericalMaxProjection {
 		this.timepointStart = timepointStart;
 		this.timepointInc = timepointInc;
 		this.nTimepoints = nTimepoints;
-		this.angleStart = camera == CAMERA1 ? 0 : 180;
+		this.angleStart = camera == CAMERA1 ? 180 : 0;
 		this.angleInc = 180;
 		this.nAngles = 1;
 		this.nPlanes = d;
@@ -158,7 +158,7 @@ public class TwoCameraSphericalMaxProjection {
 
 		SphericalMaxProjection[][] smp = new SphericalMaxProjection[nAngles][2];
 		int aperture = 90;
-		int angle = camera == CAMERA1 ? 45 : 135;
+		int angle = camera == CAMERA1 ? 135 : 45;
 
 		// left illumination
 		smp[0][LEFT] = new SphericalMaxProjection(sphere, center, radius);
