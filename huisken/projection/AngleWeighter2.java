@@ -30,11 +30,15 @@ public class AngleWeighter2 implements FusionWeight {
 		case X_AXIS: d1 = -dz; d2 =  dy; break;
 		default: throw new IllegalArgumentException();
 		}
-		double a = 180.0 * Math.atan2(d2, d1);
+		double a = 180.0 * Math.atan2(d2, d1) / Math.PI;
 		if(negativeAxis)
 			a = -a;
 		a -= angle;
-		return a % 180;
+		if(a > 180)
+			return a - 360;
+		if(a < -180)
+			return a + 360;
+		return a;
 	}
 
 	public boolean inLowerOverlap(double angle) {
