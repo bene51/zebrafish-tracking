@@ -50,7 +50,7 @@ public class Fit_Sphere implements PlugInFilter {
 		if(threshold == IJ.CANCELED)
 			return;
 		fit(threshold);
-		IJ.showMessage("x0 = " + x0 + "\ny0 = " + y0 + "\nz0 = " + z0 + "\nr = " + r);
+		IJ.log("x0 = " + x0 + "\ny0 = " + y0 + "\nz0 = " + z0 + "\nr = " + r);
 		getControlImage().show();
 	}
 
@@ -60,7 +60,7 @@ public class Fit_Sphere implements PlugInFilter {
 		ImagePlus imp = new Duplicator().run(image);
 		ImageConverter.setDoScaling(true);
 		new StackConverter(imp).convertToGray8();
-		imp = NaiveResampler.resample(imp, 4);
+		// imp = NaiveResampler.resample(imp, 4);
 
 		IndexedTriangleMesh mesh = new IndexedTriangleMesh(
 			MeshMaker.createSphere(x0, y0, z0, r));
