@@ -9,6 +9,8 @@ import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.FileInputStream;
+import java.util.Properties;
 
 import javax.swing.JButton;
 import javax.swing.JPanel;
@@ -23,54 +25,71 @@ public class TwoCamera_MaxProjection implements PlugIn {
 	public void run(String arg) {
 		String[] cChoice = new String[] {"Camera 1", "Camera 2" };
 		GenericDialogPlus gd = new GenericDialogPlus("Spherical_Max_Projection");
-		gd.addDirectoryField("Output directory", "");
-		gd.addNumericField("Timepoints", 0, 0);
+		gd.addDirectoryField("Output directory", "D:\\SPIMdata");
+//		gd.addNumericField("Timepoints", 0, 0);
 		gd.addChoice("Camera", cChoice, cChoice[0]);
-		gd.addNumericField("Center_x", 0, 3);
-		gd.addNumericField("Center_y", 0, 3);
-		gd.addNumericField("Center_z", 0, 3);
-		gd.addNumericField("Radius", 0, 3);
-		gd.addNumericField("Width", 0, 0);
-		gd.addNumericField("Height", 0, 0);
-		gd.addNumericField("Depth", 0, 0);
-		gd.addNumericField("Pixel_width", 1, 5);
-		gd.addNumericField("Pixel_height", 1, 5);
-		gd.addNumericField("Pixel_depth", 1, 5);
+//		gd.addNumericField("Center_x", 0, 3);
+//		gd.addNumericField("Center_y", 0, 3);
+//		gd.addNumericField("Center_z", 0, 3);
+//		gd.addNumericField("Radius", 0, 3);
+//		gd.addNumericField("Width", 0, 0);
+//		gd.addNumericField("Height", 0, 0);
+//		gd.addNumericField("Depth", 0, 0);
+//		gd.addNumericField("Pixel_width", 1, 5);
+//		gd.addNumericField("Pixel_height", 1, 5);
+//		gd.addNumericField("Pixel_depth", 1, 5);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
 
 
 		File outputdir = new File(gd.getNextString());
-		int timepoints = (int)gd.getNextNumber();
+//		int timepoints = (int)gd.getNextNumber();
 		int camera = gd.getNextChoiceIndex();
-		Point3f center = new Point3f(
-			(float)gd.getNextNumber(),
-			(float)gd.getNextNumber(),
-			(float)gd.getNextNumber());
-		float radius = (float)gd.getNextNumber();
-		int w = (int)gd.getNextNumber();
-		int h = (int)gd.getNextNumber();
-		int d = (int)gd.getNextNumber();
-		double pw = gd.getNextNumber();
-		double ph = gd.getNextNumber();
-		double pd = gd.getNextNumber();
+//		Point3f center = new Point3f(
+//			(float)gd.getNextNumber(),
+//			(float)gd.getNextNumber(),
+//			(float)gd.getNextNumber());
+//		float radius = (float)gd.getNextNumber();
+//		int w = (int)gd.getNextNumber();
+//		int h = (int)gd.getNextNumber();
+//		int d = (int)gd.getNextNumber();
+//		double pw = gd.getNextNumber();
+//		double ph = gd.getNextNumber();
+//		double pd = gd.getNextNumber();
 
-		if(outputdir.exists() && !outputdir.isDirectory())
+		if(!outputdir.exists() || !outputdir.isDirectory())
 			throw new RuntimeException("Output directory must be a folder");
 
-		if(outputdir.list().length > 0) {
-			boolean cancelled = !IJ.showMessageWithCancel("Overwrite",
-					outputdir + " already exists. Overwrite?");
-			if(cancelled)
-				return;
-		}
-
-		if(!outputdir.isDirectory())
-			outputdir.mkdir();
-
-
 		try {
+			FileInputStream config = new FileInputStream(new File(outputdir, "SMP.xml"));
+			Properties props = new Properties();
+			props.loadFromXML(config);
+			config.close();
+
+			int w = Integer.parseInt(props.getProperty("w"));
+			int h = Integer.parseInt(props.getProperty("h"));
+			int d = Integer.parseInt(props.getProperty("d"));
+			double pw = Double.parseDouble(props.getProperty("pw"));
+			double ph = Double.parseDouble(props.getProperty("ph"));
+			double pd = Double.parseDouble(props.getProperty("pd"));
+			Point3f center = new Point3f(
+				Float.parseFloat(props.getProperty("centerx")),
+				Float.parseFloat(props.getProperty("centery")),
+				Float.parseFloat(props.getProperty("centerz")));
+			float radius = (float)Double.parseDouble(props.getProperty("radius"));
+			int timepoints = LabView.readInt("n timepoints");
+
+			System.out.println(w);
+			System.out.println(h);
+			System.out.println(d);
+			System.out.println(pw);
+			System.out.println(ph);
+			System.out.println(pd);
+			System.out.println(center);
+			System.out.println(radius);
+			System.out.println(timepoints);
+
 			process(outputdir.getAbsolutePath(), timepoints, camera, center, radius, w, h, d, pw, ph, pd);
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
@@ -127,7 +146,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 	private final class CameraApp extends AbstractCameraApplication {
 
 		private JButton process;
-		private int frames;
+		private final int frames;
 
 		public CameraApp(int frames) {
 			super();
