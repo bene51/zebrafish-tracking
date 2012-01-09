@@ -17,7 +17,7 @@ import javax.swing.JPanel;
 import javax.vecmath.Point3f;
 
 import neo.AT;
-import neo.AbstractCameraApplication;
+import neo.BaseCameraApplication;
 
 public class TwoCamera_MaxProjection implements PlugIn {
 
@@ -143,7 +143,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 	}
 
 	@SuppressWarnings("serial")
-	private final class CameraApp extends AbstractCameraApplication {
+	private final class CameraApp extends BaseCameraApplication {
 
 		private JButton process;
 		private final int frames;
