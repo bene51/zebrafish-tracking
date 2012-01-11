@@ -17,11 +17,11 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
-import neo.AbstractCameraApplication;
+import neo.BaseCameraApplication;
 
 
 @SuppressWarnings("serial")
-public class DynamicColorMerge extends AbstractCameraApplication {
+public class DynamicColorMerge extends BaseCameraApplication {
 
 	private JButton merge;
 	private JCheckBox serverCB;
