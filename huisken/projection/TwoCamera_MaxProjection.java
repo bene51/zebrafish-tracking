@@ -80,6 +80,10 @@ public class TwoCamera_MaxProjection implements PlugIn {
 			float radius = (float)Double.parseDouble(props.getProperty("radius"));
 			int timepoints = LabView.readInt("n timepoints");
 
+			// account for double-sided illumination:
+			d /= 2;
+			pw *= 2;
+
 			System.out.println(w);
 			System.out.println(h);
 			System.out.println(d);
