@@ -22,28 +22,30 @@ public class SphereProjectionViewer implements PlugIn {
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Sphere Projection Viewer");
 		gd.addDirectoryField("Data directory", "");
+		gd.addStringField("File name contains", "");
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
 		String dir = gd.getNextString();
+		String pattern = gd.getNextString();
 
 		String objfile = dir + File.separator + "Sphere.obj";
 		if(dir == null || objfile == null)
 			return;
 		try {
-			show(objfile, dir);
+			show(objfile, dir, pattern);
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
 		}
 	}
 
-	public static Image3DUniverse show(String objfile, String vertexDir) {
+	public static Image3DUniverse show(String objfile, String vertexDir, String filenameContains) {
 
 		// load mesh
 		CustomContent content = null;
 		try {
-			content = readMesh(objfile, vertexDir);
+			content = readMesh(objfile, vertexDir, filenameContains);
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot load " + objfile, e);
 		}
@@ -57,13 +59,13 @@ public class SphereProjectionViewer implements PlugIn {
 		return univ;
 	}
 
-	public static CustomContent readMesh(String objpath, String vertexDir) throws IOException {
-		return new CustomContent(objpath, vertexDir);
+	public static CustomContent readMesh(String objpath, String vertexDir, String filenameContains) throws IOException {
+		return new CustomContent(objpath, vertexDir, filenameContains);
 	}
 
 	private static class CustomBehavior extends InteractiveBehavior {
 
-		private CustomContent cc;
+		private final CustomContent cc;
 
 		CustomBehavior(Image3DUniverse univ, CustomContent cc) {
 			super(univ);

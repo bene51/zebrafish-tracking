@@ -40,7 +40,7 @@ public class Register_ implements PlugIn {
 		Prefs.savePreferences();
 
 		Matrix4f initial = new Matrix4f();
-		Image3DUniverse univ = SphereProjectionViewer.show(datadir + "/Sphere.obj", datadir);
+		Image3DUniverse univ = SphereProjectionViewer.show(datadir + "/Sphere.obj", datadir, null);
 		new WaitForUserDialog("",
 			"Please rotate the sphere to the desired orientation, then click OK").show();
 		Transform3D trans = new Transform3D();

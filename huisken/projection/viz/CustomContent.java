@@ -27,7 +27,7 @@ import customnode.CustomTriangleMesh;
 
 public class CustomContent extends Content {
 
-	private CustomIndexedTriangleMesh mesh;
+	private final CustomIndexedTriangleMesh mesh;
 	public final String[] files;
 
 	private float displayedMaximum = 0;
@@ -39,16 +39,20 @@ public class CustomContent extends Content {
 
 	private float maximaThreshold = Spherical_Max_Projection.FIT_SPHERE_THRESHOLD;
 
-	public CustomContent(String objfile, String vertexDir) throws IOException {
+	public CustomContent(String objfile, String vertexDir, String filenameContains) throws IOException {
 
 		super("bla", 0);
 		smp = new SphericalMaxProjection(objfile);
 
 		List<String> tmp = new ArrayList<String>();
 		tmp.addAll(Arrays.asList(new File(vertexDir).list()));
-		for(int i = tmp.size() - 1; i >= 0; i--)
-			if(!tmp.get(i).endsWith(".vertices"))
+		for(int i = tmp.size() - 1; i >= 0; i--) {
+			String name = tmp.get(i);
+			if(!name.endsWith(".vertices"))
 				tmp.remove(i);
+			if(filenameContains != null && !name.contains(filenameContains))
+				tmp.remove(i);
+		}
 		this.files = new String[tmp.size()];
 		tmp.toArray(files);
 		for(int i = 0; i < files.length; i++)
@@ -215,8 +219,8 @@ public class CustomContent extends Content {
 
 	private static final class CustomIndexedTriangleMesh extends CustomTriangleMesh {
 
-		private Point3f[] vertices;
-		private Color3f[] colors;
+		private final Point3f[] vertices;
+		private final Color3f[] colors;
 		private int[] faces;
 
 		CustomIndexedTriangleMesh(Point3f[] vertices, Color3f[] colors, int[] faces) {
@@ -275,7 +279,7 @@ public class CustomContent extends Content {
 			return ta;
 		}
 
-		private Point2d p2d = new Point2d();
+		private final Point2d p2d = new Point2d();
 		private boolean roiContains(Point3f p, Transform3D volToIP, Canvas3D canvas, Polygon polygon) {
 			Point3d locInImagePlate = new Point3d(p);
 			volToIP.transform(locInImagePlate);
