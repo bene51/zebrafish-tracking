@@ -10,6 +10,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileInputStream;
+import java.util.Arrays;
 import java.util.Properties;
 
 import javax.swing.JButton;
@@ -23,9 +24,20 @@ public class TwoCamera_MaxProjection implements PlugIn {
 
 	@Override
 	public void run(String arg) {
+		File defaultdir = new File("D:\\SPIMdata");
+		File[] tmp = defaultdir.listFiles();
+		if(tmp != null && tmp.length != 0) {
+			Arrays.sort(tmp);
+			defaultdir = tmp[tmp.length - 1];
+		}
+		tmp = defaultdir.listFiles();
+		if(tmp != null && tmp.length != 0) {
+			Arrays.sort(tmp);
+			defaultdir = tmp[tmp.length - 1];
+		}
 		String[] cChoice = new String[] {"Camera 1", "Camera 2" };
 		GenericDialogPlus gd = new GenericDialogPlus("Spherical_Max_Projection");
-		gd.addDirectoryField("Output directory", "D:\\SPIMdata");
+		gd.addDirectoryField("Output directory", defaultdir.getAbsolutePath());
 //		gd.addNumericField("Timepoints", 0, 0);
 		gd.addChoice("Camera", cChoice, cChoice[0]);
 //		gd.addNumericField("Center_x", 0, 3);
