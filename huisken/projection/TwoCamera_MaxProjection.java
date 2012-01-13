@@ -82,7 +82,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 
 			// account for double-sided illumination:
 			d /= 2;
-			pw *= 2;
+			pd *= 2;
 
 			System.out.println(w);
 			System.out.println(h);
