@@ -50,7 +50,7 @@ public class CustomContent extends Content {
 			String name = tmp.get(i);
 			if(!name.endsWith(".vertices"))
 				tmp.remove(i);
-			if(filenameContains != null && !name.contains(filenameContains))
+			else if(filenameContains != null && !name.contains(filenameContains))
 				tmp.remove(i);
 		}
 		this.files = new String[tmp.size()];
