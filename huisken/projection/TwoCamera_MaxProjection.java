@@ -139,7 +139,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 	public void go(AT at, int framecount) {
 		at.AT_Flush();
 		at.AT_SetEnumString("CycleMode", "Fixed");
-		at.AT_SetEnumString("ElectronicShutteringMode", "Global");
+		// at.AT_SetEnumString("ElectronicShutteringMode", "Global");
 		at.AT_SetInt("FrameCount", framecount);
 		at.AT_SetBool("SensorCooling", true);
 		at.AT_SetEnumString("PixelReadoutRate", "280 MHz");
