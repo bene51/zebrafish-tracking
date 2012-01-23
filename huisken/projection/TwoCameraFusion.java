@@ -1,25 +1,47 @@
 package huisken.projection;
 
+import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
+import ij.plugin.PlugIn;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 import javax.vecmath.Point3f;
 
 import Jama.Matrix;
 
 // TODO CAMERA1 and CAMER2 are exchanged.
-public class TwoCameraFusion {
+public class TwoCameraFusion implements PlugIn {
 
 	private static final int LEFT    = TwoCameraSphericalMaxProjection.LEFT;
 	private static final int RIGHT   = TwoCameraSphericalMaxProjection.RIGHT;
 	private static final int CAMERA1 = TwoCameraSphericalMaxProjection.CAMERA1;
 	private static final int CAMERA2 = TwoCameraSphericalMaxProjection.CAMERA2;
 
-	public void fuse(String inputdir) throws IOException {
-		if(inputdir.endsWith(File.separator))
+	@Override
+	public void run(String args) {
+		GenericDialogPlus gd = new GenericDialogPlus("Fuse from 2 cameras");
+		gd.addDirectoryField("Input folder", "");
+		gd.showDialog();
+		if(gd.wasCanceled())
+			return;
+		try {
+			fuse2(gd.getNextString());
+		} catch(Exception e) {
+			IJ.error(e.getMessage());
+			e.printStackTrace();
+		}
+		IJ.showMessage("done");
+	}
+
+	public static void fuse(String inputdir) throws IOException {
+		if(!inputdir.endsWith(File.separator))
 			inputdir += File.separator;
+		String outputdir = inputdir + "fused" + File.separator;
+		if(new File(outputdir).exists())
+			new File(outputdir).mkdirs();
 		SphericalMaxProjection[][] smp = new SphericalMaxProjection[2][2];
 		smp[CAMERA1][LEFT]  = new SphericalMaxProjection(inputdir + "Sphere.obj");
 		smp[CAMERA1][RIGHT] = smp[CAMERA1][LEFT].clone();
@@ -30,20 +52,20 @@ public class TwoCameraFusion {
 		int aperture = 90;
 
 		FusionWeight[][] weights = new FusionWeight[2][2];
-		weights[CAMERA1][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,   45, aperture, center);
-		weights[CAMERA1][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  -45, aperture, center);
-		weights[CAMERA2][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  135, aperture, center);
-		weights[CAMERA2][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false, -135, aperture, center);
+		weights[CAMERA1][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  135, aperture, center);
+		weights[CAMERA1][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false, -135, aperture, center);
+		weights[CAMERA2][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,   45, aperture, center);
+		weights[CAMERA2][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  -45, aperture, center);
 
 
 		String format = "tp%04d_a%04d_ill%d.vertices";
 		int tp = 0;
 		while(new File(inputdir, String.format(format, tp, 0, LEFT)).exists()) {
 			IJ.log("Fusing timepoint " + tp);
-			smp[CAMERA1][LEFT ].loadMaxima(String.format(format, tp, 0,   LEFT));
-			smp[CAMERA1][RIGHT].loadMaxima(String.format(format, tp, 0,   RIGHT));
-			smp[CAMERA2][LEFT ].loadMaxima(String.format(format, tp, 180, LEFT));
-			smp[CAMERA2][RIGHT].loadMaxima(String.format(format, tp, 180, RIGHT));
+			smp[CAMERA1][LEFT ].loadMaxima(inputdir + String.format(format, tp, 180, LEFT));
+			smp[CAMERA1][RIGHT].loadMaxima(inputdir + String.format(format, tp, 180, RIGHT));
+			smp[CAMERA2][LEFT ].loadMaxima(inputdir + String.format(format, tp,   0, LEFT));
+			smp[CAMERA2][RIGHT].loadMaxima(inputdir + String.format(format, tp,   0, RIGHT));
 
 			Point3f[] vertices = smp[CAMERA1][LEFT].getSphere().getVertices();
 			float[] m1 = smp[CAMERA1][LEFT].getMaxima();
@@ -56,17 +78,26 @@ public class TwoCameraFusion {
 				float w2 = weights[CAMERA1][RIGHT].getWeight(vertex.x, vertex.y, vertex.z);
 				float w3 = weights[CAMERA2][LEFT ].getWeight(vertex.x, vertex.y, vertex.z);
 				float w4 = weights[CAMERA2][RIGHT].getWeight(vertex.x, vertex.y, vertex.z);
-				m1[v] = (w1 * m1[v] + w2 * m2[v] + w3 * m3[v] + w4 * m4[v]) / (w1 + w2 + w2 + w4);
+				float sum = w1 + w2 + w3 + w4;
+				if(sum != 1)
+					System.out.println("sum = " + sum);
+				m1[v] = (w1 * m1[v] + w2 * m2[v] + w3 * m3[v] + w4 * m4[v]);
+
 			}
 
-			smp[CAMERA1][LEFT].saveMaxima(inputdir + String.format("tp%04d.vertices", tp));
+			smp[CAMERA1][LEFT].saveMaxima(outputdir + String.format("tp%04d.vertices", tp));
 			tp++;
+if(tp == 10)
+	break;
 		}
 	}
 
-	public void fuse2(String inputdir) throws IOException {
-		if(inputdir.endsWith(File.separator))
+	public static void fuse2(String inputdir) throws IOException {
+		if(!inputdir.endsWith(File.separator))
 			inputdir += File.separator;
+		String outputdir = inputdir + "fused" + File.separator;
+		if(new File(outputdir).exists())
+			new File(outputdir).mkdirs();
 		SphericalMaxProjection[][] smp = new SphericalMaxProjection[2][2];
 		smp[CAMERA1][LEFT]  = new SphericalMaxProjection(inputdir + "Sphere.obj");
 		smp[CAMERA1][RIGHT] = smp[CAMERA1][LEFT].clone();
@@ -77,20 +108,19 @@ public class TwoCameraFusion {
 		int aperture = 90;
 
 		AngleWeighter2[][] weights = new AngleWeighter2[2][2];
-		weights[CAMERA1][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,   45, aperture, center);
-		weights[CAMERA1][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  -45, aperture, center);
-		weights[CAMERA2][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  135, aperture, center);
-		weights[CAMERA2][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false, -135, aperture, center);
-
+		weights[CAMERA1][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  135, aperture, center);
+		weights[CAMERA1][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false, -135, aperture, center);
+		weights[CAMERA2][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,   45, aperture, center);
+		weights[CAMERA2][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  -45, aperture, center);
 
 		String format = "tp%04d_a%04d_ill%d.vertices";
 		int tp = 0;
 		while(new File(inputdir, String.format(format, tp, 0, LEFT)).exists()) {
 			IJ.log("Fusing timepoint " + tp);
-			smp[CAMERA1][LEFT ].loadMaxima(String.format(format, tp, 0,   LEFT));
-			smp[CAMERA1][RIGHT].loadMaxima(String.format(format, tp, 0,   RIGHT));
-			smp[CAMERA2][LEFT ].loadMaxima(String.format(format, tp, 180, LEFT));
-			smp[CAMERA2][RIGHT].loadMaxima(String.format(format, tp, 180, RIGHT));
+			smp[CAMERA1][LEFT ].loadMaxima(inputdir + String.format(format, tp, 180, LEFT));
+			smp[CAMERA1][RIGHT].loadMaxima(inputdir + String.format(format, tp, 180, RIGHT));
+			smp[CAMERA2][LEFT ].loadMaxima(inputdir + String.format(format, tp,   0, LEFT));
+			smp[CAMERA2][RIGHT].loadMaxima(inputdir + String.format(format, tp,   0, RIGHT));
 
 			Point3f[] vertices = smp[CAMERA1][LEFT].getSphere().getVertices();
 			float[] m1 = smp[CAMERA1][LEFT].getMaxima();
@@ -164,6 +194,7 @@ public class TwoCameraFusion {
 			};
 			double[] tmp = new Matrix(A_inv).times(new Matrix(b, 3)).getColumnPackedCopy();
 			double[] x = new double[] {0, tmp[0], tmp[1], tmp[2]};
+			System.out.println("shifts: " + Arrays.toString(x));
 
 			for(int v = 0; v < vertices.length; v++) {
 				Point3f vertex = vertices[v];
@@ -171,16 +202,19 @@ public class TwoCameraFusion {
 				float w2 = weights[CAMERA1][RIGHT].getWeight(vertex.x, vertex.y, vertex.z);
 				float w3 = weights[CAMERA2][LEFT ].getWeight(vertex.x, vertex.y, vertex.z);
 				float w4 = weights[CAMERA2][RIGHT].getWeight(vertex.x, vertex.y, vertex.z);
+
+				float sum = w1 + w2 + w3 + w4;
+				if(sum != 1)
+					System.out.println("sum = " + sum);
 				m1[v] = (float)(
 					w1 * (m1[v] + x[0]) +
 					w2 * (m2[v] + x[3]) +
 					w3 * (m3[v] + x[1]) +
-					w4 * (m4[v] + x[2])) /
-					(w1 + w2 + w2 + w4);
+					w4 * (m4[v] + x[2]));
 
 			}
 
-			smp[CAMERA1][LEFT].saveMaxima(inputdir + String.format("tp%04d.vertices", tp));
+			smp[CAMERA1][LEFT].saveMaxima(outputdir + String.format("tp%04d.vertices", tp));
 			tp++;
 		}
 	}
