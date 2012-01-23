@@ -1,5 +1,11 @@
 package huisken.projection;
 
+import ij.ImageJ;
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.process.FloatProcessor;
+import ij.process.ImageProcessor;
+
 import javax.vecmath.Point3f;
 
 public class AngleWeighter2 implements FusionWeight {
@@ -92,5 +98,22 @@ public class AngleWeighter2 implements FusionWeight {
 			double t = angle - aperture/2.0;
 			return 1f - (float)(1.0 / (1 + Math.exp(-exp * t)));
 		}
+	}
+
+	public static void main(String[] args) {
+		new ImageJ();
+		AngleWeighter2 aw = new AngleWeighter2(X_AXIS, false, 135, 90, new Point3f(50, 50, 50));
+		int w = 100, h = 100, d = 100;
+		ImageStack stack = new ImageStack(w, h);
+		for(int z = 0; z < d; z++) {
+			ImageProcessor p = new FloatProcessor(w, h);
+			for(int y = 0; y < h; y++) {
+				for(int x = 0; x < w; x++) {
+					p.setf(x, y, aw.getWeight(x, y, z));
+				}
+			}
+			stack.addSlice("", p);
+		}
+		new ImagePlus("aw", stack).show();
 	}
 }
