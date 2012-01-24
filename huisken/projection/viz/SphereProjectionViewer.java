@@ -126,6 +126,9 @@ public class SphereProjectionViewer implements PlugIn {
 				}
 				cc.toggleShowMaxima();
 			}
+			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_N) {
+				IJ.showMessage(cc.getCurrentFile());
+			}
 		}
 	}
 }
