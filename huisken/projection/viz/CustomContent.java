@@ -79,6 +79,10 @@ public class CustomContent extends Content {
 		displayedMaximum = getCurrentMaximum();
 	}
 
+	public String getCurrentFile() {
+		return files[getCurrent().getTimepoint()];
+	}
+
 	public boolean areMaximaShown() {
 		return showMaxima;
 	}
@@ -205,7 +209,7 @@ public class CustomContent extends Content {
 	}
 
 	@Override public boolean isVisibleAt(int t) {
-		return t > 0 && t < getNumberOfInstants();
+		return t >= 0 && t < getNumberOfInstants();
 	}
 
 	@Override public int getStartTime() {
