@@ -35,7 +35,9 @@ import fiji.util.node.Leaf;
 public class SphericalMaxProjection {
 
 	// These fields are set in prepareForProjection();
-	private Point3i[][] lut;
+	private int[][] lutx;
+	private int[][] luty;
+	private int[][] luti;
 	private float[] maxima;
 
 	// These fields must be set in the constructor and
@@ -379,10 +381,21 @@ public class SphericalMaxProjection {
 			e.printStackTrace();
 		}
 
-		lut = new Point3i[d][];
+		lutx = new int[d][];
+		luty = new int[d][];
+		luti = new int[d][];
 		for(int i = 0; i < d; i++) {
-			lut[i] = new Point3i[all_correspondences[i].size()];
-			all_correspondences[i].toArray(lut[i]);
+			int l = all_correspondences[i].size();
+			lutx[i] = new int[l];
+			luty[i] = new int[l];
+			luti[i] = new int[l];
+
+			for(int j = 0; j < l; j++) {
+				Point3i p = all_correspondences[i].get(j);
+				lutx[i][j] = p.x;
+				luty[i][j] = p.y;
+				luti[i][j] = p.z;
+			}
 		}
 	}
 
@@ -394,11 +407,10 @@ public class SphericalMaxProjection {
 	 * z starts with 0;
 	 */
 	public void projectPlane(int z, ImageProcessor ip) {
-		for(Point3i p : lut[z]) {
-			float v = ip.getf(p.x, p.y);
-			if(v > maxima[p.z]) {  // z is the vertex index
-				maxima[p.z] = v;
-			}
+		for(int i = 0; i < luti[z].length; i++) {
+			float v = ip.getf(lutx[z][i], luty[z][i]);
+			if(v > maxima[luti[z][i]])
+				maxima[luti[z][i]] = v;
 		}
 	}
 
@@ -466,12 +478,19 @@ public class SphericalMaxProjection {
 			cp.maxima = new float[this.maxima.length];
 			System.arraycopy(this.maxima, 0, cp.maxima, 0, this.maxima.length);
 		}
-		if(this.lut != null) {
-			cp.lut = new Point3i[this.lut.length][];
-			for(int z = 0; z < this.lut.length; z++) {
-				cp.lut[z] = new Point3i[this.lut[z].length];
-				for(int i = 0; i < this.lut[z].length; i++)
-					cp.lut[z][i] = new Point3i(lut[z][i]);
+		if(this.luti != null) {
+			int l = this.luti.length;
+			cp.luti = new int[l][];
+			cp.lutx = new int[l][];
+			cp.luty = new int[l][];
+			for(int z = 0; z < l; z++) {
+				int lz = this.luti[z].length;
+				cp.luti[z] = new int[lz];
+				cp.lutx[z] = new int[lz];
+				cp.luty[z] = new int[lz];
+				System.arraycopy(this.luti[z], 0, cp.luti[z], 0, lz);
+				System.arraycopy(this.lutx[z], 0, cp.lutx[z], 0, lz);
+				System.arraycopy(this.luty[z], 0, cp.luty[z], 0, lz);
 			}
 		}
 		return cp;
