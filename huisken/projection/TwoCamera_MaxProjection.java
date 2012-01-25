@@ -163,6 +163,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				int d2 = 2 * d;
 				AT at = cameraApp.getAT();
 				at.AT_Command("AcquisitionStart");
+long start = System.currentTimeMillis();
 System.out.println("Aquisition start");
 				for(int f = 0; f < d2; f++) {
 					at.AT_NextFrame(toProcess);
@@ -170,6 +171,8 @@ System.out.println("Aquisition start");
 					mmsmp.process(new ShortProcessor(w, h, toProcess, null));
 				}
 				at.AT_Command("AcquisitionStop");
+long end = System.currentTimeMillis();
+System.out.println("Needed " + (end - start) + "ms  " + (end - start) / d2 + " fps");
 			}
 		});
 	}
