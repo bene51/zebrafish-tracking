@@ -152,7 +152,7 @@ public class TwoCameraSphericalMaxProjection {
 			double pw, double ph, double pd) {
 
 		int subd = (int)Math.round(radius / (Math.min(pw, Math.min(ph, pd))));
-		subd /= 4;
+		// subd /= 4;
 
 		IndexedTriangleMesh sphere = createSphere(center, radius, subd);
 
