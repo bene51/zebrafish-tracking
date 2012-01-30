@@ -19,6 +19,7 @@ public class AngleWeighter2 implements FusionWeight {
 	private final int angle;
 	private final int axis;
 	private boolean negativeAxis;
+	public static final double overlap = 20;
 
 	public AngleWeighter2(int axis, boolean negativeAxis, int angle, int aperture, Point3f center) {
 		this.axis = axis;
@@ -70,7 +71,6 @@ public class AngleWeighter2 implements FusionWeight {
 	 *    z |        | /
 	 *      |________|/
 	 */
-	public static final double overlap = 10;
 	@Override
 	public float getWeight(float px, float py, float pz) {
 
