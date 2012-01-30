@@ -87,8 +87,6 @@ public class TwoCameraFusion implements PlugIn {
 
 			smp[CAMERA1][LEFT].saveMaxima(outputdir + String.format("tp%04d.vertices", tp));
 			tp++;
-if(tp == 10)
-	break;
 		}
 	}
 
@@ -136,15 +134,15 @@ if(tp == 10)
 				double dx = vertex.x - center.x;
 				double dy = vertex.y - center.y;
 				double dz = vertex.z - center.z;
-				double angle = weights[CAMERA1][LEFT].getAngle(dx, dy, dz);
 
 				for(int cam = CAMERA1; cam <= CAMERA2; cam++) {
 					for(int ill = LEFT; ill <= RIGHT; ill++) {
+						double angle = weights[cam][ill].getAngle(dx, dy, dz);
 						if(weights[cam][ill].inLowerOverlap(angle)) {
-							mean[cam][ill][0] += m1[v];
+							mean[cam][ill][0] += smp[cam][ill].getMaxima()[v];
 							count[cam][ill][0]++;
 						} else if(weights[cam][ill].inUpperOverlap(angle)) {
-							mean[cam][ill][1] += m1[v];
+							mean[cam][ill][1] += smp[cam][ill].getMaxima()[v];
 							count[cam][ill][1]++;
 						}
 					}
