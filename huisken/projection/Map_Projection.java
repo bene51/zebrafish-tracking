@@ -1,9 +1,12 @@
 package huisken.projection;
 
 import fiji.util.gui.GenericDialogPlus;
+import huisken.projection.viz.SphereProjectionViewer;
 import ij.IJ;
 import ij.ImagePlus;
+import ij.gui.WaitForUserDialog;
 import ij.plugin.PlugIn;
+import ij3d.Image3DUniverse;
 
 import java.awt.geom.GeneralPath;
 import java.io.File;
@@ -11,6 +14,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import javax.media.j3d.Transform3D;
+import javax.vecmath.Matrix4f;
 
 import com.jhlabs.map.proj.AugustProjection;
 import com.jhlabs.map.proj.BonneProjection;
@@ -72,16 +78,26 @@ public class Map_Projection implements PlugIn {
 			IJ.error("Cannot find " + objfile.getAbsolutePath());
 			return;
 		}
+
+		Matrix4f initial = new Matrix4f();
+		Image3DUniverse univ = SphereProjectionViewer.show(datadir.getAbsolutePath() + "/Sphere.obj", datadir.getAbsolutePath(), null);
+		new WaitForUserDialog("",
+			"Please rotate the sphere to the desired orientation, then click OK").show();
+		Transform3D trans = new Transform3D();
+		univ.getContent("bla").getLocalRotate(trans);
+		trans.get(initial);
+		univ.close();
+
 		try {
-			createProjections(objfile.getAbsolutePath(), datadir.getAbsolutePath(), mapType, outputdir.getAbsolutePath());
+			createProjections(objfile.getAbsolutePath(), datadir.getAbsolutePath(), initial, mapType, outputdir.getAbsolutePath());
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
 		}
 	}
 
-	public void createProjections(String objfile, String datadir, int mapType, String outputdir) throws IOException {
-		SphericalMaxProjection smp = new SphericalMaxProjection(objfile);
+	public void createProjections(String objfile, String datadir, Matrix4f initial, int mapType, String outputdir) throws IOException {
+		SphericalMaxProjection smp = new SphericalMaxProjection(objfile, initial);
 		createProjections(smp, datadir, mapType, outputdir);
 	}
 
@@ -108,7 +124,7 @@ public class Map_Projection implements PlugIn {
 		GeneralPath lines = proj.createLines();
 		lines = proj.transform(lines);
 		GeneralProjProjection.savePath(lines, outputdir + File.separator + "lines.ps", proj.getWidth(), proj.getHeight(), false);
-		
+
 		// collect files
 		List<String> tmp = new ArrayList<String>();
 		tmp.addAll(Arrays.asList(new File(datadir).list()));

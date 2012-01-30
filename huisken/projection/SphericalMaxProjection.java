@@ -76,7 +76,15 @@ public class SphericalMaxProjection {
 	}
 
 	public SphericalMaxProjection(String objfile) throws IOException {
+		this(objfile, null);
+	}
+
+	public SphericalMaxProjection(String objfile, Matrix4f transform) throws IOException {
 		this.sphere = loadSphere(objfile);
+		if(transform != null) {
+			for(Point3f v : sphere.getVertices())
+				transform.transform(v);
+		}
 
 		ArrayList<Node3D> nodes = new ArrayList<Node3D>(sphere.nVertices);
 		double mx = 0, my = 0, mz = 0;
