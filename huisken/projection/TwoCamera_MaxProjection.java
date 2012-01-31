@@ -2,6 +2,7 @@ package huisken.projection;
 
 import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
+import ij.ImagePlus;
 import ij.plugin.PlugIn;
 import ij.process.ShortProcessor;
 
@@ -30,6 +31,7 @@ import neo.BaseCameraApplication;
 public class TwoCamera_MaxProjection implements PlugIn {
 
 	public static final int PORT = 1236;
+	private File outputdir;
 
 	@Override
 	public void run(String arg) {
@@ -59,7 +61,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 		if(gd.wasCanceled())
 			return;
 
-		File outputdir = new File(gd.getNextString());
+		outputdir = new File(gd.getNextString());
 		int camera = gd.getNextChoiceIndex();
 
 		if(!outputdir.exists() || !outputdir.isDirectory())
@@ -155,6 +157,8 @@ public class TwoCamera_MaxProjection implements PlugIn {
 
 	private int w, h, d;
 	private short[] toProcess = null;
+	private int currentTimepoint = 0;
+	private static final boolean SAVE_RAW = false;
 
 	public void takeStack() {
 		exec.execute(new Runnable() {
@@ -163,35 +167,37 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				int d2 = 2 * d;
 				AT at = cameraApp.getAT();
 				at.AT_Command("AcquisitionStart");
-long start = System.currentTimeMillis();
-System.out.println("Aquisition start");
+				long start = System.currentTimeMillis();
+				File tpDir = null;
+				if(SAVE_RAW) {
+					tpDir = new File(outputdir, String.format("tp%04d", currentTimepoint));
+					tpDir.mkdir();
+				}
 				for(int f = 0; f < d2; f++) {
 					at.AT_NextFrame(toProcess);
-					System.out.println("Got frame " + f);
-					mmsmp.process(new ShortProcessor(w, h, toProcess, null));
+					ShortProcessor ip = new ShortProcessor(w, h, toProcess, null);
+					mmsmp.process(ip);
+					if(SAVE_RAW)
+						IJ.save(new ImagePlus("", ip), new File(tpDir, String.format("%04d.tif", f)).getAbsolutePath());
 				}
+				currentTimepoint++;
 				at.AT_Command("AcquisitionStop");
-long end = System.currentTimeMillis();
-System.out.println("Needed " + (end - start) + "ms  " + (end - start) / d2 + " fps");
+				long end = System.currentTimeMillis();
+				System.out.println("Needed " + (end - start) + "ms  " + (end - start) / d2 + " fps");
 			}
 		});
 	}
 
 	public void setup() throws IOException {
 		AT at = cameraApp.getAT();
-System.out.println("bla1");
 		at.AT_Flush();
 		at.AT_SetEnumString("CycleMode", "Continuous");
-System.out.println("bla2");
 		// at.AT_SetEnumString("CycleMode", "Fixed");
 		at.AT_SetEnumString("TriggerMode", "External Start");
-System.out.println("bla3");
 
 		at.AT_CreateBuffers();
-System.out.println("bla4");
 
 		ServerSocket server = new ServerSocket(PORT);
-System.out.println("bla5");
 
 		Socket client = server.accept();
 		BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
