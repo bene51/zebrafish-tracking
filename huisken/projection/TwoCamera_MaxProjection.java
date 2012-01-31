@@ -176,15 +176,15 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				}
 				for(int f = 0; f < d2; f++) {
 					at.AT_NextFrame(toProcess);
-					ShortProcessor ip = new ShortProcessor(w, h, toProcess, null);
-					mmsmp.process(ip);
+					// ShortProcessor ip = new ShortProcessor(w, h, toProcess, null);
+					mmsmp.process(toProcess);
 					if(SAVE_RAW)
-						IJ.save(new ImagePlus("", ip), new File(tpDir, String.format("%04d.tif", f)).getAbsolutePath());
+						IJ.save(new ImagePlus("", new ShortProcessor(w, h, toProcess, null)), new File(tpDir, String.format("%04d.tif", f)).getAbsolutePath());
 				}
 				currentTimepoint++;
 				at.AT_Command("AcquisitionStop");
 				long end = System.currentTimeMillis();
-				System.out.println("Needed " + (end - start) + "ms  " + (end - start) / d2 + " fps");
+				System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
 			}
 		});
 	}

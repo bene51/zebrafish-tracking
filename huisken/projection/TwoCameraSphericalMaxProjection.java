@@ -1,7 +1,5 @@
 package huisken.projection;
 
-import ij.process.ImageProcessor;
-
 import java.io.File;
 
 import javax.vecmath.Point3f;
@@ -110,7 +108,7 @@ public class TwoCameraSphericalMaxProjection {
 		}
 	}
 
-	public void process(ImageProcessor ip) {
+	public void process(short[] ip) {
 		iterator = iterator.next();
 		if(iterator == null)
 			throw new RuntimeException("Finished");

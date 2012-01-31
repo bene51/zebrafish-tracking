@@ -191,7 +191,7 @@ public class MultiViewSphericalMaxProjection {
 			smp[a][ill].resetMaxima();
 
 		// do the projection
-		smp[a][ill].projectPlane(p, ip);
+		smp[a][ill].projectPlane(p, (short[])ip.getPixels());
 
 		// Not end of stack: nothing else to do
 		if(p < nPlanes - 1)

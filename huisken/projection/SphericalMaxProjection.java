@@ -1,7 +1,5 @@
 package huisken.projection;
 
-import ij.process.ImageProcessor;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -35,8 +33,7 @@ import fiji.util.node.Leaf;
 public class SphericalMaxProjection {
 
 	// These fields are set in prepareForProjection();
-	private int[][] lutx;
-	private int[][] luty;
+	private int[][] lutxy;
 	private int[][] luti;
 	private float[] maxima;
 
@@ -389,19 +386,16 @@ public class SphericalMaxProjection {
 			e.printStackTrace();
 		}
 
-		lutx = new int[d][];
-		luty = new int[d][];
+		lutxy = new int[d][];
 		luti = new int[d][];
 		for(int i = 0; i < d; i++) {
 			int l = all_correspondences[i].size();
-			lutx[i] = new int[l];
-			luty[i] = new int[l];
+			lutxy[i] = new int[l];
 			luti[i] = new int[l];
 
 			for(int j = 0; j < l; j++) {
 				Point3i p = all_correspondences[i].get(j);
-				lutx[i][j] = p.x;
-				luty[i][j] = p.y;
+				lutxy[i][j] = p.y * w + p.x;
 				luti[i][j] = p.z;
 			}
 		}
@@ -414,9 +408,10 @@ public class SphericalMaxProjection {
 	/*
 	 * z starts with 0;
 	 */
-	public void projectPlane(int z, ImageProcessor ip) {
+	public void projectPlane(int z, short[] ip) {
 		for(int i = 0; i < luti[z].length; i++) {
-			float v = ip.getf(lutx[z][i], luty[z][i]);
+			// float v = ip.getf(lutx[z][i], luty[z][i]);
+			float v = ip[lutxy[z][i]] & 0xffff;
 			if(v > maxima[luti[z][i]])
 				maxima[luti[z][i]] = v;
 		}
@@ -489,16 +484,13 @@ public class SphericalMaxProjection {
 		if(this.luti != null) {
 			int l = this.luti.length;
 			cp.luti = new int[l][];
-			cp.lutx = new int[l][];
-			cp.luty = new int[l][];
+			cp.lutxy = new int[l][];
 			for(int z = 0; z < l; z++) {
 				int lz = this.luti[z].length;
 				cp.luti[z] = new int[lz];
-				cp.lutx[z] = new int[lz];
-				cp.luty[z] = new int[lz];
+				cp.lutxy[z] = new int[lz];
 				System.arraycopy(this.luti[z], 0, cp.luti[z], 0, lz);
-				System.arraycopy(this.lutx[z], 0, cp.lutx[z], 0, lz);
-				System.arraycopy(this.luty[z], 0, cp.luty[z], 0, lz);
+				System.arraycopy(this.lutxy[z], 0, cp.lutxy[z], 0, lz);
 			}
 		}
 		return cp;
