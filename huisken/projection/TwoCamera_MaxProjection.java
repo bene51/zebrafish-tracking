@@ -166,6 +166,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 			public void run() {
 				int d2 = 2 * d;
 				AT at = cameraApp.getAT();
+				at.AT_SetInt("FrameCount", d2);
 				at.AT_Command("AcquisitionStart");
 				long start = System.currentTimeMillis();
 				File tpDir = null;
@@ -191,8 +192,8 @@ public class TwoCamera_MaxProjection implements PlugIn {
 	public void setup() throws IOException {
 		AT at = cameraApp.getAT();
 		at.AT_Flush();
-		at.AT_SetEnumString("CycleMode", "Continuous");
-		// at.AT_SetEnumString("CycleMode", "Fixed");
+		// at.AT_SetEnumString("CycleMode", "Continuous");
+		at.AT_SetEnumString("CycleMode", "Fixed");
 		at.AT_SetEnumString("TriggerMode", "External Start");
 
 		at.AT_CreateBuffers();
