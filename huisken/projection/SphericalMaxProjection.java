@@ -16,12 +16,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
+import javax.vecmath.Point3i;
 import javax.vecmath.Vector3f;
 
 import meshtools.IndexedTriangleMesh;
@@ -33,7 +35,9 @@ import fiji.util.node.Leaf;
 public class SphericalMaxProjection {
 
 	// These fields are set in prepareForProjection();
-	private Point4[][] lut;
+	private int[][] lutx;
+	private int[][] luty;
+	private int[][] luti;
 	private float[] maxima;
 
 	// These fields must be set in the constructor and
@@ -307,61 +311,99 @@ public class SphericalMaxProjection {
 		}
 	}
 
-	public void prepareForProjection(int w, int h, int d, double pw, double ph, double pd, FusionWeight weighter) {
+	public void prepareForProjection(final int w, final int h, final int d, final double pw, final double ph, final double pd, final FusionWeight weighter) {
 
-		Vector3f dx = new Vector3f();
-		Point3f pos = new Point3f();
+		final int nProcessors = Runtime.getRuntime().availableProcessors();
+		ExecutorService exec = Executors.newFixedThreadPool(nProcessors);
 
 		@SuppressWarnings("unchecked")
-		ArrayList<Point4>[] correspondences = new ArrayList[d];
+		final ArrayList<Point3i>[] all_correspondences = new ArrayList[d];
 		for(int i = 0; i < d; i++)
-			correspondences[i] = new ArrayList<Point4>();
+			all_correspondences[i] = new ArrayList<Point3i>();
 
-		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
-			Point3f vertex = sphere.getVertices()[vIndex];
-			float weight = weighter.getWeight(vertex.x, vertex.y, vertex.z);
-			if(weight == 0)
-				continue;
+		for(int proc = 0; proc < nProcessors; proc++) {
+			final int currentProc = proc;
+			exec.execute(new Runnable() {
+				@Override
+				public void run() {
+					Vector3f dx = new Vector3f();
+					Point3f pos = new Point3f();
 
-			dx.sub(vertex, center);
-			dx.normalize();
+					@SuppressWarnings("unchecked")
+					ArrayList<Point3i>[] correspondences = new ArrayList[d];
+					for(int i = 0; i < d; i++)
+						correspondences[i] = new ArrayList<Point3i>();
 
-			// calculate the distance needed to move to the neighbor pixel
-			float scale = 1f / (float)Math.max(Math.abs(dx.x / pw), Math.max(
-					Math.abs(dx.y / ph), Math.abs(dx.z / pd)));
+					int nVerticesPerThread = (int)Math.ceil(sphere.nVertices / (double)nProcessors);
+					int startV = currentProc * nVerticesPerThread;
+					int lenV = Math.min((currentProc + 1) * nVerticesPerThread, sphere.nVertices);
+					for(int vIndex = startV; vIndex < lenV; vIndex++) {
+						Point3f vertex = sphere.getVertices()[vIndex];
+						float weight = weighter.getWeight(vertex.x, vertex.y, vertex.z);
+						if(weight == 0)
+							continue;
 
-			int k = Math.round(0.2f * radius / scale);
+						dx.sub(vertex, center);
+						dx.normalize();
 
-			for(int i = -k; i <= k; i++) {
-				pos.scaleAdd(i * scale, dx, vertex);
+						// calculate the distance needed to move to the neighbor pixel
+						float scale = 1f / (float)Math.max(Math.abs(dx.x / pw), Math.max(
+								Math.abs(dx.y / ph), Math.abs(dx.z / pd)));
 
-				// calculate the position in pixel dims
-				int x = (int)Math.round(pos.x / pw);
-				int y = (int)Math.round(pos.y / ph);
-				int z = (int)Math.round(pos.z / pd);
+						int k = Math.round(0.2f * radius / scale);
 
-				// only add it if the pixel is inside the image
-				if(x >= 0 && x < w && y >= 0 && y < h && z >= 0 && z < d)
-					correspondences[z].add(new Point4(x, y, z, vIndex));
-			}
+						for(int i = -k; i <= k; i++) {
+							pos.scaleAdd(i * scale, dx, vertex);
+
+							// calculate the position in pixel dims
+							int x = (int)Math.round(pos.x / pw);
+							int y = (int)Math.round(pos.y / ph);
+							int z = (int)Math.round(pos.z / pd);
+
+							// only add it if the pixel is inside the image
+							if(x >= 0 && x < w && y >= 0 && y < h && z >= 0 && z < d)
+								correspondences[z].add(new Point3i(x, y, vIndex));
+						}
+					}
+					synchronized(SphericalMaxProjection.this) {
+						System.out.println("processor " + currentProc + ": before" + SphericalMaxProjection.this.hashCode());
+						for(int i = 0; i < d; i++) {
+							try {
+								all_correspondences[i].addAll(correspondences[i]);
+							} catch(Throwable t) {
+								System.out.println("i = " + i);
+								System.out.println(all_correspondences[i].size());
+								System.out.println(correspondences[i].size());
+							}
+						}
+						System.out.println("processor " + currentProc + ": after " + SphericalMaxProjection.this.hashCode());
+					}
+				}
+			});
 		}
 
-		final Comparator<Point4> comparator = new Comparator<Point4>() {
-			@Override
-			public int compare(Point4 p1, Point4 p2) {
-				if(p1.z < p2.z) return -1;
-				if(p1.z > p2.z) return +1;
-				return 0;
-			}
-		};
+		try {
+			exec.shutdown();
+			exec.awaitTermination(30, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 
-		// sort according to ascending z coordinate and save
-		// in the lut
-		lut = new Point4[d][];
+		lutx = new int[d][];
+		luty = new int[d][];
+		luti = new int[d][];
 		for(int i = 0; i < d; i++) {
-			Collections.sort(correspondences[i], comparator);
-			lut[i] = new Point4[correspondences[i].size()];
-			correspondences[i].toArray(lut[i]);
+			int l = all_correspondences[i].size();
+			lutx[i] = new int[l];
+			luty[i] = new int[l];
+			luti[i] = new int[l];
+
+			for(int j = 0; j < l; j++) {
+				Point3i p = all_correspondences[i].get(j);
+				lutx[i][j] = p.x;
+				luty[i][j] = p.y;
+				luti[i][j] = p.z;
+			}
 		}
 	}
 
@@ -373,11 +415,10 @@ public class SphericalMaxProjection {
 	 * z starts with 0;
 	 */
 	public void projectPlane(int z, ImageProcessor ip) {
-		for(Point4 p : lut[z]) {
-			float v = ip.getf(p.x, p.y);
-			if(v > maxima[p.vIndex]) {
-				maxima[p.vIndex] = v;
-			}
+		for(int i = 0; i < luti[z].length; i++) {
+			float v = ip.getf(lutx[z][i], luty[z][i]);
+			if(v > maxima[luti[z][i]])
+				maxima[luti[z][i]] = v;
 		}
 	}
 
@@ -445,37 +486,23 @@ public class SphericalMaxProjection {
 			cp.maxima = new float[this.maxima.length];
 			System.arraycopy(this.maxima, 0, cp.maxima, 0, this.maxima.length);
 		}
-		if(this.lut != null) {
-			cp.lut = new Point4[this.lut.length][];
-			for(int z = 0; z < this.lut.length; z++) {
-				cp.lut[z] = new Point4[this.lut[z].length];
-				for(int i = 0; i < this.lut[z].length; i++)
-					cp.lut[z][i] = this.lut[z][i].clone();
+		if(this.luti != null) {
+			int l = this.luti.length;
+			cp.luti = new int[l][];
+			cp.lutx = new int[l][];
+			cp.luty = new int[l][];
+			for(int z = 0; z < l; z++) {
+				int lz = this.luti[z].length;
+				cp.luti[z] = new int[lz];
+				cp.lutx[z] = new int[lz];
+				cp.luty[z] = new int[lz];
+				System.arraycopy(this.luti[z], 0, cp.luti[z], 0, lz);
+				System.arraycopy(this.lutx[z], 0, cp.lutx[z], 0, lz);
+				System.arraycopy(this.luty[z], 0, cp.luty[z], 0, lz);
 			}
 		}
 		return cp;
 	}
-
-	/**
-	 * Holds the image coordinates together with the vertex index.
-	 */
-	private final class Point4 {
-		final int vIndex;
-		final int x, y, z;
-
-		public Point4(int x, int y, int z, int vIndex) {
-			this.x = x;
-			this.y = y;
-			this.z = z;
-			this.vIndex = vIndex;
-		}
-
-		@Override
-		public Point4 clone() {
-			return new Point4(this.x, this.y, this.z, this.vIndex);
-		}
-	}
-
 
 	private static class Node3D implements Leaf<Node3D> {
 

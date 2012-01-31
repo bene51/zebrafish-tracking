@@ -2,16 +2,24 @@ package huisken.projection;
 
 import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
+import ij.ImagePlus;
 import ij.plugin.PlugIn;
 import ij.process.ShortProcessor;
 
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.Arrays;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.swing.JButton;
 import javax.swing.JPanel;
@@ -21,6 +29,9 @@ import neo.AT;
 import neo.BaseCameraApplication;
 
 public class TwoCamera_MaxProjection implements PlugIn {
+
+	public static final int PORT = 1236;
+	private File outputdir;
 
 	@Override
 	public void run(String arg) {
@@ -35,40 +46,23 @@ public class TwoCamera_MaxProjection implements PlugIn {
 			Arrays.sort(tmp);
 			defaultdir = tmp[tmp.length - 1];
 		}
-		String[] cChoice = new String[] {"Camera 1", "Camera 2" };
+
+		double pw = 0, ph = 0, pd = 0;
+		Point3f center = new Point3f();
+		float radius = 0;
+		int timepoints = 0;
+
 		GenericDialogPlus gd = new GenericDialogPlus("Spherical_Max_Projection");
-		gd.addDirectoryField("Output directory", defaultdir.getAbsolutePath());
-//		gd.addNumericField("Timepoints", 0, 0);
+		String[] cChoice = new String[2];
+		cChoice[TwoCameraSphericalMaxProjection.CAMERA1] = "Camera 1";
+		cChoice[TwoCameraSphericalMaxProjection.CAMERA2] = "Camera 2";gd.addDirectoryField("Output directory", defaultdir.getAbsolutePath());
 		gd.addChoice("Camera", cChoice, cChoice[0]);
-//		gd.addNumericField("Center_x", 0, 3);
-//		gd.addNumericField("Center_y", 0, 3);
-//		gd.addNumericField("Center_z", 0, 3);
-//		gd.addNumericField("Radius", 0, 3);
-//		gd.addNumericField("Width", 0, 0);
-//		gd.addNumericField("Height", 0, 0);
-//		gd.addNumericField("Depth", 0, 0);
-//		gd.addNumericField("Pixel_width", 1, 5);
-//		gd.addNumericField("Pixel_height", 1, 5);
-//		gd.addNumericField("Pixel_depth", 1, 5);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
 
-
-		File outputdir = new File(gd.getNextString());
-//		int timepoints = (int)gd.getNextNumber();
+		outputdir = new File(gd.getNextString());
 		int camera = gd.getNextChoiceIndex();
-//		Point3f center = new Point3f(
-//			(float)gd.getNextNumber(),
-//			(float)gd.getNextNumber(),
-//			(float)gd.getNextNumber());
-//		float radius = (float)gd.getNextNumber();
-//		int w = (int)gd.getNextNumber();
-//		int h = (int)gd.getNextNumber();
-//		int d = (int)gd.getNextNumber();
-//		double pw = gd.getNextNumber();
-//		double ph = gd.getNextNumber();
-//		double pd = gd.getNextNumber();
 
 		if(!outputdir.exists() || !outputdir.isDirectory())
 			throw new RuntimeException("Output directory must be a folder");
@@ -79,96 +73,160 @@ public class TwoCamera_MaxProjection implements PlugIn {
 			props.loadFromXML(config);
 			config.close();
 
-			int w = Integer.parseInt(props.getProperty("w"));
-			int h = Integer.parseInt(props.getProperty("h"));
-			int d = Integer.parseInt(props.getProperty("d"));
-			double pw = Double.parseDouble(props.getProperty("pw"));
-			double ph = Double.parseDouble(props.getProperty("ph"));
-			double pd = Double.parseDouble(props.getProperty("pd"));
-			Point3f center = new Point3f(
+			w = Integer.parseInt(props.getProperty("w", "0"));
+			h = Integer.parseInt(props.getProperty("h", "0"));
+			d = Integer.parseInt(props.getProperty("d", "0"));
+			pw = Double.parseDouble(props.getProperty("pw", "0"));
+			ph = Double.parseDouble(props.getProperty("ph", "0"));
+			pd = Double.parseDouble(props.getProperty("pd", "0"));
+			center.set(
 				Float.parseFloat(props.getProperty("centerx")),
 				Float.parseFloat(props.getProperty("centery")),
 				Float.parseFloat(props.getProperty("centerz")));
-			float radius = (float)Double.parseDouble(props.getProperty("radius"));
-			int timepoints = LabView.readInt("n timepoints");
-
-			// account for double-sided illumination:
-			d /= 2;
-			pd *= 2;
-
-			System.out.println(w);
-			System.out.println(h);
-			System.out.println(d);
-			System.out.println(pw);
-			System.out.println(ph);
-			System.out.println(pd);
-			System.out.println(center);
-			System.out.println(radius);
-			System.out.println(timepoints);
-
-			process(outputdir.getAbsolutePath(), timepoints, camera, center, radius, w, h, d, pw, ph, pd);
+			radius = (float)Double.parseDouble(props.getProperty("radius"));
+			timepoints = LabView.readInt("n timepoints");
 		} catch(Exception e) {
-			IJ.error(e.getMessage());
-			e.printStackTrace();
 		}
-	}
 
-	private TwoCameraSphericalMaxProjection mmsmp;
 
-	public void process(String outputdir, int timepoints, int camera, Point3f center, float radius, int w, int h, int d, double pw, double ph, double pd) {
+		gd = new GenericDialogPlus("Spherical_Max_Projection");
+		gd.addNumericField("Timepoints", timepoints, 0);
+		gd.addNumericField("Center_x", center.x, 3);
+		gd.addNumericField("Center_y", center.y, 3);
+		gd.addNumericField("Center_z", center.z, 3);
+		gd.addNumericField("Radius", radius, 3);
+		gd.addNumericField("Width", w, 0);
+		gd.addNumericField("Height", h, 0);
+		gd.addNumericField("Depth", d, 0);
+		gd.addNumericField("Pixel_width", pw, 5);
+		gd.addNumericField("Pixel_height", ph, 5);
+		gd.addNumericField("Pixel_depth", pd, 5);
+		gd.showDialog();
+		if(gd.wasCanceled())
+			return;
+
+
+		timepoints = (int)gd.getNextNumber();
+		center.set(
+			(float)gd.getNextNumber(),
+			(float)gd.getNextNumber(),
+			(float)gd.getNextNumber());
+		radius = (float)gd.getNextNumber();
+		w = (int)gd.getNextNumber();
+		h = (int)gd.getNextNumber();
+		d = (int)gd.getNextNumber();
+		pw = gd.getNextNumber();
+		ph = gd.getNextNumber();
+		pd = gd.getNextNumber();
+
+
+		// account for double-sided illumination:
+		d /= 2;
+		pd *= 2;
+
+		System.out.println(w);
+		System.out.println(h);
+		System.out.println(d);
+		System.out.println(pw);
+		System.out.println(ph);
+		System.out.println(pd);
+		System.out.println(center);
+		System.out.println(radius);
+		System.out.println(timepoints);
 
 		int timepointStart = 0;
 		int timepointInc   = 1;
 		int nTimepoints    = timepoints;
 
+		toProcess = new short[w * h];
+
 		mmsmp = new TwoCameraSphericalMaxProjection(
-				outputdir,
+				outputdir.getAbsolutePath(),
 				timepointStart, timepointInc, nTimepoints,
 				camera,
 				w, h, d,
 				pw, ph, pd,
 				center, radius);
 
-		startCamera(timepoints * d * 2); // double-sided illumination
+		cameraApp = new CameraApp(); // double-sided illumination} catch(Exception e) {
 	}
 
-	public void startCamera(int frames) {
-		new CameraApp(frames);
+	private TwoCameraSphericalMaxProjection mmsmp;
+	private CameraApp cameraApp;
+
+
+	private int w, h, d;
+	private short[] toProcess = null;
+	private int currentTimepoint = 0;
+	private static final boolean SAVE_RAW = false;
+
+	public void takeStack() {
+		exec.execute(new Runnable() {
+			@Override
+			public void run() {
+				int d2 = 2 * d;
+				AT at = cameraApp.getAT();
+				at.AT_Command("AcquisitionStart");
+				long start = System.currentTimeMillis();
+				File tpDir = null;
+				if(SAVE_RAW) {
+					tpDir = new File(outputdir, String.format("tp%04d", currentTimepoint));
+					tpDir.mkdir();
+				}
+				for(int f = 0; f < d2; f++) {
+					at.AT_NextFrame(toProcess);
+					ShortProcessor ip = new ShortProcessor(w, h, toProcess, null);
+					mmsmp.process(ip);
+					if(SAVE_RAW)
+						IJ.save(new ImagePlus("", ip), new File(tpDir, String.format("%04d.tif", f)).getAbsolutePath());
+				}
+				currentTimepoint++;
+				at.AT_Command("AcquisitionStop");
+				long end = System.currentTimeMillis();
+				System.out.println("Needed " + (end - start) + "ms  " + (end - start) / d2 + " fps");
+			}
+		});
 	}
 
-	public void go(AT at, int framecount) {
+	public void setup() throws IOException {
+		AT at = cameraApp.getAT();
 		at.AT_Flush();
-		at.AT_SetEnumString("CycleMode", "Fixed");
-		// at.AT_SetEnumString("ElectronicShutteringMode", "Global");
-		at.AT_SetInt("FrameCount", framecount);
-		at.AT_SetBool("SensorCooling", true);
-		at.AT_SetEnumString("PixelReadoutRate", "280 MHz");
-		at.AT_SetEnumString("TriggerMode", "External");
-
-		int w = at.AT_GetInt("AOIWidth");
-		int h = at.AT_GetInt("AOIHeight");
-		short[] data = new short[w * h];
+		at.AT_SetEnumString("CycleMode", "Continuous");
+		// at.AT_SetEnumString("CycleMode", "Fixed");
+		at.AT_SetEnumString("TriggerMode", "External Start");
 
 		at.AT_CreateBuffers();
-		at.AT_Command("AcquisitionStart");
-		for(int f = 0; f < framecount; f++) {
-			at.AT_NextFrame(data);
-			mmsmp.process(new ShortProcessor(w, h, data, null));
+
+		ServerSocket server = new ServerSocket(PORT);
+
+		Socket client = server.accept();
+		BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+		String line = null;
+		System.out.println("listening");
+		while((line = in.readLine()) != null) {
+			System.out.println("***" + line + "***");
+			if(line.equals("STACK")) {
+				takeStack();
+			} else if(line.equals("DONE")) {
+				break;
+			}
 		}
-		at.AT_Command("AcquisitionStop");
-		at.AT_DeleteBuffers();
+		System.out.println("closing");
+		in.close();
+		client.close();
+		server.close();
 	}
+
+	public void done() {
+		cameraApp.getAT().AT_DeleteBuffers();
+	}
+
+	private final ExecutorService exec = Executors.newSingleThreadExecutor();
 
 	@SuppressWarnings("serial")
 	private final class CameraApp extends BaseCameraApplication {
 
 		private JButton process;
-		private final int frames;
-
-		public CameraApp(int frames) {
-			super();
-			this.frames = frames;
-		}
 
 		@Override
 		public JPanel getPanel() {
@@ -179,7 +237,13 @@ public class TwoCamera_MaxProjection implements PlugIn {
 					new Thread() {
 						@Override
 						public void run() {
-							go(at, frames);
+							try {
+								setup();
+							} catch(Exception ex) {
+								ex.printStackTrace();
+								IJ.error(ex.getMessage());
+								return;
+							}
 						}
 					}.start();
 				}
