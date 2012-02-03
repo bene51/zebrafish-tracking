@@ -12,7 +12,6 @@ import javax.vecmath.Point3f;
 
 import Jama.Matrix;
 
-// TODO CAMERA1 and CAMER2 are exchanged.
 public class TwoCameraFusion implements PlugIn {
 
 	private static final int LEFT    = TwoCameraSphericalMaxProjection.LEFT;
@@ -28,7 +27,7 @@ public class TwoCameraFusion implements PlugIn {
 		if(gd.wasCanceled())
 			return;
 		try {
-			fuse2(gd.getNextString());
+			fuse(gd.getNextString());
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
