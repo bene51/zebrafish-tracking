@@ -20,6 +20,7 @@ public class AngleWeighter2 implements FusionWeight {
 	private final int axis;
 	private boolean negativeAxis;
 	public static final double overlap = 20;
+	public static final double overlap2 = overlap / 2;
 
 	public AngleWeighter2(int axis, boolean negativeAxis, int angle, int aperture, Point3f center) {
 		this.axis = axis;
@@ -49,11 +50,11 @@ public class AngleWeighter2 implements FusionWeight {
 	}
 
 	public boolean inLowerOverlap(double angle) {
-		return angle > -aperture/2.0 - overlap/2.0 && angle < -aperture/2.0 + overlap/2.0;
+		return angle > -aperture/2.0 - overlap2 && angle < -aperture/2.0 + overlap2;
 	}
 
 	public boolean inUpperOverlap(double angle) {
-		return angle > aperture/2.0 - overlap/2.0 && angle < aperture/2.0 + overlap/2.0;
+		return angle > aperture/2.0 - overlap2 && angle < aperture/2.0 + overlap2;
 	}
 
 
@@ -81,22 +82,23 @@ public class AngleWeighter2 implements FusionWeight {
 		double angle = getAngle(dx, dy, dz);
 
 		// inside
-		if(angle > -aperture/2.0 + overlap/2.0 && angle < aperture/2.0 - overlap/2.0)
+		if(angle > -aperture/2.0 + overlap2 && angle < aperture/2.0 - overlap2)
 			return 1f;
 
 		// outside
-		if(angle < -aperture/2.0 - overlap/2.0 || angle > aperture/2.0 + overlap/2.0)
+		if(angle < -aperture/2.0 - overlap2 || angle > aperture/2.0 + overlap2)
 			return 0f;
 
 
 		// within the overlap
-		double exp = 10 / overlap;
+		double eps = 0.0001;
+		double k = 1 / overlap2 * Math.log(1.0 / eps - 1.0);
 		if(angle < 0) {
 			double t = angle + aperture/2.0;
-			return (float)(1.0 / (1 + Math.exp(-exp * t)));
+			return (float)(1.0 / (1 + Math.exp(-k * t)));
 		} else {
 			double t = angle - aperture/2.0;
-			return 1f - (float)(1.0 / (1 + Math.exp(-exp * t)));
+			return 1f - (float)(1.0 / (1 + Math.exp(-k * t)));
 		}
 	}
 
