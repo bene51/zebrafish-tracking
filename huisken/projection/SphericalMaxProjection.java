@@ -176,7 +176,7 @@ public class SphericalMaxProjection {
 		saveFloatData(maxima, path);
 	}
 
-	private static void saveFloatData(float[] data, String path) throws IOException {
+	public static void saveFloatData(float[] data, String path) throws IOException {
 		DataOutputStream out = new DataOutputStream(
 			new BufferedOutputStream(
 				new FileOutputStream(path)));
@@ -437,6 +437,10 @@ public class SphericalMaxProjection {
 		// get point on sphere
 		getPoint(sinLong, cosLong, sinLat, cosLat, tmp);
 		return getValueOfNearestNeighbor(tmp);
+	}
+
+	public int getNearestNeighbor(Point3f p) {
+		return vertexToIndex.get(nnSearch.findNNearestNeighbors(new Node3D(p), 1)[0].p);
 	}
 
 	public float getValueOfNearestNeighbor(Point3f p) {
