@@ -17,15 +17,16 @@ public class FullerProjection implements MapProjection {
 	private int[][] vIndices;
 	private float[][] vertexWeights;
 
-	private int[][][] table = new int[6][5][3];
+	private static int[][][] table = initTable();
+
 
 	public FullerProjection() {
 		initTable();
 	}
 
-	private final double BLA = 0.5 * Math.sqrt(3);
+	private static final double BLA = 0.5 * Math.sqrt(3);
 
-	private int getTriangle(int x, int y, double s) {
+	public static int getTriangle(int x, int y, double s) {
 		double h = BLA * s;
 
 		double aint =     y / (2 * BLA) - s;
@@ -147,7 +148,8 @@ public class FullerProjection implements MapProjection {
 		return ip;
 	}
 
-	private void initTable() {
+	private static int[][][] initTable() {
+		int[][][] table = new int[6][5][3];
 		for(int a = 0; a < 6; a++)
 			for(int b = 0; b < 5; b++)
 				for(int c = 0; c < 3; c++)
@@ -178,5 +180,7 @@ public class FullerProjection implements MapProjection {
 
 		table[5][4][0] = 7;
 		table[5][4][1] = 18;
+
+		return table;
 	}
 }
