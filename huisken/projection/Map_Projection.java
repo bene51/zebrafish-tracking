@@ -79,8 +79,12 @@ public class Map_Projection implements PlugIn {
 			return;
 		}
 
+		File previewdir = new File(datadir, "resampled");
+		if(!previewdir.exists() || !previewdir.isDirectory())
+			previewdir = datadir;
+
 		Matrix4f initial = new Matrix4f();
-		Image3DUniverse univ = SphereProjectionViewer.show(datadir.getAbsolutePath() + "/Sphere.obj", datadir.getAbsolutePath(), null);
+		Image3DUniverse univ = SphereProjectionViewer.show(previewdir.getAbsolutePath() + "/Sphere.obj", previewdir.getAbsolutePath(), null);
 		new WaitForUserDialog("",
 			"Please rotate the sphere to the desired orientation, then click OK").show();
 		Transform3D trans = new Transform3D();
