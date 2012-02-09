@@ -46,6 +46,9 @@ public class TwoCameraFusion implements PlugIn {
 		smp[CAMERA2][LEFT]  = smp[CAMERA1][LEFT].clone();
 		smp[CAMERA2][RIGHT] = smp[CAMERA1][LEFT].clone();
 
+		// copy the sphere
+		smp[0][0].saveSphere(outputdir + "Sphere.obj");
+
 		Point3f center = smp[CAMERA1][LEFT].center;
 		int aperture = 90;
 
