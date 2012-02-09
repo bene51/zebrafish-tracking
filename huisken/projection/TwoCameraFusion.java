@@ -38,7 +38,7 @@ public class TwoCameraFusion implements PlugIn {
 		if(!inputdir.endsWith(File.separator))
 			inputdir += File.separator;
 		String outputdir = inputdir + "fused" + File.separator;
-		if(new File(outputdir).exists())
+		if(!new File(outputdir).exists())
 			new File(outputdir).mkdirs();
 		SphericalMaxProjection[][] smp = new SphericalMaxProjection[2][2];
 		smp[CAMERA1][LEFT]  = new SphericalMaxProjection(inputdir + "Sphere.obj");
