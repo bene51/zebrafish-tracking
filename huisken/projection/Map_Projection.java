@@ -50,27 +50,19 @@ public class Map_Projection implements PlugIn {
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Create 2D Maps");
 		gd.addDirectoryField("Data directory", "/Volumes/BENE/PostDoc/SphereProjection/registered");
-		gd.addDirectoryField("Output directory", "/Volumes/BENE/PostDoc/SphereProjection/registered");
-		gd.addChoice("Map type", MAP_TYPES, MAP_TYPES[3]);
+		// gd.addDirectoryField("Output directory", "/Volumes/BENE/PostDoc/SphereProjection/registered");
+		// gd.addChoice("Map type", MAP_TYPES, MAP_TYPES[3]);
+		for(int i = 0; i < MAP_TYPES.length; i++)
+			gd.addCheckbox(MAP_TYPES[i], true);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
 		File datadir = new File(gd.getNextString());
-		File outputdir = new File(gd.getNextString());
-		int mapType = gd.getNextChoiceIndex();
+		// int mapType = gd.getNextChoiceIndex();
 
 		if(!datadir.isDirectory()) {
 			IJ.error(datadir + " is not a directory");
 			return;
-		}
-
-		if(outputdir.isDirectory()) {
-			boolean cancelled = !IJ.showMessageWithCancel("Overwrite",
-					outputdir + " already exists. Overwrite?");
-			if(cancelled)
-				return;
-		} else {
-			outputdir.mkdir();
 		}
 
 		File objfile = new File(datadir, "Sphere.obj");
@@ -92,11 +84,25 @@ public class Map_Projection implements PlugIn {
 		trans.get(initial);
 		univ.close();
 
-		try {
-			createProjections(objfile.getAbsolutePath(), datadir.getAbsolutePath(), initial, mapType, outputdir.getAbsolutePath());
-		} catch(Exception e) {
-			IJ.error(e.getMessage());
-			e.printStackTrace();
+		for(int i = 0; i < MAP_TYPES.length; i++) {
+			if(!gd.getNextBoolean())
+				continue;
+			File outputdir = new File(datadir, MAP_TYPES[i]);
+			if(outputdir.isDirectory()) {
+				boolean cancelled = !IJ.showMessageWithCancel("Overwrite",
+						outputdir + " already exists. Overwrite?");
+				if(cancelled)
+					return;
+			} else {
+				outputdir.mkdir();
+			}
+
+			try {
+				createProjections(objfile.getAbsolutePath(), datadir.getAbsolutePath(), initial, i, outputdir.getAbsolutePath());
+			} catch(Exception e) {
+				IJ.error(e.getMessage());
+				e.printStackTrace();
+			}
 		}
 	}
 
