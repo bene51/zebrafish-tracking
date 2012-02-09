@@ -217,31 +217,41 @@ public class Register_ implements PlugIn {
 		tmp.toArray(files);
 		Arrays.sort(files);
 
-		// load spherical maximum projection for source and reference
-		SphericalMaxProjection tgt = src.clone();
-
-		// save sphere
-		tgt.saveSphere(outputDirectory + "Sphere.obj");
+		// load spherical maximum projection for source
+		src.saveSphere(outputDirectory + "Sphere.obj");
+		String vName = files[0].substring(0, files[0].lastIndexOf('.')) + ".vertices";
+		src.loadMaxima(dataDirectory + vName);
+		src.saveMaxima(outputDirectory + vName);
 
 		Matrix4f overall = new Matrix4f();
 		overall.setIdentity();
 
+		ArrayList<Point3f> tgtPts = loadPoints(new File(fullerDir, files[0]));
+
 		// register
 		for(int i = 1; i < files.length; i++) {
-			ArrayList<Point3f> tgtPts = loadPoints(new File(fullerDir, files[i - 1]));
+			System.out.println(files[i]);
 			ArrayList<Point3f> srcPts = loadPoints(new File(fullerDir, files[i]));
 
-			String vName = files[i].substring(0, files[i].lastIndexOf('.')) + ".vertices";
+			// make a deep copy of src points, to be used as target points for the next iteration
+			ArrayList<Point3f> nextTgtPts = new ArrayList<Point3f>(srcPts.size());
+			for(Point3f p : srcPts)
+				nextTgtPts.add(new Point3f(p));
+
+
+			vName = files[i].substring(0, files[i].lastIndexOf('.')) + ".vertices";
 			src.loadMaxima(dataDirectory + vName);
 
 			Matrix4f mat = new Matrix4f();
 			mat.setIdentity();
 			ICPRegistration.register(tgtPts, srcPts, mat, src.center);
-			overall.mul(mat, overall);
-			//mat.mul(initial, overall);
+			// overall.mul(mat, overall);
+			overall.mul(mat);
 			src.applyTransform(overall);
 
 			src.saveMaxima(outputDirectory + vName);
+
+			tgtPts = nextTgtPts;
 			IJ.showProgress(i, files.length);
 		}
 		IJ.showProgress(1);
