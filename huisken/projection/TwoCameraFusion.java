@@ -32,7 +32,6 @@ public class TwoCameraFusion implements PlugIn {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
 		}
-		IJ.showMessage("done");
 	}
 
 	public static void fuse(String inputdir) throws IOException {
