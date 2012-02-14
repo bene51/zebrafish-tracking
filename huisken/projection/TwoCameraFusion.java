@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.vecmath.Point3f;
 
@@ -107,6 +108,12 @@ public class TwoCameraFusion implements PlugIn {
 					}
 				}
 			});
+		}
+		try {
+			exec.shutdown();
+			exec.awaitTermination(300, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
 	}
 
