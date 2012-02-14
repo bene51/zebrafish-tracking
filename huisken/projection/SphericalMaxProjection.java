@@ -186,11 +186,11 @@ public class SphericalMaxProjection {
 	}
 
 	public void loadMaxima(String file) throws IOException {
-		maxima = loadFloatData(file);
+		maxima = loadFloatData(file, sphere.nVertices);
 	}
 
-	private float[] loadFloatData(String file) throws IOException {
-		float[] data = new float[sphere.nVertices];
+	public static float[] loadFloatData(String file, int n) throws IOException {
+		float[] data = new float[n];
 		DataInputStream in = new DataInputStream(
 			new BufferedInputStream(
 				new FileInputStream(file)));

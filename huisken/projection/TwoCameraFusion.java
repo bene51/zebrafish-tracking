@@ -7,6 +7,8 @@ import ij.plugin.PlugIn;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.vecmath.Point3f;
 
@@ -34,60 +36,77 @@ public class TwoCameraFusion implements PlugIn {
 		}
 	}
 
-	public static void fuse(String inputdir) throws IOException {
-		if(!inputdir.endsWith(File.separator))
-			inputdir += File.separator;
-		String outputdir = inputdir + "fused" + File.separator;
+	public static void fuse(String indir) throws IOException {
+		if(!indir.endsWith(File.separator))
+			indir += File.separator;
+		final String inputdir = indir;
+		final String outputdir = inputdir + "fused" + File.separator;
 		if(!new File(outputdir).exists())
 			new File(outputdir).mkdirs();
-		SphericalMaxProjection[][] smp = new SphericalMaxProjection[2][2];
-		smp[CAMERA1][LEFT]  = new SphericalMaxProjection(inputdir + "Sphere.obj");
-		smp[CAMERA1][RIGHT] = smp[CAMERA1][LEFT].clone();
-		smp[CAMERA2][LEFT]  = smp[CAMERA1][LEFT].clone();
-		smp[CAMERA2][RIGHT] = smp[CAMERA1][LEFT].clone();
+		final SphericalMaxProjection smp = new SphericalMaxProjection(inputdir + "Sphere.obj");
 
 		// copy the sphere
-		smp[0][0].saveSphere(outputdir + "Sphere.obj");
+		smp.saveSphere(outputdir + "Sphere.obj");
 
-		Point3f center = smp[CAMERA1][LEFT].center;
+		Point3f center = smp.center;
+		final int nVertices = smp.getSphere().nVertices;
 		int aperture = 90;
 
-		FusionWeight[][] weights = new FusionWeight[2][2];
+		final FusionWeight[][] weights = new FusionWeight[2][2];
 		weights[CAMERA1][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  135, aperture, center);
 		weights[CAMERA1][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false, -135, aperture, center);
 		weights[CAMERA2][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,   45, aperture, center);
 		weights[CAMERA2][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  -45, aperture, center);
 
 
-		String format = "tp%04d_a%04d_ill%d.vertices";
-		int tp = 0;
-		while(new File(inputdir, String.format(format, tp, 0, LEFT)).exists()) {
-			IJ.log("Fusing timepoint " + tp);
-			smp[CAMERA1][LEFT ].loadMaxima(inputdir + String.format(format, tp, 180, LEFT));
-			smp[CAMERA1][RIGHT].loadMaxima(inputdir + String.format(format, tp, 180, RIGHT));
-			smp[CAMERA2][LEFT ].loadMaxima(inputdir + String.format(format, tp,   0, LEFT));
-			smp[CAMERA2][RIGHT].loadMaxima(inputdir + String.format(format, tp,   0, RIGHT));
+		final String format = "tp%04d_a%04d_ill%d.vertices";
+		int nTimepoints = 0;
+		while(new File(inputdir, String.format(format, nTimepoints, 0, LEFT)).exists())
+			nTimepoints++;
 
-			Point3f[] vertices = smp[CAMERA1][LEFT].getSphere().getVertices();
-			float[] m1 = smp[CAMERA1][LEFT].getMaxima();
-			float[] m2 = smp[CAMERA1][RIGHT].getMaxima();
-			float[] m3 = smp[CAMERA2][LEFT].getMaxima();
-			float[] m4 = smp[CAMERA2][RIGHT].getMaxima();
-			for(int v = 0; v < vertices.length; v++) {
-				Point3f vertex = vertices[v];
-				float w1 = weights[CAMERA1][LEFT ].getWeight(vertex.x, vertex.y, vertex.z);
-				float w2 = weights[CAMERA1][RIGHT].getWeight(vertex.x, vertex.y, vertex.z);
-				float w3 = weights[CAMERA2][LEFT ].getWeight(vertex.x, vertex.y, vertex.z);
-				float w4 = weights[CAMERA2][RIGHT].getWeight(vertex.x, vertex.y, vertex.z);
-				float sum = w1 + w2 + w3 + w4;
-				if(sum != 1)
-					System.out.println("sum = " + sum);
-				m1[v] = (w1 * m1[v] + w2 * m2[v] + w3 * m3[v] + w4 * m4[v]);
+		final int nProcessors = Runtime.getRuntime().availableProcessors();
+		ExecutorService exec = Executors.newFixedThreadPool(nProcessors);
+		int nTimepointsPerThread = (int)Math.ceil(nTimepoints / (double)nProcessors);
+		for(int p = 0; p < nProcessors; p++) {
+			final int start = p * nTimepointsPerThread;
+			final int end = Math.min(nTimepoints, (p + 1) * nTimepointsPerThread);
 
-			}
+			exec.submit(new Runnable() {
+				@Override
+				public void run() {
+					for(int tp = start; tp < end; tp++) {
+						try {
+							IJ.log("Fusing timepoint " + tp);
+							File out = new File(outputdir, String.format("tp%04d.vertices", tp));
+							if(out.exists())
+								continue;
 
-			smp[CAMERA1][LEFT].saveMaxima(outputdir + String.format("tp%04d.vertices", tp));
-			tp++;
+							float[] m1 = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp, 180, LEFT),  nVertices);
+							float[] m2 = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp, 180, RIGHT), nVertices);
+							float[] m3 = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp,   0, LEFT),  nVertices);
+							float[] m4 = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp,   0, RIGHT), nVertices);
+
+							Point3f[] vertices = smp.getSphere().getVertices();
+							for(int v = 0; v < vertices.length; v++) {
+								Point3f vertex = vertices[v];
+								float w1 = weights[CAMERA1][LEFT ].getWeight(vertex.x, vertex.y, vertex.z);
+								float w2 = weights[CAMERA1][RIGHT].getWeight(vertex.x, vertex.y, vertex.z);
+								float w3 = weights[CAMERA2][LEFT ].getWeight(vertex.x, vertex.y, vertex.z);
+								float w4 = weights[CAMERA2][RIGHT].getWeight(vertex.x, vertex.y, vertex.z);
+								float sum = w1 + w2 + w3 + w4;
+								if(sum != 1)
+									System.out.println("sum = " + sum);
+								m1[v] = (w1 * m1[v] + w2 * m2[v] + w3 * m3[v] + w4 * m4[v]);
+
+							}
+							SphericalMaxProjection.saveFloatData(m1, out.getAbsolutePath());
+						} catch(Exception e) {
+							e.printStackTrace();
+							System.out.println("Couldn't fuse timepoint " + tp);
+						}
+					}
+				}
+			});
 		}
 	}
 
