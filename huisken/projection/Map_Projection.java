@@ -14,6 +14,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.media.j3d.Transform3D;
 import javax.vecmath.Matrix4f;
@@ -111,8 +114,8 @@ public class Map_Projection implements PlugIn {
 		createProjections(smp, datadir, mapType, outputdir);
 	}
 
-	public void createProjections(SphericalMaxProjection smp, String datadir, int mapType, String outputdir) throws IOException {
-		GeneralProjProjection proj = null;
+	public void createProjections(final SphericalMaxProjection smp, final String datadir, final int mapType, final String outputdir) throws IOException {
+		final GeneralProjProjection proj;
 		switch(mapType) {
 			case MERCATOR:              proj = new GeneralProjProjection(new MercatorProjection());   break;
 			case GALLPETER:             proj = new GeneralProjProjection(new GallProjection()); break;
@@ -141,17 +144,45 @@ public class Map_Projection implements PlugIn {
 		for(int i = tmp.size() - 1; i >= 0; i--)
 			if(!tmp.get(i).endsWith(".vertices"))
 				tmp.remove(i);
-		String[] files = new String[tmp.size()];
+		final String[] files = new String[tmp.size()];
 		tmp.toArray(files);
 		for(int i = 0; i < files.length; i++)
 			files[i] = datadir + File.separator + files[i];
 		Arrays.sort(files);
 
-		for(String file : files) {
-			smp.loadMaxima(file);
-			String filename = new File(file).getName();
-			filename = filename.substring(0, filename.length() - 9) + ".tif";
-			IJ.save(new ImagePlus("", proj.project()), outputdir + File.separator + filename);
+		final int nProcessors = Runtime.getRuntime().availableProcessors();
+		ExecutorService exec = Executors.newFixedThreadPool(nProcessors);
+		int nFilesPerThread = (int)Math.ceil(files.length / (double)nProcessors);
+
+		final int nVertices = smp.getSphere().nVertices;
+
+		for(int p = 0; p < nProcessors; p++) {
+			final int start = p * nFilesPerThread;
+			final int end = Math.min(files.length, (p + 1) * nFilesPerThread);
+
+			exec.submit(new Runnable() {
+				@Override
+				public void run() {
+					for(int f = start; f < end; f++) {
+						String file = files[f];
+						try {
+							String filename = new File(file).getName();
+							filename = filename.substring(0, filename.length() - 9) + ".tif";
+							float[] maxima = SphericalMaxProjection.loadFloatData(file, nVertices);
+							IJ.save(new ImagePlus("", proj.project(maxima)), outputdir + File.separator + filename);
+						} catch(Exception e) {
+							System.err.println("Cannot project " + file);
+							e.printStackTrace();
+						}
+					}
+				}
+			});
+		}
+		try {
+			exec.shutdown();
+			exec.awaitTermination(300, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
 	}
 }

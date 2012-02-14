@@ -266,8 +266,11 @@ public class GeneralProjProjection {
 	}
 
 	public ImageProcessor project() {
+		return project(smp.getMaxima());
+	}
+
+	public ImageProcessor project(float[] maxima) {
 		FloatProcessor ip = new FloatProcessor(w, h);
-		float[] maxima = smp.getMaxima();
 		for(int y = 0; y < h; y++) {
 			for(int x = 0; x < w; x++) {
 				int index = y * w + x;
