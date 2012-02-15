@@ -30,14 +30,14 @@ public class TwoCameraFusion implements PlugIn {
 		if(gd.wasCanceled())
 			return;
 		try {
-			fuse(gd.getNextString());
+			fuse(gd.getNextString(), true);
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
 		}
 	}
 
-	public static void fuse(String indir) throws IOException {
+	public static void fuse(String indir, final  boolean adjustModes) throws IOException {
 		if(!indir.endsWith(File.separator))
 			indir += File.separator;
 		final String inputdir = indir;
@@ -86,6 +86,17 @@ public class TwoCameraFusion implements PlugIn {
 							float[] m2 = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp, 180, RIGHT), nVertices);
 							float[] m3 = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp,   0, LEFT),  nVertices);
 							float[] m4 = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp,   0, RIGHT), nVertices);
+
+							if(adjustModes) {
+								float mode1 = SphericalMaxProjection.getMode(m1);
+								float mode2 = SphericalMaxProjection.getMode(m2);
+								float mode3 = SphericalMaxProjection.getMode(m3);
+								float mode4 = SphericalMaxProjection.getMode(m4);
+								System.out.println("0 - " + (mode1 - mode2) + " - " + (mode1 - mode3) + " - " + (mode1 - mode4));
+								SphericalMaxProjection.add(m2, mode1 - mode2);
+								SphericalMaxProjection.add(m3, mode1 - mode3);
+								SphericalMaxProjection.add(m4, mode1 - mode4);
+							}
 
 							Point3f[] vertices = smp.getSphere().getVertices();
 							for(int v = 0; v < vertices.length; v++) {

@@ -214,8 +214,54 @@ public class SphericalMaxProjection {
 	}
 
 	public void addMaxima(float[] maxima) {
-		for(int i = 0; i < this.maxima.length; i++)
-			this.maxima[i] += maxima[i];
+		add(this.maxima, maxima);
+	}
+
+	public static void add(float[] d1, float[] d2) {
+		if(d1.length != d2.length)
+			throw new IllegalArgumentException("Expected arrays of same size");
+		for(int i = 0; i < d1.length; i++)
+			d1[i] += d2[i];
+	}
+
+	public static void add(float[] d1, float v) {
+		for(int i = 0; i < d1.length; i++)
+			d1[i] += v;
+	}
+
+	public static float getMode(float[] data) {
+		double min = Float.MAX_VALUE;
+		double max = -Float.MAX_VALUE;
+		for(int i = 0; i < data.length; i++) {
+			float v = data[i];
+			if(v > 0) {
+				if(v < min) min = v;
+				if(v > max) max = v;
+			}
+		}
+		int nBins = 256;
+		double binSize = (max - min) / nBins;
+		int[] histogram = new int[nBins];
+		double scale = nBins / (max - min);
+		for(int i = 0; i < data.length; i++) {
+			if(data[i] > 0) {
+				int index = (int)(scale * (data[i] - min));
+				if(index > nBins - 1)
+					index = nBins - 1;
+				histogram[index]++;
+			}
+		}
+
+		int mode = 0;
+		int maxn = histogram[0];
+		for(int i = 1; i < histogram.length; i++) {
+			int n = histogram[i];
+			if(n > maxn) {
+				maxn = n;
+				mode = i;
+			}
+		}
+		return (float)(min + mode * binSize);
 	}
 
 	public void smooth() {
