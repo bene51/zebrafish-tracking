@@ -14,11 +14,15 @@ import meshtools.PointOctree;
 public class ICPRegistration {
 
 	public static float register(ArrayList<Point3f> tgtPts, ArrayList<Point3f> srcPts, Matrix4f mat, Point3f cor) {
+		return register(tgtPts, srcPts, mat, cor, 0.5f);
+	}
+
+	public static float register(ArrayList<Point3f> tgtPts, ArrayList<Point3f> srcPts, Matrix4f mat, Point3f cor, float overlapRatio) {
 		Point3f[] sSphere = new Point3f[srcPts.size()];
 		srcPts.toArray(sSphere);
 		Point3f[] tSphere = new Point3f[tgtPts.size()];
 		tgtPts.toArray(tSphere);
-		return icp(sSphere, tSphere, mat, cor, 500, 0.8f);
+		return icp(sSphere, tSphere, mat, cor, 500, overlapRatio);
 	}
 
 	private static float icp(Point3f[] m,
@@ -48,6 +52,14 @@ public class ICPRegistration {
 				correspondences.add(new PointMatch(
 					mp, nearestNeighbor(mp, ttree)));
 
+			// use only ratioToUse point matches
+			if(ratioToUse < 1) {
+				Collections.sort(correspondences);
+				int toRemove = correspondences.size() - Math.round(ratioToUse * correspondences.size());
+				for(int i = 0; i < toRemove; i++)
+					correspondences.remove(0);
+			}
+
 			// Calculate a best rigid transform
 			Matrix4f fm = new Matrix4f();
 			bestRigid(correspondences, fm, cor);
@@ -57,18 +69,6 @@ public class ICPRegistration {
 			if(mse == mseOld)
 				break;
 			mseOld = mse;
-		}
-		// Only keep X% of the best-matching correspondences
-		if(ratioToUse != 1) {
-			Collections.sort(correspondences);
-			int toRemove = correspondences.size() - Math.round(ratioToUse * correspondences.size());
-			for(int i = 0; i < toRemove; i++)
-				correspondences.remove(0);
-			// Calculate a best rigid transform
-			Matrix4f fm = new Matrix4f();
-			bestRigid(correspondences, fm, cor);
-			result.mul(fm, result);
-			apply(m, fm);
 		}
 		System.out.println("ICP: stopping after " + it + " iterations");
 		return mseOld;
