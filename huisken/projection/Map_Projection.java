@@ -55,6 +55,8 @@ public class Map_Projection implements PlugIn {
 		gd.addDirectoryField("Data directory", "/Volumes/BENE/PostDoc/SphereProjection/registered");
 		// gd.addDirectoryField("Output directory", "/Volumes/BENE/PostDoc/SphereProjection/registered");
 		// gd.addChoice("Map type", MAP_TYPES, MAP_TYPES[3]);
+		gd.addCheckbox("Create coastlines", false);
+		gd.addCheckbox("Create Longitude/Latitude lines", false);
 		for(int i = 0; i < MAP_TYPES.length; i++)
 			gd.addCheckbox(MAP_TYPES[i], true);
 		gd.showDialog();
@@ -62,6 +64,8 @@ public class Map_Projection implements PlugIn {
 			return;
 		File datadir = new File(gd.getNextString());
 		// int mapType = gd.getNextChoiceIndex();
+		boolean doCoast = gd.getNextBoolean();
+		boolean doLines = gd.getNextBoolean();
 
 		if(!datadir.isDirectory()) {
 			IJ.error(datadir + " is not a directory");
@@ -101,7 +105,7 @@ public class Map_Projection implements PlugIn {
 			}
 
 			try {
-				createProjections(objfile.getAbsolutePath(), datadir.getAbsolutePath(), initial, i, outputdir.getAbsolutePath());
+				createProjections(objfile.getAbsolutePath(), datadir.getAbsolutePath(), initial, i, outputdir.getAbsolutePath(), doCoast, doLines);
 			} catch(Exception e) {
 				IJ.error(e.getMessage());
 				e.printStackTrace();
@@ -109,12 +113,12 @@ public class Map_Projection implements PlugIn {
 		}
 	}
 
-	public void createProjections(String objfile, String datadir, Matrix4f initial, int mapType, String outputdir) throws IOException {
+	public void createProjections(String objfile, String datadir, Matrix4f initial, int mapType, String outputdir, boolean doCoast, boolean doLines) throws IOException {
 		SphericalMaxProjection smp = new SphericalMaxProjection(objfile, initial);
-		createProjections(smp, datadir, mapType, outputdir);
+		createProjections(smp, datadir, mapType, outputdir, doCoast, doLines);
 	}
 
-	public void createProjections(final SphericalMaxProjection smp, final String datadir, final int mapType, final String outputdir) throws IOException {
+	public void createProjections(final SphericalMaxProjection smp, final String datadir, final int mapType, final String outputdir, final boolean doCoast, final boolean doLines) throws IOException {
 		final GeneralProjProjection proj;
 		switch(mapType) {
 			case MERCATOR:              proj = new GeneralProjProjection(new MercatorProjection());   break;
@@ -128,15 +132,19 @@ public class Map_Projection implements PlugIn {
 		}
 		proj.prepareForProjection(smp);
 
-		// create a postscript file with the coastline
-		GeneralPath coast = GeneralProjProjection.readDatFile("/Users/bschmid/PostDoc/paper/SphereProj/figure2/coast.dat");
-		coast = proj.transform(coast);
-		GeneralProjProjection.savePath(coast, outputdir + File.separator + "coastline.ps", proj.getWidth(), proj.getHeight(), true);
+		if(doCoast) {
+			// create a postscript file with the coastline
+			GeneralPath coast = GeneralProjProjection.readDatFile("/Users/bschmid/PostDoc/paper/SphereProj/figure2/coast.dat");
+			coast = proj.transform(coast);
+			GeneralProjProjection.savePath(coast, outputdir + File.separator + "coastline.ps", proj.getWidth(), proj.getHeight(), true);
+		}
 
-		// create a postscript file with the lines
-		GeneralPath lines = proj.createLines();
-		lines = proj.transform(lines);
-		GeneralProjProjection.savePath(lines, outputdir + File.separator + "lines.ps", proj.getWidth(), proj.getHeight(), false);
+		if(doLines) {
+			// create a postscript file with the lines
+			GeneralPath lines = proj.createLines();
+			lines = proj.transform(lines);
+			GeneralProjProjection.savePath(lines, outputdir + File.separator + "lines.ps", proj.getWidth(), proj.getHeight(), false);
+		}
 
 		// collect files
 		List<String> tmp = new ArrayList<String>();
