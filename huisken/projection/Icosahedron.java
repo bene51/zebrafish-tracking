@@ -17,7 +17,7 @@ import customnode.CustomTriangleMesh;
 
 public class Icosahedron extends IndexedTriangleMesh {
 
-	private static final float TAO = 1.61803399f;
+	private static final float TAO = (float)((1 + Math.sqrt(5)) / 2.0);
 
 	public static Point3f[] createVertices(float r) {
 		Point3f[] v = new Point3f[] {
