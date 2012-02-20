@@ -170,6 +170,23 @@ public class CustomContent extends Content {
 		((IndexedTriangleArray)mesh.getGeometry()).setColors(0, colors);
 	}
 
+	public void scaleForAngle(float angleFactor) throws IOException {
+		Point3f[] vertices = smp.getSphere().getVertices();
+		smp.loadMaxima(getCurrentFile());
+		float[] maxima = smp.getMaxima();
+		float cz = smp.getCenter().z;
+		float radius = smp.getRadius();
+		float bg = SphericalMaxProjection.getMode(maxima);
+		System.out.println("bg = " + bg);
+		for(int i = 0; i < vertices.length; i++) {
+			float alpha = (float)Math.acos(Math.abs(vertices[i].z - cz) / radius);
+			float factor = (float)(1.0 / (Math.cos(angleFactor * alpha)));
+			float toSubtract = maxima[i] - bg - 10 > 0 ? bg + 10 : maxima[i];
+			maxima[i] = (maxima[i] - toSubtract) * factor + toSubtract;
+		}
+		updateDisplayRange();
+	}
+
 	// timeline stuff
 	@Override public void addInstant(ContentInstant ci) {}
 	@Override public void removeInstant(int t) {}

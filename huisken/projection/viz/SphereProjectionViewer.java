@@ -129,6 +129,14 @@ public class SphereProjectionViewer implements PlugIn {
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_N) {
 				IJ.showMessage(cc.getCurrentFile());
 			}
+			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_T) {
+				float angleFactor = (float)IJ.getNumber("Angle factor", 0.7);
+				try {
+					cc.scaleForAngle(angleFactor);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+			}
 		}
 	}
 }
