@@ -1,7 +1,6 @@
 package huisken.projection;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 
 import javax.vecmath.Matrix4f;
@@ -10,6 +9,9 @@ import javax.vecmath.Point3f;
 import math3d.JacobiDouble;
 import meshtools.PointMatch;
 import meshtools.PointOctree;
+import fiji.util.KDTree;
+import fiji.util.NearestNeighborSearch;
+import fiji.util.node.Leaf;
 
 public class ICPRegistration {
 
@@ -37,7 +39,12 @@ public class ICPRegistration {
 		apply(m, result);
 		float mseOld = Float.MAX_VALUE;
 
-		PointOctree ttree = new PointOctree(Arrays.asList(t));
+		ArrayList<Node3D> nodes = new ArrayList<Node3D>(t.length);
+		for(Point3f p : t)
+			nodes.add(new Node3D(p));
+		KDTree<Node3D> kd = new KDTree<Node3D>(nodes);
+		NearestNeighborSearch<Node3D> nn = new NearestNeighborSearch<Node3D>(kd);
+		// PointOctree ttree = new PointOctree(Arrays.asList(t));
 
 		final ArrayList<PointMatch> correspondences =
 				new ArrayList<PointMatch>(ms);
@@ -48,16 +55,11 @@ public class ICPRegistration {
 			// for each point in m for a nearest neighbor point
 			// in t
 			correspondences.clear();
-			for(Point3f mp : m)
-				correspondences.add(new PointMatch(
-					mp, nearestNeighbor(mp, ttree)));
-
-			// use only ratioToUse point matches
-			if(ratioToUse < 1) {
-				Collections.sort(correspondences);
-				int toRemove = correspondences.size() - Math.round(ratioToUse * correspondences.size());
-				for(int i = 0; i < toRemove; i++)
-					correspondences.remove(0);
+			for(Point3f mp : m) {
+				Point3f nearest = nearestNeighbor(mp, nn);
+				PointMatch pm = new PointMatch(mp, nearest);
+				if(pm.distance2 < 900)
+					correspondences.add(pm);
 			}
 
 			// Calculate a best rigid transform
@@ -70,6 +72,18 @@ public class ICPRegistration {
 				break;
 			mseOld = mse;
 		}
+		// use only ratioToUse point matches
+		if(ratioToUse < 1) {
+			Collections.sort(correspondences);
+			int toRemove = correspondences.size() - Math.round(ratioToUse * correspondences.size());
+			for(int i = 0; i < toRemove; i++)
+				correspondences.remove(0);
+		}
+		// Calculate a best rigid transform
+		Matrix4f fm = new Matrix4f();
+		bestRigid(correspondences, fm, cor);
+		result.mul(fm, result);
+		apply(m, fm);
 		System.out.println("ICP: stopping after " + it + " iterations");
 		return mseOld;
 	}
@@ -82,6 +96,11 @@ public class ICPRegistration {
 	private static final Point3f nearestNeighbor(
 			Point3f p, PointOctree t) {
 		return t.getNearestNeighbor(p);
+	}
+
+	private static final Point3f nearestNeighbor(
+			Point3f p, NearestNeighborSearch<Node3D> nn) {
+		return nn.findNearestNeighbor(new Node3D(p)).p;
 	}
 
 	private static final float calculateMSE(ArrayList<PointMatch> pm) {
@@ -186,6 +205,60 @@ public class ICPRegistration {
 		result.m03 = cor.x - tr.x;
 		result.m13 = cor.y - tr.y;
 		result.m23 = cor.z - tr.z;
+	}
+
+	private static class Node3D implements Leaf<Node3D> {
+
+		final Point3f p;
+
+		public Node3D(final Point3f p) {
+			this.p = p;
+		}
+
+		@SuppressWarnings("unused")
+		public Node3D(final Node3D node) {
+			this.p = (Point3f)node.p.clone();
+		}
+
+		@Override
+		public boolean isLeaf() {
+			return true;
+		}
+
+		@SuppressWarnings("unused")
+		public boolean equals(final Node3D o) {
+	                 return p.equals(o.p);
+		}
+
+		@Override
+		public float distanceTo(final Node3D o) {
+			return p.distance(o.p);
+		}
+
+		@Override
+		public float get(final int k) {
+			switch(k) {
+				case 0: return p.x;
+				case 1: return p.y;
+				case 2: return p.z;
+			}
+			return 0f;
+		}
+
+		@Override
+		public String toString() {
+			return p.toString();
+		}
+
+		@Override
+		public Node3D[] createArray(final int n) {
+			return new Node3D[n];
+		}
+
+		@Override
+		public int getNumDimensions() {
+			return 3;
+		}
 	}
 }
 
