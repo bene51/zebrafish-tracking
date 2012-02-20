@@ -41,7 +41,7 @@ public class SphericalMaxProjection {
 	final Point3f center;
 	final float radius;
 	private final IndexedTriangleMesh sphere;
-	private final NearestNeighborSearch<Node3D> nnSearch;
+	private final KDTree<Node3D> tree;
 
 	public SphericalMaxProjection(IndexedTriangleMesh sphere, Point3f center, float radius) {
 		this(sphere, center, radius, null);
@@ -65,8 +65,7 @@ public class SphericalMaxProjection {
 		ArrayList<Node3D> nodes = new ArrayList<Node3D>(sphere.nFaces / 3);
 		for(int i = 0; i < sphere.nFaces / 3; i++)
 			nodes.add(new Node3D(calculateCOG(i), i));
-		KDTree<Node3D> tree = new KDTree<Node3D>(nodes);
-		nnSearch = new NearestNeighborSearch<Node3D>(tree);
+		tree = new KDTree<Node3D>(nodes);
 	}
 
 	private Point3f calculateCOG(int triangle) {
@@ -109,8 +108,7 @@ public class SphericalMaxProjection {
 		for(int i = 0; i < sphere.nFaces / 3; i++)
 			nodes.add(new Node3D(calculateCOG(i), i));
 
-		KDTree<Node3D> tree = new KDTree<Node3D>(nodes);
-		nnSearch = new NearestNeighborSearch<Node3D>(tree);
+		tree = new KDTree<Node3D>(nodes);
 	}
 
 	public Point3f getCenter() {
@@ -321,31 +319,35 @@ public class SphericalMaxProjection {
 		applyInverseTransform(inverse);
 	}
 
-	public void applyTransform(FastMatrix matrix) {
-		applyInverseTransform(matrix.inverse());
-	}
+	public void applyInverseTransform(final Matrix4f inverse) {
+		final float[] newmaxima = new float[sphere.nVertices];
+		final Point3f[] vertices = sphere.getVertices();
 
-	public void applyInverseTransform(FastMatrix inverse) {
-		float[] newmaxima = new float[sphere.nVertices];
-		Point3f p = new Point3f();
-		Point3f[] vertices = sphere.getVertices();
-		for(int i = 0; i < vertices.length; i++) {
-			p.set(vertices[i]);
-			inverse.apply(p.x, p.y, p.z);
-			p.set((float)inverse.x, (float)inverse.y, (float)inverse.z);
-			newmaxima[i] = getInterpolatedValue(p); // get((float)lon, (float)lat);
+		final int nProcessors = Runtime.getRuntime().availableProcessors();
+		ExecutorService exec = Executors.newFixedThreadPool(nProcessors);
+
+		int nVerticesPerThread = (int)Math.ceil(vertices.length / (double)nProcessors);
+		for(int p = 0; p < nProcessors; p++) {
+			final int start = p * nVerticesPerThread;
+			final int end = Math.min(vertices.length, (p + 1) * nVerticesPerThread);
+
+			exec.submit(new Runnable() {
+				@Override
+				public void run() {
+					Point3f p = new Point3f();
+					for(int i = start; i < end; i++) {
+						p.set(vertices[i]);
+						inverse.transform(p);
+						newmaxima[i] = getInterpolatedValue(p);
+					}
+				}
+			});
 		}
-		maxima = newmaxima;
-	}
-
-	public void applyInverseTransform(Matrix4f inverse) {
-		float[] newmaxima = new float[sphere.nVertices];
-		Point3f p = new Point3f();
-		Point3f[] vertices = sphere.getVertices();
-		for(int i = 0; i < vertices.length; i++) {
-			p.set(vertices[i]);
-			inverse.transform(p);
-			newmaxima[i] = getInterpolatedValue(p); // ((float)lon, (float)lat);
+		try {
+			exec.shutdown();
+			exec.awaitTermination(300, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
 		maxima = newmaxima;
 	}
@@ -537,6 +539,7 @@ public class SphericalMaxProjection {
 	}
 
 	public void getThreeNearestVertexIndices(Point3f p, int[] ret) {
+		NearestNeighborSearch<Node3D> nnSearch = new NearestNeighborSearch<Node3D>(tree);
 		Node3D nearest = nnSearch.findNearestNeighbor(new Node3D(p, -1));
 		int triangleIdx = nearest.triangleIdx;
 		int[] faces = sphere.getFaces();
