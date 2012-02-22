@@ -44,9 +44,9 @@ public class XMLReader {
 		this.depth  = Integer.parseInt(data.get("NrPlanes"));
 		this.frames = Integer.parseInt(data.get("NrFrames"));
 
-		int magObj  = Integer.parseInt(data.get("MagObj"));
-		int pixSize = Integer.parseInt(data.get("PixelSize"));
-		this.pw     = pixSize / (double)magObj;
+		double magObj  = Double.parseDouble(data.get("MagObj"));
+		double pixSize = Double.parseDouble(data.get("PixelSize"));
+		this.pw     = pixSize / magObj;
 		this.ph     = this.pw;
 		this.pd     = Double.parseDouble(data.get("dZ"));
 		this.framerate = Double.parseDouble(data.get("FrameRate"));
