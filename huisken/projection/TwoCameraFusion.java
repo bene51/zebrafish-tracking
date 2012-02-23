@@ -26,11 +26,12 @@ public class TwoCameraFusion implements PlugIn {
 	public void run(String args) {
 		GenericDialogPlus gd = new GenericDialogPlus("Fuse from 2 cameras");
 		gd.addDirectoryField("Input folder", "");
+		gd.addCheckbox("Adjust modes to compensate for intensity differences", false);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
 		try {
-			fuse(gd.getNextString(), true, true);
+			fuse(gd.getNextString(), gd.getNextBoolean(), true);
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
