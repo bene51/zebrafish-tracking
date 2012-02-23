@@ -265,6 +265,17 @@ public class SphericalMaxProjection {
 		return (float)(min + mode * binSize);
 	}
 
+	public static float getMean(float[] data) {
+		double mean = 0.0;
+		for(float v : data)
+			mean += v;
+		return (float)(mean / data.length);
+	}
+
+	public float getMean() {
+		return getMean(getMaxima());
+	}
+
 	public void smooth() {
 		int[] nNeighbors = new int[maxima.length];
 		float[] newMaxima = new float[maxima.length];
