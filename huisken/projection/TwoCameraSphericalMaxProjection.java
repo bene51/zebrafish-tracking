@@ -1,10 +1,15 @@
 package huisken.projection;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 
 import javax.vecmath.Point3f;
 
 import meshtools.IndexedTriangleMesh;
+import vib.FastMatrix;
+import fiji.util.gui.GenericDialogPlus;
 
 public class TwoCameraSphericalMaxProjection {
 
@@ -24,6 +29,7 @@ public class TwoCameraSphericalMaxProjection {
 	public TwoCameraSphericalMaxProjection(String outputdir,
 			int timepointStart, int timepointInc, int nTimepoints,
 			int camera,
+			int angleInc, int nAngles,
 			int w, int h, int d,
 			double pw, double ph, double pd,
 			Point3f center, float radius) {
@@ -36,15 +42,20 @@ public class TwoCameraSphericalMaxProjection {
 		this.timepointInc = timepointInc;
 		this.nTimepoints = nTimepoints;
 		this.angleStart = camera == CAMERA1 ? 180 : 0;
-		this.angleInc = 180;
-		this.nAngles = 1;
+		this.angleInc = angleInc;
+		this.nAngles = nAngles;
 		this.nPlanes = d;
 
-		// initialize the maximum projections
-		smp = initSphericalMaximumProjection(
-				center, radius,
-				camera,
-				w, h, d, pw, ph, pd);
+		try {
+			// initialize the maximum projections
+			smp = initSphericalMaximumProjection(
+					center, radius,
+					camera,
+					angleInc, nAngles,
+					w, h, d, pw, ph, pd);
+		} catch(Exception e) {
+			throw new RuntimeException("Cannot load transformations.");
+		}
 
 		// save the sphere geometry
 		String spherepath = new File(outputdir, "Sphere.obj").getAbsolutePath();
@@ -146,8 +157,9 @@ public class TwoCameraSphericalMaxProjection {
 	private SphericalMaxProjection[][] initSphericalMaximumProjection(
 			Point3f center, float radius,
 			int camera,
+			int angleInc, int nAngles,
 			int w, int h, int d,
-			double pw, double ph, double pd) {
+			double pw, double ph, double pd) throws IOException {
 
 		int subd = (int)Math.round(radius / (Math.min(pw, Math.min(ph, pd))));
 		// subd /= 4;
@@ -155,18 +167,54 @@ public class TwoCameraSphericalMaxProjection {
 		IndexedTriangleMesh sphere = createSphere(center, radius, subd);
 
 		SphericalMaxProjection[][] smp = new SphericalMaxProjection[nAngles][2];
-		int aperture = 90;
+		int aperture = 90 / nAngles;
 		int angle = camera == CAMERA1 ? 135 : 45;
 
-		// left illumination
-		smp[0][LEFT] = new SphericalMaxProjection(sphere, center, radius);
-		smp[0][LEFT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, false, angle, aperture, center));
+		FastMatrix[] transforms = null;
+		if(nAngles > 1)
+			transforms = readTransforms(nAngles);
 
-		// right illumination
-		smp[0][RIGHT] = new SphericalMaxProjection(sphere, center, radius);
-		smp[0][RIGHT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, false, -angle, aperture, center));
+		// TODO problem: sphere is not the right sphere for each angle.
+		// need to transform it to get it right.
+		for(int a = 0; a < nAngles; a++) {
+			FastMatrix transform = a == 0 ? null : transforms[a - 1].inverse();
+			// left illumination
+			smp[a][LEFT] = new SphericalMaxProjection(sphere, center, radius, transform);
+			smp[a][LEFT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, false, angle, aperture, center));
 
+			// right illumination
+			smp[a][RIGHT] = new SphericalMaxProjection(sphere, center, radius, transform);
+			smp[a][RIGHT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, false, -angle, aperture, center));
+
+		}
 		return smp;
+	}
+
+	private static FastMatrix[] readTransforms(int nAngles) throws IOException {
+		GenericDialogPlus gd = new GenericDialogPlus("Transformations");
+		gd.addMessage("You are using more than 1 angle. \n" +
+				"Please specify the transformations for the other angles");
+		for(int i = 1; i < nAngles; i++)
+			gd.addFileField("Angle_" + i, "");
+		if(gd.wasCanceled())
+			return null;
+		FastMatrix[] ts = new FastMatrix[nAngles - 1];
+		for(int i = 1; i < nAngles; i++)
+			ts[i - 1] = readTransformation(gd.getNextString());
+		return ts;
+	}
+
+	private static FastMatrix readTransformation(String file) throws IOException {
+		BufferedReader in = new BufferedReader(new FileReader(file));
+		double[][] mat = new double[3][4];
+		for(int r = 0; r < 3; r++) {
+			for(int c = 0; c < 4; c++) {
+				String[] toks = in.readLine().split(": ");
+				mat[r][c] = Double.parseDouble(toks[1]);
+			}
+		}
+		in.close();
+		return new FastMatrix(mat);
 	}
 
 	private static IndexedTriangleMesh createSphere(Point3f center, float radius, int subd) {

@@ -88,6 +88,8 @@ public class TwoCamera_MaxProjection implements PlugIn {
 
 		gd = new GenericDialogPlus("Spherical_Max_Projection");
 		gd.addNumericField("Timepoints", timepoints, 0);
+		gd.addNumericField("Angle Increment", 0, 0);
+		gd.addNumericField("#Angles", 1, 0);
 		gd.addNumericField("Center_x", center.x, 3);
 		gd.addNumericField("Center_y", center.y, 3);
 		gd.addNumericField("Center_z", center.z, 3);
@@ -104,6 +106,8 @@ public class TwoCamera_MaxProjection implements PlugIn {
 
 
 		timepoints = (int)gd.getNextNumber();
+		int angleInc = (int)gd.getNextNumber();
+		nAngles = (int)gd.getNextNumber();
 		center.set(
 			(float)gd.getNextNumber(),
 			(float)gd.getNextNumber(),
@@ -141,6 +145,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				outputdir.getAbsolutePath(),
 				timepointStart, timepointInc, nTimepoints,
 				camera,
+				angleInc, nAngles,
 				w, h, d,
 				pw, ph, pd,
 				center, radius);
@@ -152,7 +157,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 	private CameraApp cameraApp;
 
 
-	private int w, h, d, nTimepoints;
+	private int w, h, d, nTimepoints, nAngles;
 	private short[] toProcess = null;
 	private static final boolean SAVE_RAW = false;
 
@@ -163,24 +168,26 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				int d2 = 2 * d;
 				AT at = cameraApp.getAT();
 				for(int t = 0; t < nTimepoints; t++) {
-					at.AT_SetInt("FrameCount", d2);
-					at.AT_Command("AcquisitionStart");
-					long start = System.currentTimeMillis();
-					File tpDir = null;
-					if(SAVE_RAW) {
-						tpDir = new File(outputdir, String.format("tp%04d", t));
-						tpDir.mkdir();
+					for(int a = 0; a < nAngles; a++) {
+						at.AT_SetInt("FrameCount", d2);
+						at.AT_Command("AcquisitionStart");
+						long start = System.currentTimeMillis();
+						File tpDir = null;
+						if(SAVE_RAW) {
+							tpDir = new File(outputdir, String.format("tp%04d_a%03d", t, a));
+							tpDir.mkdir();
+						}
+						for(int f = 0; f < d2; f++) {
+							at.AT_NextFrame(toProcess);
+							// ShortProcessor ip = new ShortProcessor(w, h, toProcess, null);
+							mmsmp.process(toProcess);
+							if(SAVE_RAW)
+								IJ.save(new ImagePlus("", new ShortProcessor(w, h, toProcess, null)), new File(tpDir, String.format("%04d.tif", f)).getAbsolutePath());
+						}
+						at.AT_Command("AcquisitionStop");
+						long end = System.currentTimeMillis();
+						System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
 					}
-					for(int f = 0; f < d2; f++) {
-						at.AT_NextFrame(toProcess);
-						// ShortProcessor ip = new ShortProcessor(w, h, toProcess, null);
-						mmsmp.process(toProcess);
-						if(SAVE_RAW)
-							IJ.save(new ImagePlus("", new ShortProcessor(w, h, toProcess, null)), new File(tpDir, String.format("%04d.tif", f)).getAbsolutePath());
-					}
-					at.AT_Command("AcquisitionStop");
-					long end = System.currentTimeMillis();
-					System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
 				}
 			}
 		});

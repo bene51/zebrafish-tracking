@@ -59,27 +59,27 @@ public class Simulated_TwoCamera_MaxProjection implements PlugIn {
 
 	public void process(String outputdir, int timepoints, Point3f center, float radius, int w, int h, int d, double pw, double ph, double pd) {
 
-		int timepointStart = 0;
-		int timepointInc   = 1;
-		int nTimepoints    = timepoints;
-
-		mmsmp = new TwoCameraSphericalMaxProjection(
-				outputdir,
-				timepointStart, timepointInc, nTimepoints,
-				TwoCameraSphericalMaxProjection.CAMERA1,
-				w, h, d,
-				pw, ph, pd,
-				center, radius);
-
-		startCamera(timepoints * d, TwoCameraSphericalMaxProjection.CAMERA1);
-
-		mmsmp = new TwoCameraSphericalMaxProjection(
-				outputdir,
-				timepointStart, timepointInc, nTimepoints,
-				TwoCameraSphericalMaxProjection.CAMERA2,
-				w, h, d,
-				pw, ph, pd,
-				center, radius);
+//		int timepointStart = 0;
+//		int timepointInc   = 1;
+//		int nTimepoints    = timepoints;
+//
+//		mmsmp = new TwoCameraSphericalMaxProjection(
+//				outputdir,
+//				timepointStart, timepointInc, nTimepoints,
+//				TwoCameraSphericalMaxProjection.CAMERA1,
+//				w, h, d,
+//				pw, ph, pd,
+//				center, radius);
+//
+//		startCamera(timepoints * d, TwoCameraSphericalMaxProjection.CAMERA1);
+//
+//		mmsmp = new TwoCameraSphericalMaxProjection(
+//				outputdir,
+//				timepointStart, timepointInc, nTimepoints,
+//				TwoCameraSphericalMaxProjection.CAMERA2,
+//				w, h, d,
+//				pw, ph, pd,
+//				center, radius);
 
 		startCamera(timepoints * d, TwoCameraSphericalMaxProjection.CAMERA2);
 	}
