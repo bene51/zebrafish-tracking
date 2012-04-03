@@ -1,14 +1,16 @@
 package huisken.projection;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import huisken.util.Stage_Calibration;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+
+import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
+import javax.vecmath.Point4f;
 
 import meshtools.IndexedTriangleMesh;
-import vib.FastMatrix;
 import fiji.util.gui.GenericDialogPlus;
 
 public class TwoCameraSphericalMaxProjection {
@@ -170,14 +172,16 @@ public class TwoCameraSphericalMaxProjection {
 		int aperture = 90 / nAngles;
 		int angle = camera == CAMERA1 ? 135 : 45;
 
-		FastMatrix[] transforms = null;
+		Matrix4f[] transforms = null;
 		if(nAngles > 1)
 			transforms = readTransforms(nAngles);
 
 		// TODO problem: sphere is not the right sphere for each angle.
 		// need to transform it to get it right.
 		for(int a = 0; a < nAngles; a++) {
-			FastMatrix transform = a == 0 ? null : transforms[a - 1].inverse();
+			Matrix4f transform = null;
+			if(a > 0)
+				transform = transforms[a - 1];
 			// left illumination
 			smp[a][LEFT] = new SphericalMaxProjection(sphere, center, radius, transform);
 			smp[a][LEFT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, false, angle, aperture, center));
@@ -190,31 +194,23 @@ public class TwoCameraSphericalMaxProjection {
 		return smp;
 	}
 
-	private static FastMatrix[] readTransforms(int nAngles) throws IOException {
+	private static Matrix4f[] readTransforms(int nAngles) throws IOException {
 		GenericDialogPlus gd = new GenericDialogPlus("Transformations");
-		gd.addMessage("You are using more than 1 angle. \n" +
-				"Please specify the transformations for the other angles");
-		for(int i = 1; i < nAngles; i++)
-			gd.addFileField("Angle_" + i, "");
+		gd.addFileField("Positions", "");
+		gd.showDialog();
 		if(gd.wasCanceled())
 			return null;
-		FastMatrix[] ts = new FastMatrix[nAngles - 1];
-		for(int i = 1; i < nAngles; i++)
-			ts[i - 1] = readTransformation(gd.getNextString());
-		return ts;
-	}
 
-	private static FastMatrix readTransformation(String file) throws IOException {
-		BufferedReader in = new BufferedReader(new FileReader(file));
-		double[][] mat = new double[3][4];
-		for(int r = 0; r < 3; r++) {
-			for(int c = 0; c < 4; c++) {
-				String[] toks = in.readLine().split(": ");
-				mat[r][c] = Double.parseDouble(toks[1]);
-			}
-		}
-		in.close();
-		return new FastMatrix(mat);
+		ArrayList<Point4f> positions = Stage_Calibration.readPositions(gd.getNextString());
+		if(nAngles != positions.size())
+			throw new IllegalArgumentException();
+
+		Point4f refpos = positions.get(0);
+		Matrix4f[] ret = new Matrix4f[nAngles];
+		for(int i = 1; i < nAngles; i++)
+			ret[i] = Stage_Calibration.getRegistration(refpos, positions.get(i));
+
+		return ret;
 	}
 
 	private static IndexedTriangleMesh createSphere(Point3f center, float radius, int subd) {

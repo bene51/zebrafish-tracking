@@ -24,7 +24,6 @@ import javax.vecmath.Point3i;
 import javax.vecmath.Vector3f;
 
 import meshtools.IndexedTriangleMesh;
-import vib.FastMatrix;
 import fiji.util.KDTree;
 import fiji.util.NearestNeighborSearch;
 import fiji.util.node.Leaf;
@@ -47,19 +46,16 @@ public class SphericalMaxProjection {
 		this(sphere, center, radius, null);
 	}
 
-	public SphericalMaxProjection(IndexedTriangleMesh sph, Point3f c, float radius, FastMatrix transform) {
+	public SphericalMaxProjection(IndexedTriangleMesh sph, Point3f c, float radius, Matrix4f transform) {
 		this.center = new Point3f(c);
 		this.radius = radius;
 
 		this.sphere = (IndexedTriangleMesh)sph.clone();
 
-		if(transform != null && !transform.isIdentity()) {
-			for(Point3f v : sphere.getVertices()) {
-				transform.apply(v.x, v.y, v.z);
-				v.set((float)transform.x, (float)transform.y, (float)transform.z);
-			}
-			transform.apply(center.x, center.y, center.z);
-			center.set((float)transform.x, (float)transform.y, (float)transform.z);
+		if(transform != null) {
+			for(Point3f v : sphere.getVertices())
+				transform.transform(v);
+			transform.transform(center);
 		}
 
 		ArrayList<Node3D> nodes = new ArrayList<Node3D>(sphere.nFaces / 3);

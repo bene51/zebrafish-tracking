@@ -4,6 +4,7 @@ import ij.process.ImageProcessor;
 
 import java.io.File;
 
+import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
 
 import meshtools.IndexedTriangleMesh;
@@ -237,15 +238,20 @@ public class MultiViewSphericalMaxProjection {
 		// all other angles
 		for(int a = 0; a < nAngles; a++) {
 			// left illumination
-			smp[a][LEFT] = new SphericalMaxProjection(sphere, center, radius, transform[a]);
+			smp[a][LEFT] = new SphericalMaxProjection(sphere, center, radius, toJ3D(transform[a]));
 			smp[a][LEFT].prepareForProjection(w, h, d, pw, ph, pd, new SimpleLeftWeighter(center.x));
 
 			// right illumination
-			smp[a][RIGHT] = new SphericalMaxProjection(sphere, center, radius, transform[a]);
+			smp[a][RIGHT] = new SphericalMaxProjection(sphere, center, radius, toJ3D(transform[a]));
 			smp[a][RIGHT].prepareForProjection(w, h, d, pw, ph, pd, new SimpleRightWeighter(center.x));
 		}
 
 		return smp;
+	}
+
+	private Matrix4f toJ3D(FastMatrix fm) {
+		// TODO add implementation
+		return null;
 	}
 
 	private static IndexedTriangleMesh createSphere(Point3f center, float radius, int subd) {
