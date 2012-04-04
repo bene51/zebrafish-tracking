@@ -56,7 +56,7 @@ public class TwoCameraSphericalMaxProjection {
 					angleInc, nAngles,
 					w, h, d, pw, ph, pd);
 		} catch(Exception e) {
-			throw new RuntimeException("Cannot load transformations.");
+			throw new RuntimeException("Cannot load transformations.", e);
 		}
 
 		// save the sphere geometry
@@ -181,14 +181,18 @@ public class TwoCameraSphericalMaxProjection {
 		for(int a = 0; a < nAngles; a++) {
 			Matrix4f transform = null;
 			if(a > 0)
-				transform = transforms[a - 1];
+				transform = transforms[a];
+			Point3f cen = new Point3f(center);
+			if(a > 0)
+				transform.transform(cen);
+
 			// left illumination
 			smp[a][LEFT] = new SphericalMaxProjection(sphere, center, radius, transform);
-			smp[a][LEFT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, false, angle, aperture, center));
+			smp[a][LEFT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, false, angle, aperture, cen));
 
 			// right illumination
 			smp[a][RIGHT] = new SphericalMaxProjection(sphere, center, radius, transform);
-			smp[a][RIGHT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, false, -angle, aperture, center));
+			smp[a][RIGHT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, false, -angle, aperture, cen));
 
 		}
 		return smp;
