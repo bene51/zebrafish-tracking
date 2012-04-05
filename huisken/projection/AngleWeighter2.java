@@ -120,7 +120,7 @@ public class AngleWeighter2 implements FusionWeight {
 				}
 				stack.addSlice("", p);
 			}
-			new ImagePlus("aw", stack).show();
+			new ImagePlus("aw_" + angles[a], stack).show();
 		}
 
 		AngleWeighter2 aw = new AngleWeighter2(X_AXIS, 135, 90, new Point3f(50, 50, 50));
