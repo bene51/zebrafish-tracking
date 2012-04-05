@@ -9,9 +9,13 @@ import ij.process.ShortProcessor;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.Arrays;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
@@ -26,7 +30,7 @@ import neo.BaseCameraApplication;
 
 public class TwoCamera_MaxProjection implements PlugIn {
 
-//	public static final int PORT = 1236;
+	private static final int PORT = 1236;
 	private File outputdir;
 
 	@Override
@@ -160,6 +164,8 @@ public class TwoCamera_MaxProjection implements PlugIn {
 	private int w, h, d, nTimepoints, nAngles;
 	private short[] toProcess = null;
 	private static final boolean SAVE_RAW = false;
+	private boolean cameraAcquiring = false;
+	private final Object lock = new Object();
 
 	private void startAcq() {
 		exec.execute(new Runnable() {
@@ -169,6 +175,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				AT at = cameraApp.getAT();
 				for(int t = 0; t < nTimepoints; t++) {
 					for(int a = 0; a < nAngles; a++) {
+						cameraAcquiring = true;
 						at.AT_SetInt("FrameCount", d2);
 						at.AT_Command("AcquisitionStart");
 						long start = System.currentTimeMillis();
@@ -186,10 +193,28 @@ public class TwoCamera_MaxProjection implements PlugIn {
 						at.AT_Command("AcquisitionStop");
 						long end = System.currentTimeMillis();
 						System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
+						synchronized(lock) {
+							cameraAcquiring = false;
+							lock.notify();
+						}
 					}
 				}
 			}
 		});
+	}
+
+	public void waitForCamera() {
+		while(true) {
+			synchronized(lock) {
+				if(!cameraAcquiring)
+					break;
+				try {
+					lock.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 
 	public void setup() throws IOException {
@@ -203,24 +228,22 @@ public class TwoCamera_MaxProjection implements PlugIn {
 
 		startAcq();
 
-//		ServerSocket server = new ServerSocket(PORT);
-//
-//		Socket client = server.accept();
-//		BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-//		String line = null;
-//		System.out.println("listening");
-//		while((line = in.readLine()) != null) {
-//			System.out.println("***" + line + "***");
-//			if(line.equals("STACK")) {
-//				takeStack();
-//			} else if(line.equals("DONE")) {
-//				break;
-//			}
-//		}
-//		System.out.println("closing");
-//		in.close();
-//		client.close();
-//		server.close();
+		ServerSocket server = new ServerSocket(PORT);
+
+		Socket client = server.accept();
+		BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+		String line = null;
+		System.out.println("listening");
+		while((line = in.readLine()) != null) {
+			System.out.println("***" + line + "***");
+			if(line.equals("WAIT")) {
+				waitForCamera();
+			}
+		}
+		System.out.println("closing");
+		in.close();
+		client.close();
+		server.close();
 	}
 
 	public void done() {
