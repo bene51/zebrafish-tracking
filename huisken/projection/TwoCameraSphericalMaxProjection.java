@@ -188,11 +188,11 @@ public class TwoCameraSphericalMaxProjection {
 
 			// left illumination
 			smp[a][LEFT] = new SphericalMaxProjection(sphere, center, radius, transform);
-			smp[a][LEFT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, false, angle, aperture, cen));
+			smp[a][LEFT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, angle, aperture, cen));
 
 			// right illumination
 			smp[a][RIGHT] = new SphericalMaxProjection(sphere, center, radius, transform);
-			smp[a][RIGHT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, false, -angle, aperture, cen));
+			smp[a][RIGHT].prepareForProjection(w, h, d, pw, ph, pd, new AngleWeighter2(AngleWeighter2.X_AXIS, -angle, aperture, cen));
 
 		}
 		return smp;

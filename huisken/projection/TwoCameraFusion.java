@@ -66,10 +66,10 @@ public class TwoCameraFusion implements PlugIn {
 		Point3f center = smp.getCenter();
 
 		weights = new FusionWeight[2][2];
-		weights[CAMERA1][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  135, aperture, center);
-		weights[CAMERA1][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false, -135, aperture, center);
-		weights[CAMERA2][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,   45, aperture, center);
-		weights[CAMERA2][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  -45, aperture, center);
+		weights[CAMERA1][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS,  135, aperture, center);
+		weights[CAMERA1][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, -135, aperture, center);
+		weights[CAMERA2][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS,   45, aperture, center);
+		weights[CAMERA2][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS,  -45, aperture, center);
 	}
 
 	public float[] fuse(int tp) throws IOException {
@@ -173,10 +173,10 @@ public class TwoCameraFusion implements PlugIn {
 		int aperture = 90;
 
 		AngleWeighter2[][] weights = new AngleWeighter2[2][2];
-		weights[CAMERA1][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  135, aperture, center);
-		weights[CAMERA1][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false, -135, aperture, center);
-		weights[CAMERA2][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS, false,   45, aperture, center);
-		weights[CAMERA2][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, false,  -45, aperture, center);
+		weights[CAMERA1][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS,  135, aperture, center);
+		weights[CAMERA1][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS, -135, aperture, center);
+		weights[CAMERA2][LEFT]  = new AngleWeighter2(AngleWeighter2.X_AXIS,   45, aperture, center);
+		weights[CAMERA2][RIGHT] = new AngleWeighter2(AngleWeighter2.X_AXIS,  -45, aperture, center);
 
 		String format = "tp%04d_a%04d_ill%d.vertices";
 		int tp = 0;

@@ -19,16 +19,14 @@ public class AngleWeighter2 implements FusionWeight {
 	private final Point3f center;
 	private final int angle;
 	private final int axis;
-	private final boolean negativeAxis;
 	public static final double overlap = 20;
 	public static final double overlap2 = overlap / 2;
 
-	public AngleWeighter2(int axis, boolean negativeAxis, int angle, int aperture, Point3f center) {
+	public AngleWeighter2(int axis, int angle, int aperture, Point3f center) {
 		this.axis = axis;
 		this.angle = angle;
 		this.aperture = aperture;
 		this.center = center;
-		this.negativeAxis = negativeAxis;
 	}
 
 	public double getAngle(double dx, double dy, double dz) {
@@ -40,8 +38,7 @@ public class AngleWeighter2 implements FusionWeight {
 		default: throw new IllegalArgumentException();
 		}
 		double a = 180.0 * Math.atan2(d2, d1) / Math.PI;
-		if(negativeAxis)
-			a = -a;
+
 		a -= angle;
 		if(a > 180)
 			return a - 360;
@@ -111,7 +108,7 @@ public class AngleWeighter2 implements FusionWeight {
 		new ImageJ();
 		int[] angles = new int[] {-135, -45, 45, 135};
 		for(int a = 0; a < angles.length; a++) {
-			AngleWeighter2 aw = new AngleWeighter2(X_AXIS, false, angles[a], 45, new Point3f(50, 50, 50));
+			AngleWeighter2 aw = new AngleWeighter2(X_AXIS, angles[a], 45, new Point3f(50, 50, 50));
 			int w = 100, h = 100, d = 100;
 			ImageStack stack = new ImageStack(w, h);
 			for(int z = 0; z < d; z++) {
@@ -126,7 +123,7 @@ public class AngleWeighter2 implements FusionWeight {
 			new ImagePlus("aw", stack).show();
 		}
 
-		AngleWeighter2 aw = new AngleWeighter2(X_AXIS, false, 135, 90, new Point3f(50, 50, 50));
+		AngleWeighter2 aw = new AngleWeighter2(X_AXIS, 135, 90, new Point3f(50, 50, 50));
 		double[] x = new double[360];
 		double[] y = new double[360];
 		for(int i = 0; i < x.length; i++) {
