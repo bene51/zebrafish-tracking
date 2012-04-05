@@ -211,8 +211,10 @@ public class TwoCameraSphericalMaxProjection {
 
 		Point4f refpos = positions.get(0);
 		Matrix4f[] ret = new Matrix4f[nAngles];
-		for(int i = 1; i < nAngles; i++)
+		for(int i = 1; i < nAngles; i++) {
 			ret[i] = Stage_Calibration.getRegistration(refpos, positions.get(i));
+			ret[i].invert();
+		}
 
 		return ret;
 	}
