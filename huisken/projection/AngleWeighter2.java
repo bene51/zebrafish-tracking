@@ -3,6 +3,7 @@ package huisken.projection;
 import ij.ImageJ;
 import ij.ImagePlus;
 import ij.ImageStack;
+import ij.gui.Plot;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
@@ -18,7 +19,7 @@ public class AngleWeighter2 implements FusionWeight {
 	private final Point3f center;
 	private final int angle;
 	private final int axis;
-	private boolean negativeAxis;
+	private final boolean negativeAxis;
 	public static final double overlap = 20;
 	public static final double overlap2 = overlap / 2;
 
@@ -81,6 +82,10 @@ public class AngleWeighter2 implements FusionWeight {
 
 		double angle = getAngle(dx, dy, dz);
 
+		return getWeight(angle);
+	}
+
+	public float getWeight(double angle) {
 		// inside
 		if(angle > -aperture/2.0 + overlap2 && angle < aperture/2.0 - overlap2)
 			return 1f;
@@ -104,18 +109,31 @@ public class AngleWeighter2 implements FusionWeight {
 
 	public static void main(String[] args) {
 		new ImageJ();
-		AngleWeighter2 aw = new AngleWeighter2(X_AXIS, false, 135, 90, new Point3f(50, 50, 50));
-		int w = 100, h = 100, d = 100;
-		ImageStack stack = new ImageStack(w, h);
-		for(int z = 0; z < d; z++) {
-			ImageProcessor p = new FloatProcessor(w, h);
-			for(int y = 0; y < h; y++) {
-				for(int x = 0; x < w; x++) {
-					p.setf(x, y, aw.getWeight(x, y, z));
+		int[] angles = new int[] {-135, -45, 45, 135};
+		for(int a = 0; a < angles.length; a++) {
+			AngleWeighter2 aw = new AngleWeighter2(X_AXIS, false, angles[a], 45, new Point3f(50, 50, 50));
+			int w = 100, h = 100, d = 100;
+			ImageStack stack = new ImageStack(w, h);
+			for(int z = 0; z < d; z++) {
+				ImageProcessor p = new FloatProcessor(w, h);
+				for(int y = 0; y < h; y++) {
+					for(int x = 0; x < w; x++) {
+						p.setf(x, y, aw.getWeight(x, y, z));
+					}
 				}
+				stack.addSlice("", p);
 			}
-			stack.addSlice("", p);
+			new ImagePlus("aw", stack).show();
 		}
-		new ImagePlus("aw", stack).show();
+
+		AngleWeighter2 aw = new AngleWeighter2(X_AXIS, false, 135, 90, new Point3f(50, 50, 50));
+		double[] x = new double[360];
+		double[] y = new double[360];
+		for(int i = 0; i < x.length; i++) {
+			x[i] = i - 180;
+			y[i] = aw.getWeight(x[i]);
+		}
+		Plot p = new Plot("weights", "angle", "weight", x, y);
+		p.show();
 	}
 }
