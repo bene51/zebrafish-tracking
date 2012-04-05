@@ -238,6 +238,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 			System.out.println("***" + line + "***");
 			if(line.equals("WAIT")) {
 				waitForCamera();
+				client.getOutputStream().write("done\r\n".getBytes());
 			}
 		}
 		System.out.println("closing");
