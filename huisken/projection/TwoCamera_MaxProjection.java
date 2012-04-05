@@ -193,10 +193,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 						at.AT_Command("AcquisitionStop");
 						long end = System.currentTimeMillis();
 						System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
-						synchronized(lock) {
-							cameraAcquiring = false;
-							lock.notify();
-						}
+						cameraAcquiring = false;
 					}
 				}
 			}
@@ -204,15 +201,11 @@ public class TwoCamera_MaxProjection implements PlugIn {
 	}
 
 	public void waitForCamera() {
-		while(true) {
-			synchronized(lock) {
-				if(!cameraAcquiring)
-					break;
-				try {
-					lock.wait();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
+		while(cameraAcquiring) {
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
 		}
 	}
@@ -239,6 +232,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 			if(line.equals("WAIT")) {
 				waitForCamera();
 				client.getOutputStream().write("done\r\n".getBytes());
+				System.out.println("done");
 			}
 		}
 		System.out.println("closing");
