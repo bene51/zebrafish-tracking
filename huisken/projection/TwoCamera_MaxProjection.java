@@ -175,7 +175,6 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				AT at = cameraApp.getAT();
 				for(int t = 0; t < nTimepoints; t++) {
 					for(int a = 0; a < nAngles; a++) {
-						cameraAcquiring = true;
 						at.AT_SetInt("FrameCount", d2);
 						at.AT_Command("AcquisitionStart");
 						long start = System.currentTimeMillis();
@@ -186,6 +185,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 						}
 						for(int f = 0; f < d2; f++) {
 							at.AT_NextFrame(toProcess);
+							cameraAcquiring = true;
 							mmsmp.process(toProcess);
 							if(SAVE_RAW)
 								IJ.save(new ImagePlus("", new ShortProcessor(w, h, toProcess, null)), new File(tpDir, String.format("%04d.tif", f)).getAbsolutePath());
