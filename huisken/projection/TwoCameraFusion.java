@@ -51,12 +51,12 @@ public class TwoCameraFusion implements PlugIn {
 	private static final String format = "tp%04d_a%04d_ill%d.vertices";
 	private static final boolean adjustModes = false;
 
-	public void prepareFusion(SphericalMaxProjection smp, String indir, int nAngles, int angleInc, boolean saveOutput) throws IOException {
+	public void prepareFusion(String indir, int nAngles, int angleInc, boolean saveOutput) throws IOException {
 		if(!indir.endsWith(File.separator))
 			indir += File.separator;
 		this.inputdir = indir;
 		this.saveOutput = saveOutput;
-		this.smp = smp;
+		this.smp = new SphericalMaxProjection(inputdir + "Sphere.obj");
 		this.outputdir = inputdir + "fused" + File.separator;
 		this.angleInc = angleInc;
 		this.nAngles = nAngles;
@@ -99,11 +99,6 @@ public class TwoCameraFusion implements PlugIn {
 		}
 
 
-		float[] m1 = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp, 180, LEFT),  nVertices);
-		float[] m2 = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp, 180, RIGHT), nVertices);
-		float[] m3 = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp,   0, LEFT),  nVertices);
-		float[] m4 = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp,   0, RIGHT), nVertices);
-
 		if(adjustModes) {
 			float refmode = SphericalMaxProjection.getMode(m[CAMERA1][LEFT][0]);
 			for(int a = 0; a < nAngles; a++) {
@@ -136,8 +131,12 @@ public class TwoCameraFusion implements PlugIn {
 				float w2 = weights[CAMERA1][RIGHT][a].getWeight(vertex.x, vertex.y, vertex.z);
 				float w3 = weights[CAMERA2][LEFT ][a].getWeight(vertex.x, vertex.y, vertex.z);
 				float w4 = weights[CAMERA2][RIGHT][a].getWeight(vertex.x, vertex.y, vertex.z);
+				float m1 = m[CAMERA1][LEFT ][a][v];
+				float m2 = m[CAMERA1][RIGHT][a][v];
+				float m3 = m[CAMERA2][LEFT ][a][v];
+				float m4 = m[CAMERA2][RIGHT][a][v];
 				sum += w1 + w2 + w3 + w4;
-				res[v] += (w1 * m1[v] + w2 * m2[v] + w3 * m3[v] + w4 * m4[v]);
+				res[v] += (w1 * m1 + w2 * m2 + w3 * m3 + w4 * m4);
 			}
 			if(sum != 1)
 				System.out.println("sum = " + sum);
