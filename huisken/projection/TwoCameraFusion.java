@@ -6,6 +6,9 @@ import ij.plugin.PlugIn;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -149,14 +152,23 @@ public class TwoCameraFusion implements PlugIn {
 			indir += File.separator;
 		final String inputdir = indir;
 
-		final SphericalMaxProjection smp = new SphericalMaxProjection(inputdir + "Sphere.obj");
+		// final SphericalMaxProjection smp = new SphericalMaxProjection(inputdir + "Sphere.obj");
 
 		final TwoCameraFusion tcf = new TwoCameraFusion();
-		tcf.prepareFusion(smp, inputdir, nAngles, angleInc, saveOutput);
+		tcf.prepareFusion(inputdir, nAngles, angleInc, saveOutput);
 
-		int nTimepoints = 0;
-		while(new File(inputdir, String.format(format, nTimepoints, 0, LEFT)).exists())
-			nTimepoints++;
+		final Set<Integer> tps = new TreeSet<Integer>();
+		for(File f : new File(inputdir).listFiles()) {
+			String name = f.getName();
+			if(name.startsWith("tp") && name.endsWith(".vertices")) {
+				int n = Integer.parseInt(name.substring(2, 6));
+				tps.add(n);
+			}
+		}
+
+
+		int nTimepoints = tps.size();
+		final ArrayList<Integer> timepoints = new ArrayList<Integer>(tps);
 
 		final int nProcessors = Runtime.getRuntime().availableProcessors();
 		ExecutorService exec = Executors.newFixedThreadPool(nProcessors);
@@ -171,7 +183,7 @@ public class TwoCameraFusion implements PlugIn {
 					for(int tp = start; tp < end; tp++) {
 						try {
 							IJ.log("Fusing timepoint " + tp);
-							tcf.fuse(tp);
+							tcf.fuse(timepoints.get(tp));
 						} catch(Exception e) {
 							e.printStackTrace();
 							System.out.println("Couldn't fuse timepoint " + tp);
