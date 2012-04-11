@@ -176,8 +176,6 @@ public class TwoCameraSphericalMaxProjection {
 		if(nAngles > 1)
 			transforms = readTransforms(nAngles);
 
-		// TODO problem: sphere is not the right sphere for each angle.
-		// need to transform it to get it right.
 		for(int a = 0; a < nAngles; a++) {
 			Matrix4f transform = null;
 			if(a > 0)
