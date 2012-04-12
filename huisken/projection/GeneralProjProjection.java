@@ -200,7 +200,7 @@ public class GeneralProjProjection {
 		}
 	}
 
-	public GeneralPath transform(GeneralPath in) {
+	public GeneralPath transform(GeneralPath in, boolean postscript) {
 		GeneralPath out = new GeneralPath();
 		PathIterator it = in.getPathIterator(null);
 		float[] seg = new float[6];
@@ -219,7 +219,7 @@ public class GeneralProjProjection {
 			if(din.y > projection.getMaxLatitudeDegrees()) din.y = projection.getMaxLatitudeDegrees();
 			projection.transform(din, dout);
 			float x = (float)dout.x - minx;
-			float y = maxy - (float)dout.y;
+			float y = postscript ? maxy - (float)dout.y : (float)dout.y - miny;
 
 			if(l == PathIterator.SEG_MOVETO)
 				out.moveTo(x, y);
@@ -228,6 +228,24 @@ public class GeneralProjProjection {
 			it.next();
 		}
 		return out;
+	}
+
+	public static void drawInto(ImageProcessor ip, int value, int linewidth, GeneralPath path) {
+		ip.setValue(value);
+		ip.setLineWidth(linewidth);
+		PathIterator it = path.getPathIterator(null);
+		float[] seg = new float[6];
+		Point2D.Double din = new Point2D.Double();
+		while(!it.isDone()) {
+			int l = it.currentSegment(seg);
+			din.x = seg[0];
+			din.y = seg[1];
+			if(l == PathIterator.SEG_MOVETO)
+				ip.moveTo((int)Math.round(din.x), (int)Math.round(din.y));
+			else
+				ip.lineTo((int)Math.round(din.x), (int)Math.round(din.y));
+			it.next();
+		}
 	}
 
 	public static void savePath(GeneralPath path, String file, int w, int h, boolean fill) throws IOException {

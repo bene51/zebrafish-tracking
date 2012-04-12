@@ -13,8 +13,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -249,11 +251,32 @@ public class Register_ implements PlugIn {
 			overall.mul(mat);
 			src.applyTransform(overall);
 
+			String matName = files[i].substring(0, files[i].lastIndexOf('.')) + ".matrix";
+			saveTransform(overall, outputDirectory + matName);
+
 			src.saveMaxima(outputDirectory + vName);
 
 			tgtPts = nextTgtPts;
 			IJ.showProgress(i, files.length);
 		}
 		IJ.showProgress(1);
+	}
+
+	public static Matrix4f loadTransform(String path) throws IOException {
+		Matrix4f ret = new Matrix4f();
+		BufferedReader in = new BufferedReader(new FileReader(path));
+		for(int r = 0; r < 4; r++)
+			for(int c = 0; c < 4; c++)
+				ret.setElement(r, c, Float.parseFloat(in.readLine()));
+		in.close();
+		return ret;
+	}
+
+	public static void saveTransform(Matrix4f matrix, String path) throws IOException {
+		PrintWriter out = new PrintWriter(new FileWriter(path));
+		for(int r = 0; r < 4; r++)
+			for(int c = 0; c < 4; c++)
+				out.println(Float.toHexString(matrix.getElement(r, c)));
+		out.close();
 	}
 }
