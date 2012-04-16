@@ -4,6 +4,9 @@ import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
 import ij.plugin.PlugIn;
 
+import java.awt.Color;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,6 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import javax.swing.JColorChooser;
 import javax.vecmath.Point3f;
 
 public class TwoCameraFusion implements PlugIn {
@@ -37,6 +41,22 @@ public class TwoCameraFusion implements PlugIn {
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
+		}
+
+
+		final int[][][] colors = new int[2][2][nAngles]; // TODO nAngles uninitialized
+		class ColorActionListener implements ActionListener {
+			private final int cam, ill, a;
+			public ColorActionListener(int cam, int ill, int a) {
+				this.cam = cam; this.ill = ill; this.a = a;
+			}
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				colors[cam][ill][a] = JColorChooser.showDialog(
+						null,
+						"Choose Background Color",
+						Color.RED).getRGB();
+			}
 		}
 	}
 
@@ -81,6 +101,35 @@ public class TwoCameraFusion implements PlugIn {
 			weights[CAMERA2][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,   45 + a * angleInc, aperture, center);
 			weights[CAMERA2][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  -45 + a * angleInc, aperture, center);
 		}
+	}
+
+	public float[] indicateCameraContributions(int[][][] colors) throws IOException {
+		File out = new File(outputdir, "contributions.vertices");
+
+		Point3f[] vertices = smp.getSphere().getVertices();
+		float[] res = new float[vertices.length];
+		for(int v = 0; v < vertices.length; v++) {
+			Point3f vertex = vertices[v];
+			res[v] = 0;
+			for(int a = 0; a < nAngles; a++) {
+				float w1 = weights[CAMERA1][LEFT ][a].getWeight(vertex.x, vertex.y, vertex.z);
+				float w2 = weights[CAMERA1][RIGHT][a].getWeight(vertex.x, vertex.y, vertex.z);
+				float w3 = weights[CAMERA2][LEFT ][a].getWeight(vertex.x, vertex.y, vertex.z);
+				float w4 = weights[CAMERA2][RIGHT][a].getWeight(vertex.x, vertex.y, vertex.z);
+				int c1 = colors[CAMERA1][LEFT ][a];
+				int c2 = colors[CAMERA1][RIGHT][a];
+				int c3 = colors[CAMERA2][LEFT ][a];
+				int c4 = colors[CAMERA2][RIGHT][a];
+
+				int r = (int)(w1 * ((c1 & 0xff0000) >> 16) + w2 * ((c2 * 0xff0000) >> 16) + w3 * ((c3 * 0xff0000) >> 16) + w4 * ((c4 * 0xff0000) >> 16));
+				int g = (int)(w1 * ((c1 & 0xff00)   >>  8) + w2 * ((c2 * 0xff00)   >>  8) + w3 * ((c3 * 0xff00)   >>  8) + w4 * ((c4 * 0xff00)   >>  8));
+				int b = (int)(w1 * ((c1 & 0xff)          ) + w2 * ((c2 * 0xff)          ) + w3 * ((c3 * 0xff)          ) + w4 * ((c4 * 0xff)          ));
+
+				res[v] += (r << 16) + (g << 8) + b;
+			}
+		}
+		SphericalMaxProjection.saveFloatData(res, out.getAbsolutePath());
+		return res;
 	}
 
 	public float[] fuse(int tp) throws IOException {
