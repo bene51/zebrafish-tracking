@@ -266,7 +266,7 @@ public class Register_ implements PlugIn {
 		PrintWriter out = new PrintWriter(new FileWriter(path));
 		for(int r = 0; r < 4; r++)
 			for(int c = 0; c < 4; c++)
-				out.println(Float.toHexString(matrix.getElement(r, c)));
+				out.println(Float.toString(matrix.getElement(r, c)));
 		out.close();
 	}
 }
