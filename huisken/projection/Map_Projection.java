@@ -45,6 +45,7 @@ public class Map_Projection implements PlugIn {
 	public static final int AUGUSTUS_EPICYCLOIDAL = 4;
 	public static final int BONNE                 = 5;
 	public static final int ORTHO_AZIMUTAL        = 6;
+	public static final int FULLER                = 7;
 
 	public static final String[] MAP_TYPES = new String[] {
 		"Mercator",
@@ -53,14 +54,13 @@ public class Map_Projection implements PlugIn {
 		"Winkel Tripel",
 		"Augustus Epicycloidal",
 		"Bonne",
-		"Orthogonal Azimutal"};
+		"Orthogonal Azimutal",
+		"Fuller"};
 
 	@Override
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Create 2D Maps");
-		gd.addDirectoryField("Data directory", "/Volumes/BENE/PostDoc/SphereProjection/registered");
-		// gd.addDirectoryField("Output directory", "/Volumes/BENE/PostDoc/SphereProjection/registered");
-		// gd.addChoice("Map type", MAP_TYPES, MAP_TYPES[3]);
+		gd.addDirectoryField("Data directory", "");
 		gd.addCheckbox("Create coastlines", false);
 		gd.addCheckbox("Create Longitude/Latitude lines", false);
 		gd.addCheckbox("Create camera contribution overlay", false);
@@ -70,7 +70,6 @@ public class Map_Projection implements PlugIn {
 		if(gd.wasCanceled())
 			return;
 		File datadir = new File(gd.getNextString());
-		// int mapType = gd.getNextChoiceIndex();
 		boolean doCoast = gd.getNextBoolean();
 		boolean doLines = gd.getNextBoolean();
 		boolean doContributions = gd.getNextBoolean();
@@ -135,6 +134,7 @@ public class Map_Projection implements PlugIn {
 			case AUGUSTUS_EPICYCLOIDAL: proj = new GeneralProjProjection(new AugustProjection()); break;
 			case BONNE:                 proj = new GeneralProjProjection(new BonneProjection()); break;
 			case ORTHO_AZIMUTAL:        proj = new GeneralProjProjection(new OrthographicAzimuthalProjection()); break;
+			case FULLER:                proj = new FullerProjection(); break;
 			default: throw new IllegalArgumentException("Unsupported map type: " + mapType);
 		}
 		proj.prepareForProjection(smp);
