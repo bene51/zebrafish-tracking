@@ -253,11 +253,10 @@ public class GeneralProjProjection {
 			int y = Math.round(seg[1]);
 			double d = Math.sqrt((px - x) * (px - x) + (py - y) * (py - y));
 
-			if(l == PathIterator.SEG_MOVETO || d > w/2)
+			if(l == PathIterator.SEG_MOVETO || d > w/4)
 				ip.moveTo(x, y);
 			else
 				ip.lineTo(x, y);
-			System.out.println(d);
 			px = x;
 			py = y;
 			it.next();
