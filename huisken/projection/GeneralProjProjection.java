@@ -1,5 +1,6 @@
 package huisken.projection;
 
+import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
@@ -20,7 +21,6 @@ import com.jhlabs.map.proj.Projection;
 
 public class GeneralProjProjection {
 
-	private SphericalMaxProjection smp;
 	private int w;
 	private int h;
 
@@ -76,19 +76,20 @@ public class GeneralProjProjection {
 
 	public GeneralPath createLines() {
 		GeneralPath lines = new GeneralPath();
-		double minLon = projection.getMinLongitudeDegrees();
-		double maxLon = projection.getMaxLongitudeDegrees();
-		double minLat = projection.getMinLatitudeDegrees();
-		double maxLat = projection.getMaxLatitudeDegrees();
-		int nLos = 10;
+//		double minLon = projection.getMinLongitudeDegrees();
+//		double maxLon = projection.getMaxLongitudeDegrees();
+//		double minLat = projection.getMinLatitudeDegrees();
+//		double maxLat = projection.getMaxLatitudeDegrees();
+		int pad = 0;
+		int nLos = 13;
 		int nLas = 100;
 		for(int lo = 0; lo <= nLos; lo++) {
 			boolean first = true;
-			for(int la = 0; la < nLas; la++) {
+			for(int la = pad; la <= nLas - pad; la++) {
 				float x = (lo - nLos/2) * (360.0f / nLos);
 				float y = (la - nLas/2) * (180.0f / nLas);
-				if(x < minLon || x > maxLon || y < minLat || y > maxLat)
-					continue;
+//				if(x < minLon || x > maxLon || y < minLat || y > maxLat)
+//					continue;
 				if(first)
 					lines.moveTo(x, y);
 				else
@@ -98,14 +99,14 @@ public class GeneralProjProjection {
 		}
 
 		nLos = 100;
-		nLas = 10;
-		for(int la = 0; la <= nLas; la++) {
+		nLas = 6;
+		for(int la = 1; la < nLas; la++) {
 			boolean first = true;
-			for(int lo = 0; lo < nLos; lo++) {
+			for(int lo = pad; lo <= nLos - pad; lo++) {
 				float x = (lo - nLos/2) * (360.0f / nLos);
 				float y = (la - nLas/2) * (180.0f / nLas);
-				if(x < minLon || x > maxLon || y < minLat || y > maxLat)
-					continue;
+//				if(x < minLon || x > maxLon || y < minLat || y > maxLat)
+//					continue;
 				if(first)
 					lines.moveTo(x, y);
 				else
@@ -117,7 +118,6 @@ public class GeneralProjProjection {
 	}
 
 	public void prepareForProjection(SphericalMaxProjection smp) {
-		this.smp = smp;
 
 		float globeRadius = 300f;
 		projection.setEllipsoid(new Ellipsoid("", globeRadius, globeRadius, 0.0D, ""));
@@ -138,13 +138,23 @@ public class GeneralProjProjection {
 		Point2D.Double tmpout = new Point2D.Double();
 		for(int lo = 0; lo <= 100; lo++) {
 			for(int la = 0; la <= 100; la++) {
-				tmpin.x = (lo - 50) * dlon / 100 - 0.001;
-				tmpin.y = (la - 50) * dlat / 100 - 0.001;
+				tmpin.x = (lo - 50) * dlon / 100;// - 0.001;
+				tmpin.y = (la - 50) * dlat / 100;// - 0.001;
+				tmpin.x = (lo - 50) * dlon / 100;// - 0.001;
+				tmpin.y = (la - 50) * dlat / 100;// - 0.001;
 				projection.transformRadians(tmpin, tmpout);
-				minx = Math.min((int)tmpout.x, minx);
-				miny = Math.min((int)tmpout.y, miny);
-				maxx = Math.max((int)tmpout.x, maxx);
-				maxy = Math.max((int)tmpout.y, maxy);
+				if(tmpout.x < minx) {
+					minx = (int)tmpout.x;
+				}
+				if(tmpout.y < miny) {
+					miny = (int)tmpout.y;
+				}
+				if(tmpout.x > maxx) {
+					maxx = (int)tmpout.x;
+				}
+				if(tmpout.y > maxy) {
+					maxy = (int)tmpout.y;
+				}
 			}
 		}
 		System.out.println(maxx + " " + maxy);
@@ -200,7 +210,7 @@ public class GeneralProjProjection {
 		}
 	}
 
-	public GeneralPath transform(GeneralPath in, boolean postscript) {
+	public GeneralPath transform(GeneralPath in) {
 		GeneralPath out = new GeneralPath();
 		PathIterator it = in.getPathIterator(null);
 		float[] seg = new float[6];
@@ -212,38 +222,44 @@ public class GeneralProjProjection {
 			int l = it.currentSegment(seg);
 			din.x = seg[0];
 			din.y = seg[1];
-			// clip to min/max long/lat
-			if(din.x < projection.getMinLongitudeDegrees()) din.x = projection.getMinLongitudeDegrees();
-			if(din.y < projection.getMinLatitudeDegrees()) din.y = projection.getMinLatitudeDegrees();
-			if(din.x > projection.getMaxLongitudeDegrees()) din.x = projection.getMaxLongitudeDegrees();
-			if(din.y > projection.getMaxLatitudeDegrees()) din.y = projection.getMaxLatitudeDegrees();
+//			// clip to min/max long/lat
+//			if(din.x < projection.getMinLongitudeDegrees()) din.x = projection.getMinLongitudeDegrees();
+//			if(din.y < projection.getMinLatitudeDegrees()) din.y = projection.getMinLatitudeDegrees();
+//			if(din.x > projection.getMaxLongitudeDegrees()) din.x = projection.getMaxLongitudeDegrees();
+//			if(din.y > projection.getMaxLatitudeDegrees()) din.y = projection.getMaxLatitudeDegrees();
 			projection.transform(din, dout);
 			float x = (float)dout.x - minx;
-			float y = postscript ? maxy - (float)dout.y : (float)dout.y - miny;
+			float y = maxy - (float)dout.y;
 
-			if(l == PathIterator.SEG_MOVETO)
+			if(l == PathIterator.SEG_MOVETO) {
 				out.moveTo(x, y);
-			else
+			} else {
 				out.lineTo(x, y);
+			}
 			it.next();
 		}
 		return out;
 	}
 
-	public static void drawInto(ImageProcessor ip, int value, int linewidth, GeneralPath path) {
+	public void drawInto(ImageProcessor ip, int value, int linewidth, GeneralPath path) {
 		ip.setValue(value);
 		ip.setLineWidth(linewidth);
 		PathIterator it = path.getPathIterator(null);
 		float[] seg = new float[6];
-		Point2D.Double din = new Point2D.Double();
+		int px = 0, py = 0;
 		while(!it.isDone()) {
 			int l = it.currentSegment(seg);
-			din.x = seg[0];
-			din.y = seg[1];
-			if(l == PathIterator.SEG_MOVETO)
-				ip.moveTo((int)Math.round(din.x), (int)Math.round(din.y));
+			int x = Math.round(seg[0]);
+			int y = Math.round(seg[1]);
+			double d = Math.sqrt((px - x) * (px - x) + (py - y) * (py - y));
+
+			if(l == PathIterator.SEG_MOVETO || d > w/2)
+				ip.moveTo(x, y);
 			else
-				ip.lineTo((int)Math.round(din.x), (int)Math.round(din.y));
+				ip.lineTo(x, y);
+			System.out.println(d);
+			px = x;
+			py = y;
 			it.next();
 		}
 	}
@@ -283,9 +299,9 @@ public class GeneralProjProjection {
 		out.close();
 	}
 
-	public ImageProcessor project() {
-		return project(smp.getMaxima());
-	}
+//	public ImageProcessor project() {
+//		return project(smp.getMaxima());
+//	}
 
 	public ImageProcessor project(float[] maxima) {
 		FloatProcessor ip = new FloatProcessor(w, h);
@@ -298,6 +314,30 @@ public class GeneralProjProjection {
 				float v2 = vertexWeights[index][2] * maxima[vIndices[index][2]];
 
 				ip.setf(x, y, v0 + v1 + v2);
+			}
+		}
+		return ip;
+	}
+
+	public ImageProcessor projectColor(float[] maxima) {
+		ColorProcessor ip = new ColorProcessor(w, h);
+		for(int y = 0; y < h; y++) {
+			for(int x = 0; x < w; x++) {
+				int index = y * w + x;
+
+				float w0 = vertexWeights[index][0];
+				float w1 = vertexWeights[index][1];
+				float w2 = vertexWeights[index][2];
+
+				int m0 = Float.floatToIntBits(maxima[vIndices[index][0]]);
+				int m1 = Float.floatToIntBits(maxima[vIndices[index][1]]);
+				int m2 = Float.floatToIntBits(maxima[vIndices[index][2]]);
+
+				int r = (int)(w0 * ((m0 & 0xff0000) >> 16) + w1 * ((m1 & 0xff0000) >> 16) + w2 * ((m2 & 0xff0000) >> 16));
+				int g = (int)(w0 * ((m0 & 0xff00)   >>  8) + w1 * ((m1 & 0xff00)   >>  8) + w2 * ((m2 & 0xff00)   >>  8));
+				int b = (int)(w0 * ((m0 & 0xff))           + w1 * ((m1 & 0xff))           + w2 * ((m2 & 0xff)));
+
+				ip.set(x, y, (r << 16) + (g << 8) + b);
 			}
 		}
 		return ip;

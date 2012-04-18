@@ -1,11 +1,13 @@
 package huisken.projection;
 
 import fiji.util.gui.GenericDialogPlus;
+import huisken.projection.viz.CustomContent;
 import huisken.projection.viz.SphereProjectionViewer;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.WaitForUserDialog;
 import ij.plugin.PlugIn;
+import ij.process.Blitter;
 import ij.process.ImageProcessor;
 import ij3d.Image3DUniverse;
 
@@ -61,6 +63,7 @@ public class Map_Projection implements PlugIn {
 		// gd.addChoice("Map type", MAP_TYPES, MAP_TYPES[3]);
 		gd.addCheckbox("Create coastlines", false);
 		gd.addCheckbox("Create Longitude/Latitude lines", false);
+		gd.addCheckbox("Create camera contribution overlay", false);
 		for(int i = 0; i < MAP_TYPES.length; i++)
 			gd.addCheckbox(MAP_TYPES[i], true);
 		gd.showDialog();
@@ -70,6 +73,7 @@ public class Map_Projection implements PlugIn {
 		// int mapType = gd.getNextChoiceIndex();
 		boolean doCoast = gd.getNextBoolean();
 		boolean doLines = gd.getNextBoolean();
+		boolean doContributions = gd.getNextBoolean();
 
 		if(!datadir.isDirectory()) {
 			IJ.error(datadir + " is not a directory");
@@ -91,7 +95,10 @@ public class Map_Projection implements PlugIn {
 		new WaitForUserDialog("",
 			"Please rotate the sphere to the desired orientation, then click OK").show();
 		Transform3D trans = new Transform3D();
-		univ.getContent("bla").getLocalRotate(trans);
+		CustomContent cc = (CustomContent)univ.getContent("bla");
+		float min = cc.getDisplayedMinimum();
+		float max = cc.getDisplayedMaximum();
+		cc.getLocalRotate(trans);
 		trans.get(initial);
 		univ.close();
 
@@ -109,7 +116,7 @@ public class Map_Projection implements PlugIn {
 			}
 
 			try {
-				createProjections(objfile.getAbsolutePath(), datadir.getAbsolutePath(), initial, i, outputdir.getAbsolutePath(), doCoast, doLines);
+				createProjections(objfile.getAbsolutePath(), datadir.getAbsolutePath(), initial, min, max, i, outputdir.getAbsolutePath(), doCoast, doLines, doContributions);
 			} catch(Exception e) {
 				IJ.error(e.getMessage());
 				e.printStackTrace();
@@ -117,12 +124,8 @@ public class Map_Projection implements PlugIn {
 		}
 	}
 
-	public void createProjections(String objfile, String datadir, Matrix4f initial, int mapType, String outputdir, boolean doCoast, boolean doLines) throws IOException {
-		SphericalMaxProjection smp = new SphericalMaxProjection(objfile, initial);
-		createProjections(smp, datadir, mapType, outputdir, doCoast, doLines);
-	}
-
-	public void createProjections(final SphericalMaxProjection smp, final String datadir, final int mapType, final String outputdir, final boolean doCoast, final boolean doLines) throws IOException {
+	public void createProjections(final String objfile, final String datadir, final Matrix4f initial, final float min, final float max, final int mapType, final String outputdir, final boolean doCoast, final boolean doLines, final boolean doContributions) throws IOException {
+		final SphericalMaxProjection smp = new SphericalMaxProjection(objfile, initial);
 		final GeneralProjProjection proj;
 		switch(mapType) {
 			case MERCATOR:              proj = new GeneralProjProjection(new MercatorProjection());   break;
@@ -139,7 +142,7 @@ public class Map_Projection implements PlugIn {
 		if(doCoast) {
 			// create a postscript file with the coastline
 			GeneralPath coast = GeneralProjProjection.readDatFile("/Users/bschmid/PostDoc/paper/SphereProj/figure2/coast.dat");
-			coast = proj.transform(coast, true);
+			coast = proj.transform(coast);
 			GeneralProjProjection.savePath(coast, outputdir + File.separator + "coastline.ps", proj.getWidth(), proj.getHeight(), true);
 		}
 
@@ -168,9 +171,6 @@ public class Map_Projection implements PlugIn {
 
 		final int nVertices = smp.getSphere().nVertices;
 
-		final Point3f center = smp.getCenter();
-		final float radius = smp.getRadius();
-
 		for(int p = 0; p < nProcessors; p++) {
 			final int start = p * nFilesPerThread;
 			final int end = Math.min(files.length, (p + 1) * nFilesPerThread);
@@ -183,17 +183,29 @@ public class Map_Projection implements PlugIn {
 						try {
 							String outfile = outputdir + File.separator + file.substring(0, file.length() - 9) + ".tif";
 							String datafile = datadir + File.separator + file;
-							String matrixfile = datadir + File.separator + file.substring(0, file.length() - 9) + ".matrix";
+							String matrixfile = datadir + File.separator + "transformations" + File.separator + file.substring(0, file.length() - 9) + ".matrix";
+							String contribfile = datadir + File.separator + "contributions" + File.separator + file;
+							if(!new File(contribfile).exists())
+								contribfile = datadir + File.separator + "contributions.vertices";
 							float[] maxima = SphericalMaxProjection.loadFloatData(datafile, nVertices);
 							ImageProcessor ip = proj.project(maxima);
 							if(doLines) {
 								GeneralPath lines = proj.createLines();
-								if(new File(matrixfile).exists()) {
-									Matrix4f mat = Register_.loadTransform(matrixfile);
-									lines = transform(center, radius, mat, lines);
-								}
-								lines = proj.transform(lines, false);
-								GeneralProjProjection.drawInto(ip, -1, 3, lines);
+								Matrix4f mat = new Matrix4f(initial);
+								if(new File(matrixfile).exists())
+									mat.mul(Register_.loadTransform(matrixfile));
+
+								lines = transform(smp, mat, lines);
+								lines = proj.transform(lines);
+								proj.drawInto(ip, -1, 3, lines);
+							}
+							if(doContributions) {
+								ip.setMinAndMax(min, max);
+								ip = ip.convertToByte(true).convertToRGB();
+								float[] contribs = SphericalMaxProjection.loadFloatData(contribfile, nVertices);
+								ImageProcessor overlay = proj.projectColor(contribs);
+								overlay.multiply(0.5);
+								ip.copyBits(overlay, 0, 0, Blitter.ADD);
 							}
 							IJ.save(new ImagePlus("", ip), outfile);
 						} catch(Exception e) {
@@ -212,7 +224,7 @@ public class Map_Projection implements PlugIn {
 		}
 	}
 
-	public static GeneralPath transform(Point3f center, float radius, Matrix4f trans, GeneralPath path) {
+	public static GeneralPath transform(SphericalMaxProjection smp, Matrix4f trans, GeneralPath path) {
 		GeneralPath out = new GeneralPath();
 		PathIterator it = path.getPathIterator(null);
 		float[] seg = new float[6];
@@ -223,7 +235,9 @@ public class Map_Projection implements PlugIn {
 			int l = it.currentSegment(seg);
 			pin.x = seg[0];
 			pin.y = seg[1];
-			transform(center, radius, trans, pin);
+			toRad(pin);
+			transform(smp, trans, pin);
+			toDeg(pin);
 
 			if(l == PathIterator.SEG_MOVETO)
 				out.moveTo(pin.x, pin.y);
@@ -234,11 +248,23 @@ public class Map_Projection implements PlugIn {
 		return out;
 	}
 
-	public static void transform(Point3f center, float radius, Matrix4f trans, Point2f polar) {
+	public static void toRad(Point2f polar) {
+		polar.x = (float)(polar.x / 180 * Math.PI);
+		polar.y = (float)(polar.y / 180 * Math.PI);
+	}
+
+	public static void toDeg(Point2f polar) {
+		polar.x = (float)(polar.x / Math.PI * 180);
+		polar.y = (float)(polar.y / Math.PI * 180);
+	}
+
+	public static void transform(SphericalMaxProjection smp, Matrix4f trans, Point2f polar) {
 		Point3f coord = new Point3f();
+		Point3f center = smp.getCenter();
+		float radius = smp.getRadius();
 		getPoint(center, radius, polar.x, polar.y, coord);
 		trans.transform(coord);
-		getPolar(center, radius, coord, polar);
+		smp.getPolar(coord, polar);
 	}
 
 	public static void getPoint(Point3f center, float radius, float longitude, float latitude, Point3f ret) {
@@ -249,16 +275,5 @@ public class Map_Projection implements PlugIn {
 		ret.z = (float)(center.z + radius * cosLat * cosLong);
 		ret.x = (float)(center.x - radius * cosLat * sinLong);
 		ret.y = (float)(center.y - radius * sinLat);
-	}
-
-	public static void getPolar(Point3f center, float radius, Point3f in, Point2f out) {
-		in = new Point3f(in);
-		in.x -= center.x;
-		in.y -= center.y;
-		in.z -= center.z;
-		double lon = Math.atan2(-in.x, in.z);
-		double lat = Math.asin(-in.y / radius);
-		out.x = (float)lon;
-		out.y = (float)lat;
 	}
 }
