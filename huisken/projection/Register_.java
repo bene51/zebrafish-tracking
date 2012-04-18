@@ -194,6 +194,8 @@ public class Register_ implements PlugIn {
 			dataDirectory += File.separator;
 		if(!outputDirectory.endsWith(File.separator))
 			outputDirectory += File.separator;
+		String matrixDirectory = outputDirectory + File.separator + "transformations" + File.separator;
+		new File(matrixDirectory).mkdir();
 
 		SphericalMaxProjection src = new SphericalMaxProjection(objfile.getAbsolutePath());
 		createFullerProjection(src, dataDirectory);
@@ -231,19 +233,17 @@ public class Register_ implements PlugIn {
 				nextTgtPts.add(new Point3f(p));
 
 
-			vName = files[i].substring(0, files[i].lastIndexOf('.')) + ".vertices";
-			src.loadMaxima(dataDirectory + vName);
-
 			Matrix4f mat = new Matrix4f();
 			mat.setIdentity();
 			ICPRegistration.register(tgtPts, srcPts, mat, src.center);
-			// overall.mul(mat, overall);
 			overall.mul(mat);
-			src.applyTransform(overall);
 
 			String matName = files[i].substring(0, files[i].lastIndexOf('.')) + ".matrix";
-			saveTransform(overall, outputDirectory + matName);
+			saveTransform(overall, matrixDirectory + matName);
 
+			vName = files[i].substring(0, files[i].lastIndexOf('.')) + ".vertices";
+			src.loadMaxima(dataDirectory + vName);
+			src.applyTransform(overall);
 			src.saveMaxima(outputDirectory + vName);
 
 			tgtPts = nextTgtPts;
