@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import javax.vecmath.Matrix4f;
+import javax.vecmath.Point2f;
 import javax.vecmath.Point3f;
 import javax.vecmath.Point3i;
 import javax.vecmath.Vector3f;
@@ -516,6 +517,18 @@ public class SphericalMaxProjection {
 			if(v > maxima[luti[z][i]])
 				maxima[luti[z][i]] = v;
 		}
+	}
+
+	// in rad
+	public void getPolar(Point3f in, Point2f out) {
+		in = new Point3f(in);
+		in.x -= center.x;
+		in.y -= center.y;
+		in.z -= center.z;
+		double lon = Math.atan2(-in.x, in.z);
+		double lat = Math.asin(-in.y / radius);
+		out.x = (float)lon;
+		out.y = (float)lat;
 	}
 
 	private final Point3f tmp = new Point3f();
