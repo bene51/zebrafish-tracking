@@ -18,6 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.JColorChooser;
+import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
 
 public class TwoCameraFusion implements PlugIn {
@@ -33,6 +34,7 @@ public class TwoCameraFusion implements PlugIn {
 		gd.addDirectoryField("Input folder", "");
 		gd.addNumericField("#angles", 1, 0);
 		gd.addNumericField("#angleInc", 45, 0);
+		gd.addFileField("Transformations", "");
 		gd.addCheckbox("Adjust modes to compensate for intensity differences", false);
 		gd.showDialog();
 		if(gd.wasCanceled())
@@ -41,9 +43,17 @@ public class TwoCameraFusion implements PlugIn {
 		String folder = gd.getNextString();
 		int nAngles = (int)gd.getNextNumber();
 		int angleInc = (int)gd.getNextNumber();
+		String transformationFile = gd.getNextString();
 		boolean adjustModes = gd.getNextBoolean();
 
-
+		Matrix4f[] transformations = new Matrix4f[0];
+		if(nAngles > 1) {
+			try {
+				transformations = TwoCameraSphericalMaxProjection.loadTransformations(transformationFile);
+			} catch(IOException e) {
+				e.printStackTrace();
+			}
+		}
 		final int[][][] colors = new int[2][2][nAngles];
 		final Button[][][] buttons = new Button[2][2][nAngles];
 		class ColorActionListener implements ActionListener {
@@ -78,7 +88,7 @@ public class TwoCameraFusion implements PlugIn {
 
 
 		try {
-			fuse(folder, nAngles, angleInc, adjustModes, colors, true);
+			fuse(folder, nAngles, angleInc, transformations, adjustModes, colors, true);
 		} catch(Exception e) {
 			IJ.error(e.getMessage());
 			e.printStackTrace();
@@ -89,6 +99,7 @@ public class TwoCameraFusion implements PlugIn {
 	private String outputdir;
 	private SphericalMaxProjection smp;
 	private FusionWeight[][][] weights;
+	private Matrix4f[] transforms;
 	private boolean saveOutput;
 	private int angleInc;
 	private int nAngles;
@@ -96,7 +107,7 @@ public class TwoCameraFusion implements PlugIn {
 	private static final String format = "tp%04d_a%04d_ill%d.vertices";
 	private static final boolean adjustModes = false;
 
-	public void prepareFusion(String indir, int nAngles, int angleInc, boolean saveOutput) throws IOException {
+	public void prepareFusion(String indir, int nAngles, int angleInc, Matrix4f[] transformations, boolean saveOutput) throws IOException {
 		if(!indir.endsWith(File.separator))
 			indir += File.separator;
 		this.inputdir = indir;
@@ -105,6 +116,7 @@ public class TwoCameraFusion implements PlugIn {
 		this.outputdir = inputdir + "fused" + File.separator;
 		this.angleInc = angleInc;
 		this.nAngles = nAngles;
+		this.transforms = transformations;
 
 		// see TwoCameraSphericalMaxProjection.initSphericalMaximumProjection
 		int aperture = 90 / nAngles;
@@ -121,10 +133,13 @@ public class TwoCameraFusion implements PlugIn {
 		weights = new FusionWeight[2][2][nAngles];
 
 		for(int a = 0; a < nAngles; a++) {
-			weights[CAMERA1][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  135 + a * angleInc, aperture, center);
-			weights[CAMERA1][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS, -135 + a * angleInc, aperture, center);
-			weights[CAMERA2][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,   45 + a * angleInc, aperture, center);
-			weights[CAMERA2][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  -45 + a * angleInc, aperture, center);
+			Point3f cen = new Point3f(center);
+			if(transforms[a] != null)
+				transforms[a].transform(cen);
+			weights[CAMERA1][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  135, aperture, cen);
+			weights[CAMERA1][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS, -135, aperture, cen);
+			weights[CAMERA2][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,   45, aperture, cen);
+			weights[CAMERA2][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  -45, aperture, cen);
 		}
 	}
 
@@ -139,7 +154,9 @@ public class TwoCameraFusion implements PlugIn {
 				for(int a = 0; a < nAngles; a++) {
 					float[] res = new float[vertices.length];
 					for(int v = 0; v < vertices.length; v++) {
-						Point3f vertex = vertices[v];
+						Point3f vertex = new Point3f(vertices[v]);
+						if(transforms[a] != null)
+							transforms[a].transform(vertex);
 						res[v] = 100 * weights[cam][ill][a].getWeight(vertex.x, vertex.y, vertex.z);
 					}
 					SphericalMaxProjection.saveFloatData(res, new File(dir, String.format(format, 0, as + a * angleInc, ill)).getAbsolutePath());
@@ -157,10 +174,14 @@ public class TwoCameraFusion implements PlugIn {
 			Point3f vertex = vertices[v];
 			double r = 0, g = 0, b = 0;
 			for(int a = 0; a < nAngles; a++) {
-				float w1 = weights[CAMERA1][LEFT ][a].getWeight(vertex.x, vertex.y, vertex.z);
-				float w2 = weights[CAMERA1][RIGHT][a].getWeight(vertex.x, vertex.y, vertex.z);
-				float w3 = weights[CAMERA2][LEFT ][a].getWeight(vertex.x, vertex.y, vertex.z);
-				float w4 = weights[CAMERA2][RIGHT][a].getWeight(vertex.x, vertex.y, vertex.z);
+				Point3f xvtx = new Point3f(vertex);
+				if(transforms[a] != null)
+					transforms[a].transform(xvtx);
+
+				float w1 = weights[CAMERA1][LEFT ][a].getWeight(xvtx.x, xvtx.y, xvtx.z);
+				float w2 = weights[CAMERA1][RIGHT][a].getWeight(xvtx.x, xvtx.y, xvtx.z);
+				float w3 = weights[CAMERA2][LEFT ][a].getWeight(xvtx.x, xvtx.y, xvtx.z);
+				float w4 = weights[CAMERA2][RIGHT][a].getWeight(xvtx.x, xvtx.y, xvtx.z);
 
 				int c1 = colors[CAMERA1][LEFT ][a];
 				int c2 = colors[CAMERA1][RIGHT][a];
@@ -233,10 +254,13 @@ public class TwoCameraFusion implements PlugIn {
 			float sum = 0;
 			res[v] = 0;
 			for(int a = 0; a < nAngles; a++) {
-				float w1 = weights[CAMERA1][LEFT ][a].getWeight(vertex.x, vertex.y, vertex.z);
-				float w2 = weights[CAMERA1][RIGHT][a].getWeight(vertex.x, vertex.y, vertex.z);
-				float w3 = weights[CAMERA2][LEFT ][a].getWeight(vertex.x, vertex.y, vertex.z);
-				float w4 = weights[CAMERA2][RIGHT][a].getWeight(vertex.x, vertex.y, vertex.z);
+				Point3f xvtx = new Point3f(vertex);
+				if(transforms[a] != null)
+					transforms[a].transform(xvtx);
+				float w1 = weights[CAMERA1][LEFT ][a].getWeight(xvtx.x, xvtx.y, xvtx.z);
+				float w2 = weights[CAMERA1][RIGHT][a].getWeight(xvtx.x, xvtx.y, xvtx.z);
+				float w3 = weights[CAMERA2][LEFT ][a].getWeight(xvtx.x, xvtx.y, xvtx.z);
+				float w4 = weights[CAMERA2][RIGHT][a].getWeight(xvtx.x, xvtx.y, xvtx.z);
 				float m1 = m[CAMERA1][LEFT ][a][v];
 				float m2 = m[CAMERA1][RIGHT][a][v];
 				float m3 = m[CAMERA2][LEFT ][a][v];
@@ -252,7 +276,7 @@ public class TwoCameraFusion implements PlugIn {
 		return res;
 	}
 
-	public static void fuse(String indir, int nAngles, int angleInc, final  boolean adjustModes, int[][][] colors, boolean saveOutput) throws IOException {
+	public static void fuse(String indir, int nAngles, int angleInc, final Matrix4f[] transformations, final  boolean adjustModes, int[][][] colors, boolean saveOutput) throws IOException {
 		if(!indir.endsWith(File.separator))
 			indir += File.separator;
 		final String inputdir = indir;
@@ -260,7 +284,7 @@ public class TwoCameraFusion implements PlugIn {
 		// final SphericalMaxProjection smp = new SphericalMaxProjection(inputdir + "Sphere.obj");
 
 		final TwoCameraFusion tcf = new TwoCameraFusion();
-		tcf.prepareFusion(inputdir, nAngles, angleInc, saveOutput);
+		tcf.prepareFusion(inputdir, nAngles, angleInc, transformations, saveOutput);
 
 		final Set<Integer> tps = new TreeSet<Integer>();
 		for(File f : new File(inputdir).listFiles()) {

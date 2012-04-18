@@ -2,8 +2,12 @@ package huisken.projection;
 
 import huisken.util.Stage_Calibration;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 
 import javax.vecmath.Matrix4f;
@@ -173,8 +177,10 @@ public class TwoCameraSphericalMaxProjection {
 		int angle = camera == CAMERA1 ? 135 : 45;
 
 		Matrix4f[] transforms = null;
-		if(nAngles > 1)
+		if(nAngles > 1) {
 			transforms = readTransforms(nAngles);
+			writeTransformations(new File(outputdir, "transformations").getAbsolutePath(), transforms);
+		}
 
 		for(int a = 0; a < nAngles; a++) {
 			Matrix4f transform = null;
@@ -215,6 +221,36 @@ public class TwoCameraSphericalMaxProjection {
 		}
 
 		return ret;
+	}
+
+	public static Matrix4f[] loadTransformations(String file) throws IOException {
+		BufferedReader in = new BufferedReader(new FileReader(file));
+		String line = null;
+		ArrayList<Matrix4f> matrices = new ArrayList<Matrix4f>();
+		while((line = in.readLine()) != null) {
+			if(line.equals("null"))
+				matrices.add(null);
+			String[] toks = line.split(" ");
+			float[] matrix = new float[16];
+			for(int i = 0; i < 16; i++)
+				matrix[i] = Float.parseFloat(toks[i]);
+			matrices.add(new Matrix4f(matrix));
+		}
+		Matrix4f[] ret = new Matrix4f[matrices.size()];
+		matrices.toArray(ret);
+		return ret;
+	}
+
+	public static void writeTransformations(String file, Matrix4f[] matrices) throws IOException {
+		PrintWriter out = new PrintWriter(new FileWriter(file));
+		for(Matrix4f m : matrices) {
+			for(int r = 0; r < 4; r++) {
+				for(int c = 0; c < 4; c++) {
+					out.print(m.getElement(r,  c) + " ");
+				}
+			}
+		}
+		System.out.println();
 	}
 
 	private static IndexedTriangleMesh createSphere(Point3f center, float radius, int subd) {
