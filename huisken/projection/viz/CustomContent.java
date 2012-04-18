@@ -36,6 +36,7 @@ public class CustomContent extends Content {
 	private final SphericalMaxProjection smp;
 
 	private boolean showMaxima = false;
+	private boolean showAsColor = false;
 
 	private float maximaThreshold = Spherical_Max_Projection.FIT_SPHERE_THRESHOLD;
 
@@ -89,6 +90,15 @@ public class CustomContent extends Content {
 
 	public void toggleShowMaxima() {
 		showMaxima = !showMaxima;
+		updateDisplayRange();
+	}
+
+	public boolean isShowAsColor() {
+		return showAsColor;
+	}
+
+	public void toggleShowAsColor() {
+		showAsColor = !showAsColor;
 		updateDisplayRange();
 	}
 
@@ -149,8 +159,12 @@ public class CustomContent extends Content {
 				mesh.colors[i].set(1, 0, 0);
 			else {
 				float v = maxima[i];
-				v = (v - displayedMinimum) / (displayedMaximum - displayedMinimum);
-				mesh.colors[i].set(v, v, v);
+				if(showAsColor) {
+					mesh.colors[i].set(new java.awt.Color(Float.floatToIntBits(v)));
+				} else {
+					v = (v - displayedMinimum) / (displayedMaximum - displayedMinimum);
+					mesh.colors[i].set(v, v, v);
+				}
 			}
 		}
 		setColors(mesh.colors);

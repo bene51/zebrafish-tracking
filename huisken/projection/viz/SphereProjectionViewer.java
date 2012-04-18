@@ -137,6 +137,9 @@ public class SphereProjectionViewer implements PlugIn {
 					e1.printStackTrace();
 				}
 			}
+			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_O) {
+				cc.toggleShowAsColor();
+			}
 		}
 	}
 }
