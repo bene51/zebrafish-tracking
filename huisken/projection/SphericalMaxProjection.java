@@ -326,6 +326,45 @@ public class SphericalMaxProjection {
 		applyInverseTransform(inverse);
 	}
 
+	public void applyTransformNearestNeighbor(Matrix4f matrix) {
+		Matrix4f inverse = new Matrix4f(matrix);
+		inverse.invert();
+		applyInverseTransformNearestNeighbor(inverse);
+	}
+
+	public void applyInverseTransformNearestNeighbor(final Matrix4f inverse) {
+		final float[] newmaxima = new float[maxima.length];
+		final Point3f[] vertices = sphere.getVertices();
+
+		final int nProcessors = Runtime.getRuntime().availableProcessors();
+		ExecutorService exec = Executors.newFixedThreadPool(nProcessors);
+
+		int nVerticesPerThread = (int)Math.ceil(vertices.length / (double)nProcessors);
+		for(int p = 0; p < nProcessors; p++) {
+			final int start = p * nVerticesPerThread;
+			final int end = Math.min(vertices.length, (p + 1) * nVerticesPerThread);
+
+			exec.submit(new Runnable() {
+				@Override
+				public void run() {
+					Point3f p = new Point3f();
+					for(int i = start; i < end; i++) {
+						p.set(vertices[i]);
+						inverse.transform(p);
+						newmaxima[i] = getNearestNeighborValue(p);
+					}
+				}
+			});
+		}
+		try {
+			exec.shutdown();
+			exec.awaitTermination(300, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		this.maxima = newmaxima;
+	}
+
 	public void applyInverseTransform(final Matrix4f inverse) {
 		final float[] newmaxima = new float[sphere.nVertices];
 		final Point3f[] vertices = sphere.getVertices();
@@ -512,6 +551,11 @@ public class SphericalMaxProjection {
 			}
 		}
 		return minIdx;
+	}
+
+	public float getNearestNeighborValue(Point3f p) {
+		int idx = getNearestNeighbor(p);
+		return maxima[idx];
 	}
 
 	public float getInterpolatedValue(Point3f p) {
