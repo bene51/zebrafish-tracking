@@ -210,6 +210,10 @@ public class SphericalMaxProjection {
 		return maxima;
 	}
 
+	public void setMaxima(float[] maxima) {
+		this.maxima = maxima;
+	}
+
 	public void addMaxima(float[] maxima) {
 		add(this.maxima, maxima);
 	}
