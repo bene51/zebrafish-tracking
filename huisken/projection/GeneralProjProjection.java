@@ -81,7 +81,7 @@ public class GeneralProjProjection {
 //		double minLat = projection.getMinLatitudeDegrees();
 //		double maxLat = projection.getMaxLatitudeDegrees();
 		int pad = 0;
-		int nLos = 13;
+		int nLos = 24;
 		int nLas = 100;
 		for(int lo = 0; lo <= nLos; lo++) {
 			boolean first = true;
@@ -99,8 +99,8 @@ public class GeneralProjProjection {
 		}
 
 		nLos = 100;
-		nLas = 6;
-		for(int la = 1; la < nLas; la++) {
+		nLas = 12;
+		for(int la = 0; la <= nLas; la++) {
 			boolean first = true;
 			for(int lo = pad; lo <= nLos - pad; lo++) {
 				float x = (lo - nLos/2) * (360.0f / nLos);
