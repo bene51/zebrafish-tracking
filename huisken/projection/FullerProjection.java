@@ -16,17 +16,19 @@ public class FullerProjection implements MapProjection {
 
 	private int[][] vIndices;
 	private float[][] vertexWeights;
+	private Point3f[] pointsOnSphere; // saves for each index (point in 2D) the point on the sphere
 
 	private static int[][][] table = initTable();
 
 
 	public FullerProjection() {
+		super(null);
 		initTable();
 	}
 
 	private static final double BLA = 0.5 * Math.sqrt(3);
 
-	public static int getTriangle(int x, int y, double s) {
+	private static int getTriangle(int x, int y, double s) {
 		double h = BLA * s;
 
 		double aint =     y / (2 * BLA) - s;
@@ -62,6 +64,7 @@ public class FullerProjection implements MapProjection {
 
 		vIndices = new int[w * h][3];
 		vertexWeights = new float[w * h][3];
+		pointsOnSphere = new Point3f[w * h];
 
 		Point3f[] flatVertices = flatIcosa.getVertices();
 		int[] flatFaces = flatIcosa.getFaces();
@@ -80,6 +83,7 @@ public class FullerProjection implements MapProjection {
 					continue;
 				}
 
+				// calculate the point on the flat icosa
 				Point3f pf1 = flatVertices[flatFaces[3 * t]];
 				Point3f pf2 = flatVertices[flatFaces[3 * t + 1]];
 				Point3f pf3 = flatVertices[flatFaces[3 * t + 2]];
@@ -110,6 +114,7 @@ public class FullerProjection implements MapProjection {
 				nearest.normalize();
 				Point3f ptmp = new Point3f();
 				ptmp.scaleAdd(smp.radius, nearest, smp.center);
+				pointsOnSphere[index] = ptmp;
 
 
 				smp.getThreeNearestVertexIndices(ptmp, vIndices[index]);
@@ -124,6 +129,16 @@ public class FullerProjection implements MapProjection {
 				vertexWeights[index][2] = w2 / sum;
 			}
 		}
+
+	// returns true if inside
+	public boolean getPointOnSphere(int x, int y, Point3f ret) {
+		int i = y * w + x;
+		Point3f onSphere = pointsOnSphere[i];
+		if(onSphere == null)
+			return false;
+		ret.set(onSphere);
+		return true;
+	}
 	}
 
 	@Override

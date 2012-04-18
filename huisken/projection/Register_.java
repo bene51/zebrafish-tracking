@@ -23,9 +23,6 @@ import java.util.List;
 
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
-import javax.vecmath.Vector3f;
-
-import meshtools.IndexedTriangleMesh;
 
 
 public class Register_ implements PlugIn {
@@ -70,23 +67,6 @@ public class Register_ implements PlugIn {
 		FullerProjection proj = new FullerProjection();
 		proj.prepareForProjection(smp, w);
 
-		// the following is copied from FullerProjection.
-		double s = w / 5.5;
-		double BLA = 0.5 * Math.sqrt(3);
-		int h = (int)Math.round(3 * BLA * s);
-
-		Icosahedron icosa = new Icosahedron(smp.radius);
-		for(Point3f p : icosa.getVertices())
-			p.add(smp.center);
-
-		IndexedTriangleMesh flatIcosa = icosa.createFlatVersion((float)s);
-
-		int[][] vIndices = new int[w * h][3];
-		Point3f[] flatVertices = flatIcosa.getVertices();
-		int[] flatFaces = flatIcosa.getFaces();
-		Point3f[] icosaVertices = icosa.getVertices();
-		int[] icosaFaces = icosa.getFaces();
-
 		GaussianBlur gauss = new GaussianBlur();
 
 		for(File file : new File(datadir).listFiles()) {
@@ -96,7 +76,7 @@ public class Register_ implements PlugIn {
 
 			smp.loadMaxima(file.getAbsolutePath());
 			filename = filename.substring(0, filename.length() - 9) + ".tif";
-			ImageProcessor fuller = proj.project();
+			ImageProcessor fuller = proj.project(smp.getMaxima());
 			IJ.save(new ImagePlus("", fuller), new File(outputdir, filename).getAbsolutePath());
 
 			gauss.blur(fuller, 1.5);
@@ -107,44 +87,9 @@ public class Register_ implements PlugIn {
 				int x = pt.xpoints[i];
 				int y = pt.ypoints[i];
 
-				int index = y * w + x;
-				int t = FullerProjection.getTriangle(x, y, s);
-				if(t < 0) {
-					vIndices[index][0] = vIndices[index][1] = vIndices[index][2] = -1;
-					continue;
-				}
-
-				Point3f pf1 = flatVertices[flatFaces[3 * t]];
-				Point3f pf2 = flatVertices[flatFaces[3 * t + 1]];
-				Point3f pf3 = flatVertices[flatFaces[3 * t + 2]];
-
-				Vector3f v1 = new Vector3f(); v1.sub(pf2, pf1); v1.normalize();
-				Vector3f v2 = new Vector3f(); v2.sub(pf3, pf1); v2.normalize();
-				Vector3f p  = new Vector3f((x - pf1.x), (y - pf1.y), 0);
-
-				// solve d1.x * v1.x + d2.x * v2.x = p.x
-				//       d1.y * v1.y + d2.y * v2.y = p.y
-				float d2 = (v1.x * p.y - v1.y * p.x) / (v1.x * v2.y - v1.y * v2.x);
-				float d1 = (p.x - d2 * v2.x) / v1.x;
-				d1 /= pf1.distance(pf2);
-				d2 /= pf1.distance(pf3);
-
-				Point3f p1 = icosaVertices[icosaFaces[3 * t]];
-				Point3f p2 = icosaVertices[icosaFaces[3 * t + 1]];
-				Point3f p3 = icosaVertices[icosaFaces[3 * t + 2]];
-
-				Vector3f nearest = new Vector3f(p1);
-				v1.sub(p2, p1); v1.normalize();
-				v2.sub(p3, p1); v2.normalize();
-				nearest.scaleAdd(d1 * p1.distance(p2), v1, nearest);
-				nearest.scaleAdd(d2 * p1.distance(p3), v2, nearest);
-
-				// project onto sphere
-				nearest.sub(nearest, smp.center);
-				nearest.normalize();
 				Point3f ptmp = new Point3f();
-				ptmp.scaleAdd(smp.radius, nearest, smp.center);
-				pts.add(ptmp);
+				if(proj.getPointOnSphere(x, y, ptmp))
+					pts.add(ptmp);
 			}
 			filename = file.getName();
 			filename = filename.substring(0, filename.length() - 9) + ".pts";
