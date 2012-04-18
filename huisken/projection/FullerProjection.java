@@ -1,22 +1,29 @@
 package huisken.projection;
 
+import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
+import java.awt.geom.GeneralPath;
+import java.awt.geom.PathIterator;
+import java.util.ArrayList;
+
+import javax.vecmath.Point2f;
 import javax.vecmath.Point3f;
 import javax.vecmath.Vector3f;
 
 import meshtools.IndexedTriangleMesh;
+import fiji.util.KDTree;
+import fiji.util.NearestNeighborSearch;
+import fiji.util.node.Leaf;
 
-public class FullerProjection implements MapProjection {
+public class FullerProjection extends GeneralProjProjection {
 
 	private SphericalMaxProjection smp;
-	private int w;
-	private int h;
 
-	private int[][] vIndices;
-	private float[][] vertexWeights;
 	private Point3f[] pointsOnSphere; // saves for each index (point in 2D) the point on the sphere
+
+	private KDTree<Node3D> tree;
 
 	private static int[][][] table = initTable();
 
@@ -24,6 +31,16 @@ public class FullerProjection implements MapProjection {
 	public FullerProjection() {
 		super(null);
 		initTable();
+	}
+
+	@Override
+	public int getWidth() {
+		return w;
+	}
+
+	@Override
+	public int getHeight() {
+		return h;
 	}
 
 	private static final double BLA = 0.5 * Math.sqrt(3);
@@ -50,6 +67,12 @@ public class FullerProjection implements MapProjection {
 	}
 
 	@Override
+	public void prepareForProjection(SphericalMaxProjection smp) {
+		float globeRadius = 300f;
+		int w = (int)Math.round(2 * Math.PI * globeRadius);
+		prepareForProjection(smp, w);
+	}
+
 	public void prepareForProjection(SphericalMaxProjection smp, int w) {
 		this.smp = smp;
 		this.w = w;
@@ -130,6 +153,45 @@ public class FullerProjection implements MapProjection {
 			}
 		}
 
+		ArrayList<Node3D> nodes = new ArrayList<Node3D>(pointsOnSphere.length);
+		for(int i = 0; i < pointsOnSphere.length; i++)
+			if(pointsOnSphere[i] != null)
+				nodes.add(new Node3D(pointsOnSphere[i], i));
+
+		tree = new KDTree<Node3D>(nodes);
+	}
+
+	@Override
+	public GeneralPath transform(GeneralPath in) {
+		GeneralPath out = new GeneralPath();
+		PathIterator it = in.getPathIterator(null);
+		float[] seg = new float[6];
+
+		Point2f pin = new Point2f();
+		Point3f pout = new Point3f();
+
+		while(!it.isDone()) {
+			int l = it.currentSegment(seg);
+			pin.x = (float)(seg[0] * Math.PI / 180);
+			pin.y = (float)(seg[1] * Math.PI / 180);
+
+			smp.getPoint(pin.x, pin.y, pout);
+
+			int index = getImagePos(pout);
+
+			float x = index % w;
+			float y = index / w;
+
+			if(l == PathIterator.SEG_MOVETO) {
+				out.moveTo(x, y);
+			} else {
+				out.lineTo(x, y);
+			}
+			it.next();
+		}
+		return out;
+	}
+
 	// returns true if inside
 	public boolean getPointOnSphere(int x, int y, Point3f ret) {
 		int i = y * w + x;
@@ -139,12 +201,16 @@ public class FullerProjection implements MapProjection {
 		ret.set(onSphere);
 		return true;
 	}
+
+	public int getImagePos(Point3f p) {
+		NearestNeighborSearch<Node3D> nnSearch = new NearestNeighborSearch<Node3D>(tree);
+		Node3D nearest = nnSearch.findNearestNeighbor(new Node3D(p, -1));
+		return nearest.imagePos;
 	}
 
 	@Override
-	public ImageProcessor project() {
+	public ImageProcessor project(float[] maxima) {
 		FloatProcessor ip = new FloatProcessor(w, h);
-		float[] maxima = smp.getMaxima();
 		for(int y = 0; y < h; y++) {
 			for(int x = 0; x < w; x++) {
 				int index = y * w + x;
@@ -158,6 +224,36 @@ public class FullerProjection implements MapProjection {
 				float v2 = vertexWeights[index][2] * maxima[vIndices[index][2]];
 
 				ip.setf(x, y, v0 + v1 + v2);
+			}
+		}
+		return ip;
+	}
+
+	@Override
+	public ImageProcessor projectColor(float[] maxima) {
+		ColorProcessor ip = new ColorProcessor(w, h);
+		for(int y = 0; y < h; y++) {
+			for(int x = 0; x < w; x++) {
+				int index = y * w + x;
+
+				if(vIndices[index][0] == -1) {
+					ip.setf(x, y, 0);
+					continue;
+				}
+
+				float w0 = vertexWeights[index][0];
+				float w1 = vertexWeights[index][1];
+				float w2 = vertexWeights[index][2];
+
+				int m0 = Float.floatToIntBits(maxima[vIndices[index][0]]);
+				int m1 = Float.floatToIntBits(maxima[vIndices[index][1]]);
+				int m2 = Float.floatToIntBits(maxima[vIndices[index][2]]);
+
+				int r = (int)(w0 * ((m0 & 0xff0000) >> 16) + w1 * ((m1 & 0xff0000) >> 16) + w2 * ((m2 & 0xff0000) >> 16));
+				int g = (int)(w0 * ((m0 & 0xff00)   >>  8) + w1 * ((m1 & 0xff00)   >>  8) + w2 * ((m2 & 0xff00)   >>  8));
+				int b = (int)(w0 * ((m0 & 0xff))           + w1 * ((m1 & 0xff))           + w2 * ((m2 & 0xff)));
+
+				ip.set(x, y, (r << 16) + (g << 8) + b);
 			}
 		}
 		return ip;
@@ -197,5 +293,55 @@ public class FullerProjection implements MapProjection {
 		table[5][4][1] = 18;
 
 		return table;
+	}
+
+	private class Node3D implements Leaf<Node3D> {
+		final Point3f p;
+		final int imagePos;
+
+		public Node3D(final Point3f p, int imagePos) {
+			this.p = p;
+			this.imagePos = imagePos;
+		}
+
+		@Override
+		public boolean isLeaf() {
+			return true;
+		}
+
+		@SuppressWarnings("unused")
+		public boolean equals(final Node3D o) {
+	                 return p.equals(o.p);
+		}
+
+		@Override
+		public float distanceTo(final Node3D o) {
+			return p.distance(o.p);
+		}
+
+		@Override
+		public float get(final int k) {
+			switch(k) {
+				case 0: return p.x;
+				case 1: return p.y;
+				case 2: return p.z;
+			}
+			return 0f;
+		}
+
+		@Override
+		public String toString() {
+			return p.toString();
+		}
+
+		@Override
+		public Node3D[] createArray(final int n) {
+			return new Node3D[n];
+		}
+
+		@Override
+		public int getNumDimensions() {
+			return 3;
+		}
 	}
 }

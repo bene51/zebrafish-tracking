@@ -21,13 +21,13 @@ import com.jhlabs.map.proj.Projection;
 
 public class GeneralProjProjection {
 
-	private int w;
-	private int h;
+	protected int w;
+	protected int h;
 
 	private int minx, miny, maxx, maxy;
 
-	private int[][] vIndices;
-	private float[][] vertexWeights;
+	protected int[][] vIndices;
+	protected float[][] vertexWeights;
 
 	private final Projection projection;
 
