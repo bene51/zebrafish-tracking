@@ -78,6 +78,26 @@ public class SphericalMaxProjection {
 		return p;
 	}
 
+	public float[] createLines(float tolInDegree, float value) {
+		float[] ret = new float[sphere.nVertices];
+		Point2f polar = new Point2f();
+		for(int v = 0; v < sphere.nVertices; v++) {
+			Point3f vtx = sphere.getVertices()[v];
+			getPolar(vtx, polar);
+
+			polar.x = (float)(polar.x * 180 / Math.PI);
+			polar.y = (float)(polar.y * 180 / Math.PI);
+
+			if((polar.x + 360) % 30 < tolInDegree)
+				ret[v] = value;
+			else if((polar.y + 360) % 30 < tolInDegree)
+				ret[v] = value;
+			else
+				ret[v] = 0;
+		}
+		return ret;
+	}
+
 	public SphericalMaxProjection(String objfile) throws IOException {
 		this(objfile, null);
 	}
