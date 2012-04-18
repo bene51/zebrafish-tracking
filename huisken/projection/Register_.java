@@ -70,19 +70,6 @@ public class Register_ implements PlugIn {
 		FullerProjection proj = new FullerProjection();
 		proj.prepareForProjection(smp, w);
 
-		// collect files
-		List<String> tmp = new ArrayList<String>();
-		tmp.addAll(Arrays.asList(new File(datadir).list()));
-		for(int i = tmp.size() - 1; i >= 0; i--)
-			if(!tmp.get(i).endsWith(".vertices"))
-				tmp.remove(i);
-		String[] files = new String[tmp.size()];
-		tmp.toArray(files);
-		for(int i = 0; i < files.length; i++)
-			files[i] = datadir + File.separator + files[i];
-		Arrays.sort(files);
-
-
 		// the following is copied from FullerProjection.
 		double s = w / 5.5;
 		double BLA = 0.5 * Math.sqrt(3);
@@ -102,9 +89,12 @@ public class Register_ implements PlugIn {
 
 		GaussianBlur gauss = new GaussianBlur();
 
-		for(String file : files) {
-			smp.loadMaxima(file);
-			String filename = new File(file).getName();
+		for(File file : new File(datadir).listFiles()) {
+			String filename = file.getName();
+			if(!filename.startsWith("tp") || !filename.endsWith(".vertices"))
+				continue;
+
+			smp.loadMaxima(file.getAbsolutePath());
 			filename = filename.substring(0, filename.length() - 9) + ".tif";
 			ImageProcessor fuller = proj.project();
 			IJ.save(new ImagePlus("", fuller), new File(outputdir, filename).getAbsolutePath());
@@ -156,7 +146,7 @@ public class Register_ implements PlugIn {
 				ptmp.scaleAdd(smp.radius, nearest, smp.center);
 				pts.add(ptmp);
 			}
-			filename = new File(file).getName();
+			filename = file.getName();
 			filename = filename.substring(0, filename.length() - 9) + ".pts";
 			savePoints(pts, new File(outputdir, filename));
 		}
