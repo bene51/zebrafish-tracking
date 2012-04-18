@@ -124,13 +124,45 @@ public class AngleWeighter2 implements FusionWeight {
 		}
 
 		AngleWeighter2 aw = new AngleWeighter2(X_AXIS, 135, 90, new Point3f(50, 50, 50));
-		double[] x = new double[360];
-		double[] y = new double[360];
-		for(int i = 0; i < x.length; i++) {
-			x[i] = i - 180;
-			y[i] = aw.getWeight(x[i]);
+		double[] xd = new double[360];
+		double[] yd = new double[360];
+		for(int i = 0; i < xd.length; i++) {
+			xd[i] = i - 180;
+			yd[i] = aw.getWeight(xd[i]);
 		}
-		Plot p = new Plot("weights", "angle", "weight", x, y);
+		Plot p = new Plot("weights", "angle", "weight", xd, yd);
 		p.show();
+
+		int nAngles = 2;
+		int angleInc = 45;
+		int aperture = 90 / nAngles;
+		int CAMERA1 = 0, CAMERA2 = 1;
+		int LEFT = 0, RIGHT = 1;
+		Point3f center = new Point3f(50, 50, 50);
+		AngleWeighter2[][][] weights = new AngleWeighter2[2][2][nAngles];
+		for(int a = 0; a < nAngles; a++) {
+			weights[CAMERA1][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  135 + a * angleInc, aperture, center);
+			weights[CAMERA1][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS, -135 + a * angleInc, aperture, center);
+			weights[CAMERA2][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,   45 + a * angleInc, aperture, center);
+			weights[CAMERA2][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  -45 + a * angleInc, aperture, center);
+		}
+		int w = 1, h = 100, d = 100;
+		for(int a = 0; a < 2; a++) {
+			for(int cam = 0; cam < 2; cam++) {
+				for(int ill = 0; ill < 2; ill++) {
+					ImageStack stack = new ImageStack(w, h);
+					for(int z = 0; z < d; z++) {
+						ImageProcessor ip = new FloatProcessor(w, h);
+						for(int y = 0; y < h; y++) {
+							for(int x = 0; x < w; x++) {
+								ip.setf(x, y, weights[cam][ill][a].getWeight(x, y, z));
+							}
+						}
+						stack.addSlice("", ip);
+					}
+					new ImagePlus("angle" + a + "_ill" + ill + "_cam" + cam, stack).show();
+				}
+			}
+		}
 	}
 }
