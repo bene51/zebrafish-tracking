@@ -128,6 +128,26 @@ public class TwoCameraFusion implements PlugIn {
 		}
 	}
 
+	public void testCameraFusion() throws IOException {
+		File dir = new File(outputdir, "test");
+		dir.mkdir();
+
+		Point3f[] vertices = smp.getSphere().getVertices();
+		for(int ill = 0; ill < 2; ill++) {
+			for(int cam = 0; cam < 2; cam++) {
+				int as = cam == CAMERA1 ? 180 : 0;
+				for(int a = 0; a < nAngles; a++) {
+					float[] res = new float[vertices.length];
+					for(int v = 0; v < vertices.length; v++) {
+						Point3f vertex = vertices[v];
+						res[v] = 100 * weights[cam][ill][a].getWeight(vertex.x, vertex.y, vertex.z);
+					}
+					SphericalMaxProjection.saveFloatData(res, new File(dir, String.format(format, 0, as + a * angleInc, ill)).getAbsolutePath());
+				}
+			}
+		}
+	}
+
 	public float[] indicateCameraContributions(int[][][] colors) throws IOException {
 		File out = new File(outputdir, "contributions.vertices");
 
@@ -284,5 +304,6 @@ public class TwoCameraFusion implements PlugIn {
 			e.printStackTrace();
 		}
 		tcf.indicateCameraContributions(colors);
+		tcf.testCameraFusion();
 	}
 }
