@@ -4,6 +4,7 @@ import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
 import ij.plugin.PlugIn;
 
+import java.awt.Button;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -36,15 +37,15 @@ public class TwoCameraFusion implements PlugIn {
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
-		try {
-			fuse(gd.getNextString(), (int)gd.getNextNumber(), (int)gd.getNextNumber(), gd.getNextBoolean(), true);
-		} catch(Exception e) {
-			IJ.error(e.getMessage());
-			e.printStackTrace();
-		}
+
+		String folder = gd.getNextString();
+		int nAngles = (int)gd.getNextNumber();
+		int angleInc = (int)gd.getNextNumber();
+		boolean adjustModes = gd.getNextBoolean();
 
 
-		final int[][][] colors = new int[2][2][nAngles]; // TODO nAngles uninitialized
+		final int[][][] colors = new int[2][2][nAngles];
+		final Button[][][] buttons = new Button[2][2][nAngles];
 		class ColorActionListener implements ActionListener {
 			private final int cam, ill, a;
 			public ColorActionListener(int cam, int ill, int a) {
@@ -52,11 +53,35 @@ public class TwoCameraFusion implements PlugIn {
 			}
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				colors[cam][ill][a] = JColorChooser.showDialog(
+				Color c = JColorChooser.showDialog(
 						null,
 						"Choose Background Color",
-						Color.RED).getRGB();
+						Color.RED);
+				colors[cam][ill][a] = c.getRGB();
+				buttons[cam][ill][a].setForeground(c);
 			}
+		}
+		gd = new GenericDialogPlus("Colors");
+		for(int a = 0; a < nAngles; a++) {
+			gd.addButton("Camera1_Left_Illumination", new ColorActionListener(CAMERA1, LEFT, a));
+			buttons[CAMERA1][LEFT] [a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
+			gd.addButton("Camera1_Right_Illumination", new ColorActionListener(CAMERA1, RIGHT, a));
+			buttons[CAMERA1][RIGHT][a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
+			gd.addButton("Camera2_Left_Illumination", new ColorActionListener(CAMERA2, LEFT, a));
+			buttons[CAMERA2][LEFT] [a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
+			gd.addButton("Camera2_Right_Illumination", new ColorActionListener(CAMERA2, RIGHT, a));
+			buttons[CAMERA2][RIGHT][a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
+		}
+		gd.showDialog();
+		if(gd.wasCanceled())
+			return;
+
+
+		try {
+			fuse(folder, nAngles, angleInc, adjustModes, colors, true);
+		} catch(Exception e) {
+			IJ.error(e.getMessage());
+			e.printStackTrace();
 		}
 	}
 
@@ -110,23 +135,35 @@ public class TwoCameraFusion implements PlugIn {
 		float[] res = new float[vertices.length];
 		for(int v = 0; v < vertices.length; v++) {
 			Point3f vertex = vertices[v];
-			res[v] = 0;
+			double r = 0, g = 0, b = 0;
 			for(int a = 0; a < nAngles; a++) {
 				float w1 = weights[CAMERA1][LEFT ][a].getWeight(vertex.x, vertex.y, vertex.z);
 				float w2 = weights[CAMERA1][RIGHT][a].getWeight(vertex.x, vertex.y, vertex.z);
 				float w3 = weights[CAMERA2][LEFT ][a].getWeight(vertex.x, vertex.y, vertex.z);
 				float w4 = weights[CAMERA2][RIGHT][a].getWeight(vertex.x, vertex.y, vertex.z);
+
 				int c1 = colors[CAMERA1][LEFT ][a];
 				int c2 = colors[CAMERA1][RIGHT][a];
 				int c3 = colors[CAMERA2][LEFT ][a];
 				int c4 = colors[CAMERA2][RIGHT][a];
 
-				int r = (int)(w1 * ((c1 & 0xff0000) >> 16) + w2 * ((c2 * 0xff0000) >> 16) + w3 * ((c3 * 0xff0000) >> 16) + w4 * ((c4 * 0xff0000) >> 16));
-				int g = (int)(w1 * ((c1 & 0xff00)   >>  8) + w2 * ((c2 * 0xff00)   >>  8) + w3 * ((c3 * 0xff00)   >>  8) + w4 * ((c4 * 0xff00)   >>  8));
-				int b = (int)(w1 * ((c1 & 0xff)          ) + w2 * ((c2 * 0xff)          ) + w3 * ((c3 * 0xff)          ) + w4 * ((c4 * 0xff)          ));
+				int r1 = (c1 & 0xff0000) >> 16, g1 = (c1 & 0xff00) >> 8, b1 = (c1 & 0xff);
+				int r2 = (c2 & 0xff0000) >> 16, g2 = (c2 & 0xff00) >> 8, b2 = (c2 & 0xff);
+				int r3 = (c3 & 0xff0000) >> 16, g3 = (c3 & 0xff00) >> 8, b3 = (c3 & 0xff);
+				int r4 = (c4 & 0xff0000) >> 16, g4 = (c4 & 0xff00) >> 8, b4 = (c4 & 0xff);
 
-				res[v] += (r << 16) + (g << 8) + b;
+				double rc = w1 * r1 + w2 * r2 + w3 * r3 + w4 * r4;
+				double gc = w1 * g1 + w2 * g2 + w3 * g3 + w4 * g4;
+				double bc = w1 * b1 + w2 * b2 + w3 * b3 + w4 * b4;
+
+				r += rc;
+				g += gc;
+				b += bc;
 			}
+			int ir = r > 255 ? 255 : (int)r;
+			int ig = g > 255 ? 255 : (int)g;
+			int ib = b > 255 ? 255 : (int)b;
+			res[v] = Float.intBitsToFloat((ir << 16) + (ig << 8) + ib);
 		}
 		SphericalMaxProjection.saveFloatData(res, out.getAbsolutePath());
 		return res;
@@ -195,7 +232,7 @@ public class TwoCameraFusion implements PlugIn {
 		return res;
 	}
 
-	public static void fuse(String indir, int nAngles, int angleInc, final  boolean adjustModes, boolean saveOutput) throws IOException {
+	public static void fuse(String indir, int nAngles, int angleInc, final  boolean adjustModes, int[][][] colors, boolean saveOutput) throws IOException {
 		if(!indir.endsWith(File.separator))
 			indir += File.separator;
 		final String inputdir = indir;
@@ -246,5 +283,6 @@ public class TwoCameraFusion implements PlugIn {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
+		tcf.indicateCameraContributions(colors);
 	}
 }
