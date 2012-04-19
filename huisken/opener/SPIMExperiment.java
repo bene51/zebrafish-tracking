@@ -2,26 +2,16 @@ package huisken.opener;
 
 import ij.IJ;
 import ij.ImagePlus;
-
-import ij.process.Blitter;
 import ij.process.ImageProcessor;
 import ij.process.ShortProcessor;
-
-import java.io.File;
-
-import java.util.ArrayList;
-import java.util.Arrays;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-
-import java.nio.ByteBuffer;
-
-import java.nio.channels.FileChannel;
-
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 
@@ -67,7 +57,13 @@ public class SPIMExperiment {
 		regions             = filter(tmp.list(), "r\\d{3}?"); Arrays.sort(regions);    tmp = new File(tmp, regions[0]);
 		angles              = filter(tmp.list(), "a\\d{3}?"); Arrays.sort(angles);     tmp = new File(tmp, angles[0]);
 		channels            = filter(tmp.list(), "c\\d{3}?"); Arrays.sort(channels);   tmp = new File(tmp, channels[0]);
-		String[] planes     = filter(tmp.list(), "z\\d{4}?"); Arrays.sort(planes);     tmp = new File(tmp, planes[0]);
+		boolean zStack = false;
+		String[] planes     = filter(tmp.list(), "z\\d{4}?");
+		if(planes.length == 0) {
+			planes = filter(tmp.list(), "zstack");
+			zStack = true;
+		}
+		Arrays.sort(planes);     tmp = new File(tmp, planes[0]);
 		String[] frames     = tmp.list();                     Arrays.sort(frames);
 
 		sampleStart    = getMin(samples);
@@ -80,14 +76,24 @@ public class SPIMExperiment {
 		angleEnd       = getMax(angles);
 		channelStart   = getMin(channels);
 		channelEnd     = getMax(channels);
-		int zMin       = getMin(planes);
-		int zMax       = getMax(planes);
+		int zMin = 0, zMax = 0;
+		if(!zStack) {
+			zMin       = getMin(planes);
+			zMax       = getMax(planes);
+		}
 		int fMin       = getMin(frames);
 		int fMax       = getMax(frames);
 
+		// legacy
 		if(frames[0].startsWith("plane_")) {
 			pathFormatString = experimentFolder.getAbsolutePath() + File.separator +
 				"s%03d/t%05d/r%03d/a%03d/c%03d/z0000/plane_%010d.dat";
+			zMin = fMin;
+			zMax = fMax;
+			fMin = fMax = 0;
+		} else if(zStack) {
+			pathFormatString = experimentFolder.getAbsolutePath() + File.separator +
+				"s%03d/t%05d/r%03d/a%03d/c%03d/zstack/%010d.dat";
 			zMin = fMin;
 			zMax = fMax;
 			fMin = fMax = 0;
@@ -127,7 +133,7 @@ public class SPIMExperiment {
 				int fMin, int fMax,
 				int projectionMethod,
 				boolean virtual) {
-		return open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, 0, h - 1, 0, w - 1, projectionMethod, virtual);				
+		return open(sample, tpMin, tpMax, region, angle, channel, zMin, zMax, fMin, fMax, 0, h - 1, 0, w - 1, projectionMethod, virtual);
 	}
 
 	public ImagePlus open(int sample,
@@ -142,7 +148,7 @@ public class SPIMExperiment {
 				int projectionMethod,
 				boolean virtual) {
 
-	
+
 		int xDir = X;
 		int yDir = Y;
 		int projectionDir = Z; // z is the default projection direction
@@ -194,7 +200,7 @@ public class SPIMExperiment {
 			case GAUSSIAN_STACK_FOCUSER: projector = new GaussianStackFocuser(); break;
 			default: throw new IllegalArgumentException("Unknown projection method: " + projectionMethod);
 		}
-		
+
 		final int D = 5;
 		final int[] MIN = new int[] { xMin, yMin, fMin, zMin, tpMin };
 		final int[] MAX = new int[] { xMax, yMax, fMax, zMax, tpMax };
@@ -249,7 +255,7 @@ public class SPIMExperiment {
 					position[projectionDir] = proj;
 
 					ImageProcessor ip = new ShortProcessor(MAX[xDir] - MIN[xDir] + 1, MAX[yDir] - MIN[yDir] + 1);
-	
+
 					for(int i1 = MIN[ordered[1]]; i1 <= MAX[ordered[1]]; i1++) {
 						position[ordered[1]] = i1;
 						String path = getPath(sample, position[T], region, angle, channel, position[Z], position[F]);
