@@ -228,8 +228,10 @@ public class TwoCameraSphericalMaxProjection {
 		String line = null;
 		ArrayList<Matrix4f> matrices = new ArrayList<Matrix4f>();
 		while((line = in.readLine()) != null) {
-			if(line.equals("null"))
+			if(line.equals("null")) {
 				matrices.add(null);
+				continue;
+			}
 			String[] toks = line.split(" ");
 			float[] matrix = new float[16];
 			for(int i = 0; i < 16; i++)

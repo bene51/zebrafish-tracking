@@ -50,6 +50,10 @@ public class TwoCameraFusion implements PlugIn {
 		if(nAngles > 1) {
 			try {
 				transformations = TwoCameraSphericalMaxProjection.loadTransformations(transformationFile);
+				for(int i = 0; i < transformations.length; i++) {
+					System.out.println("transformation " + i);
+					System.out.println(transformations[i]);
+				}
 			} catch(IOException e) {
 				e.printStackTrace();
 			}
@@ -136,10 +140,10 @@ public class TwoCameraFusion implements PlugIn {
 			Point3f cen = new Point3f(center);
 			if(transforms[a] != null)
 				transforms[a].transform(cen);
-			weights[CAMERA1][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  135, aperture, cen);
-			weights[CAMERA1][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS, -135, aperture, cen);
-			weights[CAMERA2][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,   45, aperture, cen);
-			weights[CAMERA2][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  -45, aperture, cen);
+			weights[CAMERA1][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  135, aperture, new Point3f(cen));
+			weights[CAMERA1][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS, -135, aperture, new Point3f(cen));
+			weights[CAMERA2][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,   45, aperture, new Point3f(cen));
+			weights[CAMERA2][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  -45, aperture, new Point3f(cen));
 		}
 	}
 
@@ -268,6 +272,7 @@ public class TwoCameraFusion implements PlugIn {
 				sum += w1 + w2 + w3 + w4;
 				res[v] += (w1 * m1 + w2 * m2 + w3 * m3 + w4 * m4);
 			}
+			res[v] /= sum;
 			if(sum != 1)
 				System.out.println("sum = " + sum);
 		}
