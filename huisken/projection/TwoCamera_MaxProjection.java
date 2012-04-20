@@ -165,7 +165,6 @@ public class TwoCamera_MaxProjection implements PlugIn {
 	private short[] toProcess = null;
 	private static final boolean SAVE_RAW = false;
 	private boolean cameraAcquiring = false;
-	private final Object lock = new Object();
 
 	private void startAcq() {
 		exec.execute(new Runnable() {
@@ -184,10 +183,8 @@ public class TwoCamera_MaxProjection implements PlugIn {
 							tpDir.mkdir();
 						}
 						for(int f = 0; f < d2; f++) {
-							synchronized(lock) {
-								at.AT_NextFrame(toProcess);
-								cameraAcquiring = true;
-							}
+							at.AT_NextFrame(toProcess);
+							cameraAcquiring = true;
 							if(a == 0 && f == 0)
 								start = System.currentTimeMillis();
 
@@ -207,13 +204,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 	}
 
 	public void waitForCamera() {
-		while(true) {
-			boolean b = false;
-			synchronized(lock) {
-				b = cameraAcquiring;
-			}
-			if(!b)
-				break;
+		while(cameraAcquiring) {
 			try {
 				Thread.sleep(100);
 			} catch (InterruptedException e) {
