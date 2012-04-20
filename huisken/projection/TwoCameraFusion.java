@@ -86,6 +86,14 @@ public class TwoCameraFusion implements PlugIn {
 			gd.addButton("Camera2_Right_Illumination", new ColorActionListener(CAMERA2, RIGHT, a));
 			buttons[CAMERA2][RIGHT][a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
 		}
+		colors[CAMERA1][LEFT] [0] = 0xff0000;
+		colors[CAMERA1][RIGHT][0] = 0xff0000;
+		colors[CAMERA2][LEFT] [0] = 0xff00;
+		colors[CAMERA2][RIGHT][0] = 0xff00;
+		colors[CAMERA1][LEFT] [1] = 0xff;
+		colors[CAMERA1][RIGHT][1] = 0xff;
+		colors[CAMERA2][LEFT] [1] = 0xffff00;
+		colors[CAMERA2][RIGHT][1] = 0xffff00;
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
@@ -312,7 +320,6 @@ public class TwoCameraFusion implements PlugIn {
 				public void run() {
 					for(int tp = start; tp < end; tp++) {
 						try {
-							IJ.log("Fusing timepoint " + tp);
 							tcf.fuse(timepoints.get(tp));
 						} catch(Exception e) {
 							e.printStackTrace();
