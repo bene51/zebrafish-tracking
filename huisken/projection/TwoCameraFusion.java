@@ -272,9 +272,7 @@ public class TwoCameraFusion implements PlugIn {
 				sum += w1 + w2 + w3 + w4;
 				res[v] += (w1 * m1 + w2 * m2 + w3 * m3 + w4 * m4);
 			}
-			res[v] /= sum;
-			if(sum != 1)
-				System.out.println("sum = " + sum);
+			res[v] = sum == 0 ? 0 : res[v] / sum;
 		}
 		if(saveOutput)
 			SphericalMaxProjection.saveFloatData(res, out.getAbsolutePath());
@@ -285,8 +283,6 @@ public class TwoCameraFusion implements PlugIn {
 		if(!indir.endsWith(File.separator))
 			indir += File.separator;
 		final String inputdir = indir;
-
-		// final SphericalMaxProjection smp = new SphericalMaxProjection(inputdir + "Sphere.obj");
 
 		final TwoCameraFusion tcf = new TwoCameraFusion();
 		tcf.prepareFusion(inputdir, nAngles, angleInc, transformations, saveOutput);
