@@ -174,34 +174,46 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				int d2 = 2 * d;
 				AT at = cameraApp.getAT();
 				for(int t = 0; t < nTimepoints; t++) {
+					long start = 0;
 					for(int a = 0; a < nAngles; a++) {
 						at.AT_SetInt("FrameCount", d2);
 						at.AT_Command("AcquisitionStart");
-						long start = System.currentTimeMillis();
 						File tpDir = null;
 						if(SAVE_RAW) {
 							tpDir = new File(outputdir, String.format("tp%04d_a%03d", t, a));
 							tpDir.mkdir();
 						}
 						for(int f = 0; f < d2; f++) {
-							at.AT_NextFrame(toProcess);
-							cameraAcquiring = true;
+							synchronized(lock) {
+								at.AT_NextFrame(toProcess);
+								cameraAcquiring = true;
+							}
+							if(a == 0 && f == 0)
+								start = System.currentTimeMillis();
+
+
 							mmsmp.process(toProcess);
 							if(SAVE_RAW)
 								IJ.save(new ImagePlus("", new ShortProcessor(w, h, toProcess, null)), new File(tpDir, String.format("%04d.tif", f)).getAbsolutePath());
 						}
 						at.AT_Command("AcquisitionStop");
-						long end = System.currentTimeMillis();
-						System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
 						cameraAcquiring = false;
 					}
+					long end = System.currentTimeMillis();
+					System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
 				}
 			}
 		});
 	}
 
 	public void waitForCamera() {
-		while(cameraAcquiring) {
+		while(true) {
+			boolean b = false;
+			synchronized(lock) {
+				b = cameraAcquiring;
+			}
+			if(!b)
+				break;
 			try {
 				Thread.sleep(100);
 			} catch (InterruptedException e) {
