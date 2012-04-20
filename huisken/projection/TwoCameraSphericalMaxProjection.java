@@ -228,14 +228,17 @@ public class TwoCameraSphericalMaxProjection {
 		String line = null;
 		ArrayList<Matrix4f> matrices = new ArrayList<Matrix4f>();
 		while((line = in.readLine()) != null) {
-			if(line.equals("null"))
+			if(line.equals("null")) {
 				matrices.add(null);
+				continue;
+			}
 			String[] toks = line.split(" ");
 			float[] matrix = new float[16];
 			for(int i = 0; i < 16; i++)
 				matrix[i] = Float.parseFloat(toks[i]);
 			matrices.add(new Matrix4f(matrix));
 		}
+		in.close();
 		Matrix4f[] ret = new Matrix4f[matrices.size()];
 		matrices.toArray(ret);
 		return ret;
@@ -244,13 +247,18 @@ public class TwoCameraSphericalMaxProjection {
 	public static void writeTransformations(String file, Matrix4f[] matrices) throws IOException {
 		PrintWriter out = new PrintWriter(new FileWriter(file));
 		for(Matrix4f m : matrices) {
+			if(m == null) {
+				out.println("null");
+				continue;
+			}
 			for(int r = 0; r < 4; r++) {
 				for(int c = 0; c < 4; c++) {
 					out.print(m.getElement(r,  c) + " ");
 				}
 			}
+			out.println();
 		}
-		System.out.println();
+		out.close();
 	}
 
 	private static IndexedTriangleMesh createSphere(Point3f center, float radius, int subd) {

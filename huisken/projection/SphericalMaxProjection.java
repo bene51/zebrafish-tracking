@@ -288,9 +288,14 @@ public class SphericalMaxProjection {
 
 	public static float getMean(float[] data) {
 		double mean = 0.0;
-		for(float v : data)
-			mean += v;
-		return (float)(mean / data.length);
+		double n = 0;
+		for(float v : data) {
+			if(!Float.isNaN(v)) {
+				mean += v;
+				n++;
+			}
+		}
+		return (float)(mean / n);
 	}
 
 	public float getMean() {
