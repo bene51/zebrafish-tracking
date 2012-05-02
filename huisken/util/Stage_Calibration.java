@@ -94,6 +94,8 @@ public class Stage_Calibration extends BaseCameraApplication {
 		gd.addNumericField("dx", 0.65, 4);
 		gd.addNumericField("dz", 4, 4);
 		gd.addNumericField("timepoints", 1, 0);
+		gd.addCheckbox("Do_acquisition", true);
+		gd.addCheckbox("Do_registration", true);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
@@ -103,6 +105,8 @@ public class Stage_Calibration extends BaseCameraApplication {
 		double dx = gd.getNextNumber();
 		double dz = gd.getNextNumber();
 		int timepoints = (int)gd.getNextNumber();
+		boolean doAcquisition = gd.getNextBoolean();
+		boolean doRegistration = gd.getNextBoolean();
 
 		ArrayList<Point4f> positions = readPositions(posfile);
 		int npos = positions.size();
@@ -111,13 +115,18 @@ public class Stage_Calibration extends BaseCameraApplication {
 		PrintStream out = new PrintStream(errorfile);
 
 		for(int t = 0; t < timepoints; t++) {
+			long start = System.currentTimeMillis();
 			String tdir = new File(dir, String.format("tp%04d", t)).getAbsolutePath();
-			acquire(tdir, npos, d, dx, dz);
 
-			try {
-			 	register(tdir, npos, dx, dz);
-			} catch(Exception e) {
-				e.printStackTrace();
+			if(doAcquisition)
+				acquire(tdir, npos, d, dx, dz);
+
+			if(doRegistration) {
+				try {
+				 	register(tdir, npos, dx, dz);
+				} catch(Exception e) {
+					e.printStackTrace();
+				}
 			}
 
 			File registrationFolder = new File(tdir, "registration");
@@ -130,6 +139,8 @@ public class Stage_Calibration extends BaseCameraApplication {
 				float meanerror = checkTransformation(rf.getAbsolutePath(), mf.getAbsolutePath(), mat);
 				out.println(meanerror);
 			}
+			long end = System.currentTimeMillis();
+			System.out.println("Needed " + (end - start) + " ms");
 		}
 		out.close();
 	}
@@ -393,7 +404,7 @@ public class Stage_Calibration extends BaseCameraApplication {
 		xStep.scale(1 / 300f);
 		yStep.scale(1 / 300f);
 		zStep.scale(1 / 300f);
-		saveCalibration(xStep, yStep, zStep, axis, center, REF_POS);
+		// saveCalibration(xStep, yStep, zStep, axis, center, REF_POS);
 	}
 
 	public static float checkTransformation(String beadfileRef, String beadFileMod, Matrix4f mat) throws IOException {
@@ -421,9 +432,60 @@ public class Stage_Calibration extends BaseCameraApplication {
 
 			mat.transform(pm);
 
-			distance += pr.distance(pm);
+			distance += (pr.distance(pm)) / N;
 		}
-		return (float)(distance / N);
+		return (float)distance;
+	}
+
+	public static void checkTransformation(String beadfileRef, String beadFileMod, Matrix4f mat, double[] minmaxavg) throws IOException {
+		ArrayList<Point3f> ref = new ArrayList<Point3f>();
+		ArrayList<Point3f> mod = new ArrayList<Point3f>();
+		File rf = new File(beadfileRef);
+		File mf = new File(beadFileMod);
+
+		getBeadCorrespondences(rf, mf, ref, mod);
+
+		Point3f pr = new Point3f(), pm = new Point3f();
+		int N = ref.size();
+		double avg = 0.0;
+		double min = Double.MAX_VALUE;
+		double max = 0;
+		for(int i = 0; i < N; i++) {
+			pr.set(ref.get(i));
+			pm.set(mod.get(i));
+
+			pr.x *= (float)DX;
+			pr.y *= (float)DX;
+			pr.z *= (float)DZ;
+
+			pm.x *= (float)DX;
+			pm.y *= (float)DX;
+			pm.z *= (float)DZ;
+
+			mat.transform(pm);
+			double dist = pr.distance(pm);
+			if(dist < min)
+				min = dist;
+			if(dist > max)
+				max = dist;
+			avg += dist / N;
+		}
+		minmaxavg[0] = min;
+		minmaxavg[1] = max;
+		minmaxavg[2] = avg;
+	}
+
+	public static Matrix4f readTransformation(String path) throws IOException {
+		BufferedReader in = new BufferedReader(new FileReader(path));
+		float[] d = new float[16];
+		for(int i = 0; i < 16; i++) {
+			String line = in.readLine();
+			String[] tok = line.split(": ");
+			d[i] = (float)Double.parseDouble(tok[1]);
+		}
+		in.close();
+		Matrix4f m = new Matrix4f(d);
+		return m;
 	}
 
 	public static Matrix4f getRegistration(Point4f stageref, Point4f stagepos) {
