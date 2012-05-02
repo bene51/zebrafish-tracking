@@ -175,30 +175,40 @@ public class Register_ implements PlugIn {
 		// register
 		for(int i = 1; i < files.length; i++) {
 			System.out.println(files[i]);
-			ArrayList<Point3f> srcPts = loadPoints(new File(fullerDir, files[i]));
-
-			// make a deep copy of src points, to be used as target points for the next iteration
-			ArrayList<Point3f> nextTgtPts = new ArrayList<Point3f>(srcPts.size());
-			for(Point3f p : srcPts)
-				nextTgtPts.add(new Point3f(p));
-
-
-			Matrix4f mat = new Matrix4f();
-			mat.setIdentity();
-			ICPRegistration.register(tgtPts, srcPts, mat, src.center);
-			overall.mul(mat);
+			ArrayList<Point3f> nextTgtPts = null, srcPts = null;
 
 			String matName = files[i].substring(0, files[i].lastIndexOf('.')) + ".matrix";
-			saveTransform(overall, matrixDirectory + matName);
+			if(!new File(matrixDirectory, matName).exists()) {
+
+				srcPts = loadPoints(new File(fullerDir, files[i]));
+
+				// make a deep copy of src points, to be used as target points for the next iteration
+				nextTgtPts = new ArrayList<Point3f>(srcPts.size());
+				for(Point3f p : srcPts)
+					nextTgtPts.add(new Point3f(p));
+
+				Matrix4f mat = new Matrix4f();
+				mat.setIdentity();
+				ICPRegistration.register(tgtPts, srcPts, mat, src.center);
+				overall.mul(mat);
+
+				saveTransform(overall, matrixDirectory + matName);
+			} else {
+				overall = loadTransform(matrixDirectory + matName);
+			}
 
 			vName = files[i].substring(0, files[i].lastIndexOf('.')) + ".vertices";
-			src.loadMaxima(dataDirectory + vName);
-			src.applyTransform(overall);
-			src.saveMaxima(outputDirectory + vName);
+			if(!new File(outputDirectory, vName).exists()) {
+				src.loadMaxima(dataDirectory + vName);
+				src.applyTransform(overall);
+				src.saveMaxima(outputDirectory + vName);
+			}
 
-			src.setMaxima(contrib);
-			src.applyTransformNearestNeighbor(overall);
-			src.saveMaxima(contributionsDirectory + vName);
+			if(!new File(contributionsDirectory, vName).exists()) {
+				src.setMaxima(contrib);
+				src.applyTransformNearestNeighbor(overall);
+				src.saveMaxima(contributionsDirectory + vName);
+			}
 
 			tgtPts = nextTgtPts;
 			IJ.showProgress(i, files.length);

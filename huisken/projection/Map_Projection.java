@@ -7,7 +7,7 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.WaitForUserDialog;
 import ij.plugin.PlugIn;
-import ij.process.Blitter;
+import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 import ij3d.Image3DUniverse;
 
@@ -113,6 +113,8 @@ public class Map_Projection implements PlugIn {
 			} else {
 				outputdir.mkdir();
 			}
+			new File(outputdir, "contributions").mkdir();
+			new File(outputdir, "lines").mkdir();
 
 			try {
 				createProjections(objfile.getAbsolutePath(), datadir.getAbsolutePath(), initial, min, max, i, outputdir.getAbsolutePath(), doCoast, doLines, doContributions);
@@ -185,6 +187,8 @@ public class Map_Projection implements PlugIn {
 							String datafile = datadir + File.separator + file;
 							String matrixfile = datadir + File.separator + "transformations" + File.separator + file.substring(0, file.length() - 9) + ".matrix";
 							String contribfile = datadir + File.separator + "contributions" + File.separator + file;
+							String contribout = outputdir + File.separator + "contributions" + File.separator + file.substring(0, file.length() - 9) + ".tif";
+							String linesout = outputdir + File.separator + "lines" + File.separator + file.substring(0, file.length() - 9) + ".tif";
 							if(!new File(contribfile).exists())
 								contribfile = datadir + File.separator + "contributions.vertices";
 							float[] maxima = SphericalMaxProjection.loadFloatData(datafile, nVertices);
@@ -197,15 +201,18 @@ public class Map_Projection implements PlugIn {
 
 								lines = transform(smp, mat, lines);
 								lines = proj.transform(lines);
-								proj.drawInto(ip, -1, 3, lines);
+								ImageProcessor lip = new ByteProcessor(ip.getWidth(), ip.getHeight());
+								proj.drawInto(lip, 255, 3, lines);
+								IJ.save(new ImagePlus("", lip), linesout);
 							}
 							if(doContributions) {
-								ip.setMinAndMax(min, max);
-								ip = ip.convertToByte(true).convertToRGB();
+//								ip.setMinAndMax(min, max);
+//								ip = ip.convertToByte(true).convertToRGB();
 								float[] contribs = SphericalMaxProjection.loadFloatData(contribfile, nVertices);
 								ImageProcessor overlay = proj.projectColor(contribs);
-								overlay.multiply(0.5);
-								ip.copyBits(overlay, 0, 0, Blitter.ADD);
+								IJ.save(new ImagePlus("", overlay), contribout);
+//								overlay.multiply(0.5);
+//								ip.copyBits(overlay, 0, 0, Blitter.ADD);
 							}
 							IJ.save(new ImagePlus("", ip), outfile);
 						} catch(Exception e) {
