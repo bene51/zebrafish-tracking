@@ -13,7 +13,6 @@ import ij.process.StackConverter;
 import javax.vecmath.Point3f;
 
 import meshtools.IndexedTriangleMesh;
-import vib.NaiveResampler;
 import Jama.Matrix;
 import customnode.MeshMaker;
 
