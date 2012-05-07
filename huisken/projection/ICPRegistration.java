@@ -8,7 +8,6 @@ import javax.vecmath.Point3f;
 
 import math3d.JacobiDouble;
 import meshtools.PointMatch;
-import meshtools.PointOctree;
 import fiji.util.KDTree;
 import fiji.util.NearestNeighborSearch;
 import fiji.util.node.Leaf;
@@ -91,11 +90,6 @@ public class ICPRegistration {
 	private static final void apply(Point3f[] list, Matrix4f m) {
 		for(Point3f p : list)
 			m.transform(p);
-	}
-
-	private static final Point3f nearestNeighbor(
-			Point3f p, PointOctree t) {
-		return t.getNearestNeighbor(p);
 	}
 
 	private static final Point3f nearestNeighbor(
