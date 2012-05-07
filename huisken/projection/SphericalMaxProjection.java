@@ -7,6 +7,7 @@ import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -34,7 +35,7 @@ public class SphericalMaxProjection {
 	// These fields are set in prepareForProjection();
 	private int[][] lutxy;
 	private int[][] luti;
-	private float[] maxima;
+	private short[] maxima;
 
 	// These fields must be set in the constructor and
 	// contain info about the sphere geometry
@@ -191,30 +192,78 @@ public class SphericalMaxProjection {
 	}
 
 	public void saveMaxima(String path) throws IOException {
-		saveFloatData(maxima, path);
+		saveShortData(maxima, path);
 	}
 
-	public static void saveFloatData(float[] data, String path) throws IOException {
+	public static void saveIntData(int[] data, String path) throws IOException {
 		DataOutputStream out = new DataOutputStream(
 			new BufferedOutputStream(
 				new FileOutputStream(path)));
-		for(float f : data)
-			out.writeFloat(f);
+		for(int f : data)
+			out.writeInt(f);
+		out.close();
+	}
+
+	public static void saveShortData(short[] data, String path) throws IOException {
+		DataOutputStream out = new DataOutputStream(
+			new BufferedOutputStream(
+				new FileOutputStream(path)));
+		for(short f : data)
+			out.writeShort(f);
 		out.close();
 	}
 
 	public void loadMaxima(String file) throws IOException {
-		maxima = loadFloatData(file, sphere.nVertices);
+		maxima = loadShortData(file, sphere.nVertices);
 	}
 
-	public static float[] loadFloatData(String file, int n) throws IOException {
-		float[] data = new float[n];
+	/**
+	 * Loads data from a file, either as floats or shorts, depending on
+	 * the file size, and converts them to shorts.
+	 * @param file
+	 * @param n
+	 * @return
+	 * @throws IOException
+	 */
+	public static short[] loadShortData(String file, int n) throws IOException {
+		File f = new File(file);
+		DataInputStream in = new DataInputStream(
+			new BufferedInputStream(
+				new FileInputStream(f)));
+
+		long nBytes = f.length();
+		short[] data = new short[n];
+
+		// legacy: read float data
+		if(nBytes == n * 4) {
+			for(int i = 0; i < n; i++) {
+				try {
+					data[i] = (short)in.readFloat();
+				} catch(EOFException e) {
+					break;
+				}
+			}
+		} else {
+			for(int i = 0; i < n; i++) {
+				try {
+					data[i] = in.readShort();
+				} catch(EOFException e) {
+					break;
+				}
+			}
+		}
+		in.close();
+		return data;
+	}
+
+	public static int[] loadIntData(String file, int n) throws IOException {
+		int[] data = new int[n];
 		DataInputStream in = new DataInputStream(
 			new BufferedInputStream(
 				new FileInputStream(file)));
 		for(int i = 0; i < data.length; i++) {
 			try {
-				data[i] = in.readFloat();
+				data[i] = in.readInt();
 			} catch(EOFException e) {
 				break;
 			}
@@ -227,51 +276,26 @@ public class SphericalMaxProjection {
 		return sphere;
 	}
 
-	public float[] getMaxima() {
+	public short[] getMaxima() {
 		return maxima;
 	}
 
-	public void setMaxima(float[] maxima) {
+	public void setMaxima(short[] maxima) {
 		this.maxima = maxima;
 	}
 
-	public void addMaxima(float[] maxima) {
-		add(this.maxima, maxima);
-	}
-
-	public static void add(float[] d1, float[] d2) {
-		if(d1.length != d2.length)
-			throw new IllegalArgumentException("Expected arrays of same size");
-		for(int i = 0; i < d1.length; i++)
-			d1[i] += d2[i];
-	}
-
-	public static void add(float[] d1, float v) {
+	public static void add(short[] d1, short v) { // TODO check overflow
 		for(int i = 0; i < d1.length; i++)
 			d1[i] += v;
 	}
 
-	public static float getMode(float[] data) {
-		double min = Float.MAX_VALUE;
-		double max = -Float.MAX_VALUE;
-		for(int i = 0; i < data.length; i++) {
-			float v = data[i];
-			if(v > 0) {
-				if(v < min) min = v;
-				if(v > max) max = v;
-			}
-		}
-		int nBins = 256;
-		double binSize = (max - min) / nBins;
+	public static float getMode(short[] data) {
+		int nBins = 65536;
 		int[] histogram = new int[nBins];
-		double scale = nBins / (max - min);
 		for(int i = 0; i < data.length; i++) {
-			if(data[i] > 0) {
-				int index = (int)(scale * (data[i] - min));
-				if(index > nBins - 1)
-					index = nBins - 1;
-				histogram[index]++;
-			}
+			int v = (data[i] & 0xffff);
+			if(v > 0)
+				histogram[v]++;
 		}
 
 		int mode = 0;
@@ -283,17 +307,15 @@ public class SphericalMaxProjection {
 				mode = i;
 			}
 		}
-		return (float)(min + mode * binSize);
+		return mode;
 	}
 
-	public static float getMean(float[] data) {
+	public static float getMean(short[] data) {
 		double mean = 0.0;
 		double n = 0;
-		for(float v : data) {
-			if(!Float.isNaN(v)) {
-				mean += v;
-				n++;
-			}
+		for(short v : data) {
+			mean += v;
+			n++;
 		}
 		return (float)(mean / n);
 	}
@@ -313,18 +335,17 @@ public class SphericalMaxProjection {
 			int f2 = faces[i + 1];
 			int f3 = faces[i + 2];
 			nNeighbors[f1] += 2;
-			newMaxima[f1] += maxima[f2];
-			newMaxima[f1] += maxima[f3];
+			newMaxima[f1] += (maxima[f2] & 0xffff);
+			newMaxima[f1] += (maxima[f3] & 0xffff);
 			nNeighbors[f2] += 2;
-			newMaxima[f2] += maxima[f1];
-			newMaxima[f2] += maxima[f3];
+			newMaxima[f2] += (maxima[f1] & 0xffff);
+			newMaxima[f2] += (maxima[f3] & 0xffff);
 			nNeighbors[f3] += 2;
-			newMaxima[f3] += maxima[f1];
-			newMaxima[f3] += maxima[f2];
+			newMaxima[f3] += (maxima[f1] & 0xffff);
+			newMaxima[f3] += (maxima[f2] & 0xffff);
 		}
 		for(int i = 0; i < newMaxima.length; i++)
-			newMaxima[i] /= (nNeighbors[i] + 1);
-		maxima = newMaxima;
+			maxima[i] = (short)(newMaxima[i] / (nNeighbors[i] + 1));
 	}
 
 	public boolean[] isMaximum() {
@@ -336,9 +357,9 @@ public class SphericalMaxProjection {
 			int f1 = faces[i];
 			int f2 = faces[i + 1];
 			int f3 = faces[i + 2];
-			float m1 = maxima[f1];
-			float m2 = maxima[f2];
-			float m3 = maxima[f3];
+			float m1 = (maxima[f1] & 0xffff);
+			float m2 = (maxima[f2] & 0xffff);
+			float m3 = (maxima[f3] & 0xffff);
 
 			if(m1 <= m2 || m1 <= m3)
 				maxs[f1] = false;
@@ -356,14 +377,14 @@ public class SphericalMaxProjection {
 		applyInverseTransform(inverse);
 	}
 
-	public void applyTransformNearestNeighbor(Matrix4f matrix) {
+	public int[] applyTransformNearestNeighbor(Matrix4f matrix, int[] data) {
 		Matrix4f inverse = new Matrix4f(matrix);
 		inverse.invert();
-		applyInverseTransformNearestNeighbor(inverse);
+		return applyInverseTransformNearestNeighbor(inverse, data);
 	}
 
-	public void applyInverseTransformNearestNeighbor(final Matrix4f inverse) {
-		final float[] newmaxima = new float[maxima.length];
+	public int[] applyInverseTransformNearestNeighbor(final Matrix4f inverse, final int[] data) {
+		final int[] newmaxima = new int[maxima.length];
 		final Point3f[] vertices = sphere.getVertices();
 
 		final int nProcessors = Runtime.getRuntime().availableProcessors();
@@ -381,7 +402,7 @@ public class SphericalMaxProjection {
 					for(int i = start; i < end; i++) {
 						p.set(vertices[i]);
 						inverse.transform(p);
-						newmaxima[i] = getNearestNeighborValue(p);
+						newmaxima[i] = (int)getNearestNeighborValue(p, data);
 					}
 				}
 			});
@@ -392,11 +413,11 @@ public class SphericalMaxProjection {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		this.maxima = newmaxima;
+		return newmaxima;
 	}
 
 	public void applyInverseTransform(final Matrix4f inverse) {
-		final float[] newmaxima = new float[sphere.nVertices];
+		final short[] newmaxima = new short[sphere.nVertices];
 		final Point3f[] vertices = sphere.getVertices();
 
 		final int nProcessors = Runtime.getRuntime().availableProcessors();
@@ -414,7 +435,7 @@ public class SphericalMaxProjection {
 					for(int i = start; i < end; i++) {
 						p.set(vertices[i]);
 						inverse.transform(p);
-						newmaxima[i] = getInterpolatedValue(p);
+						newmaxima[i] = (short)getInterpolatedValue(p);
 					}
 				}
 			});
@@ -426,13 +447,6 @@ public class SphericalMaxProjection {
 			e.printStackTrace();
 		}
 		maxima = newmaxima;
-	}
-
-	public void scaleMaxima(FusionWeight weighter) {
-		for(int vIndex = 0; vIndex < sphere.nVertices; vIndex++) {
-			Point3f vertex = sphere.getVertices()[vIndex];
-			maxima[vIndex] *= weighter.getWeight(vertex.x, vertex.y, vertex.z);
-		}
 	}
 
 	public void prepareForProjection(final int w, final int h, final int d, final double pw, final double ph, final double pd, final FusionWeight weighter) {
@@ -529,7 +543,7 @@ public class SphericalMaxProjection {
 	}
 
 	public void resetMaxima() {
-		maxima = new float[sphere.nVertices];
+		maxima = new short[sphere.nVertices];
 	}
 
 	/*
@@ -539,8 +553,8 @@ public class SphericalMaxProjection {
 		for(int i = 0; i < luti[z].length; i++) {
 			// float v = ip.getf(lutx[z][i], luty[z][i]);
 			float v = ip[lutxy[z][i]] & 0xffff;
-			if(v > maxima[luti[z][i]])
-				maxima[luti[z][i]] = v;
+			if(v > (maxima[luti[z][i]] & 0xffff))
+				maxima[luti[z][i]] = (short)v;
 		}
 	}
 
@@ -595,6 +609,11 @@ public class SphericalMaxProjection {
 		return minIdx;
 	}
 
+	public float getNearestNeighborValue(Point3f p, int[] data) {
+		int idx = getNearestNeighbor(p);
+		return data[idx];
+	}
+
 	public float getNearestNeighborValue(Point3f p) {
 		int idx = getNearestNeighbor(p);
 		return maxima[idx];
@@ -645,7 +664,7 @@ public class SphericalMaxProjection {
 	public SphericalMaxProjection clone() {
 		SphericalMaxProjection cp = new SphericalMaxProjection(this.sphere, this.center, this.radius);
 		if(this.maxima != null) {
-			cp.maxima = new float[this.maxima.length];
+			cp.maxima = new short[this.maxima.length];
 			System.arraycopy(this.maxima, 0, cp.maxima, 0, this.maxima.length);
 		}
 		if(this.luti != null) {

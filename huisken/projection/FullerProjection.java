@@ -1,8 +1,8 @@
 package huisken.projection;
 
 import ij.process.ColorProcessor;
-import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
+import ij.process.ShortProcessor;
 
 import java.awt.geom.GeneralPath;
 import java.awt.geom.PathIterator;
@@ -209,8 +209,8 @@ public class FullerProjection extends GeneralProjProjection {
 	}
 
 	@Override
-	public ImageProcessor project(float[] maxima) {
-		FloatProcessor ip = new FloatProcessor(w, h);
+	public ImageProcessor project(short[] maxima) {
+		ShortProcessor ip = new ShortProcessor(w, h);
 		for(int y = 0; y < h; y++) {
 			for(int x = 0; x < w; x++) {
 				int index = y * w + x;
@@ -219,18 +219,18 @@ public class FullerProjection extends GeneralProjProjection {
 					continue;
 				}
 
-				float v0 = vertexWeights[index][0] * maxima[vIndices[index][0]];
-				float v1 = vertexWeights[index][1] * maxima[vIndices[index][1]];
-				float v2 = vertexWeights[index][2] * maxima[vIndices[index][2]];
+				float v0 = vertexWeights[index][0] * (maxima[vIndices[index][0]] & 0xffff);
+				float v1 = vertexWeights[index][1] * (maxima[vIndices[index][1]] & 0xffff);
+				float v2 = vertexWeights[index][2] * (maxima[vIndices[index][2]] & 0xffff);
 
-				ip.setf(x, y, v0 + v1 + v2);
+				ip.setf(x, y, (short)(v0 + v1 + v2));
 			}
 		}
 		return ip;
 	}
 
 	@Override
-	public ImageProcessor projectColor(float[] maxima) {
+	public ImageProcessor projectColor(int[] maxima) {
 		ColorProcessor ip = new ColorProcessor(w, h);
 		for(int y = 0; y < h; y++) {
 			for(int x = 0; x < w; x++) {
@@ -245,9 +245,9 @@ public class FullerProjection extends GeneralProjProjection {
 				float w1 = vertexWeights[index][1];
 				float w2 = vertexWeights[index][2];
 
-				int m0 = Float.floatToIntBits(maxima[vIndices[index][0]]);
-				int m1 = Float.floatToIntBits(maxima[vIndices[index][1]]);
-				int m2 = Float.floatToIntBits(maxima[vIndices[index][2]]);
+				int m0 = maxima[vIndices[index][0]];
+				int m1 = maxima[vIndices[index][1]];
+				int m2 = maxima[vIndices[index][2]];
 
 				int r = (int)(w0 * ((m0 & 0xff0000) >> 16) + w1 * ((m1 & 0xff0000) >> 16) + w2 * ((m2 & 0xff0000) >> 16));
 				int g = (int)(w0 * ((m0 & 0xff00)   >>  8) + w1 * ((m1 & 0xff00)   >>  8) + w2 * ((m2 & 0xff00)   >>  8));

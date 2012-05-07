@@ -78,15 +78,15 @@ public class ResampleSMP implements PlugIn {
 			String name = file.getName();
 			if(!name.endsWith(".vertices"))
 				continue;
-			float[] maxima = new float[sphere.nVertices];
 			smp.loadMaxima(file.getAbsolutePath());
 			for(int j = 0; j < f; j++)
 				smp.smooth();
 
+			short[] maxima = new short[sphere.nVertices];
 			for(int j = 0; j < indices.length; j++)
 				maxima[j] = smp.getMaxima()[indices[j]];
 
-			SphericalMaxProjection.saveFloatData(maxima, new File(outf, name).getAbsolutePath());
+			SphericalMaxProjection.saveShortData(maxima, new File(outf, name).getAbsolutePath());
 			IJ.showProgress(i+1, files.length);
 		}
 	}

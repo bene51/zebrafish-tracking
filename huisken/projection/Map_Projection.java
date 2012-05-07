@@ -191,7 +191,7 @@ public class Map_Projection implements PlugIn {
 							String linesout = outputdir + File.separator + "lines" + File.separator + file.substring(0, file.length() - 9) + ".tif";
 							if(!new File(contribfile).exists())
 								contribfile = datadir + File.separator + "contributions.vertices";
-							float[] maxima = SphericalMaxProjection.loadFloatData(datafile, nVertices);
+							short[] maxima = SphericalMaxProjection.loadShortData(datafile, nVertices);
 							ImageProcessor ip = proj.project(maxima);
 							if(doLines) {
 								GeneralPath lines = proj.createLines();
@@ -206,13 +206,9 @@ public class Map_Projection implements PlugIn {
 								IJ.save(new ImagePlus("", lip), linesout);
 							}
 							if(doContributions) {
-//								ip.setMinAndMax(min, max);
-//								ip = ip.convertToByte(true).convertToRGB();
-								float[] contribs = SphericalMaxProjection.loadFloatData(contribfile, nVertices);
+								int[] contribs = SphericalMaxProjection.loadIntData(contribfile, nVertices);
 								ImageProcessor overlay = proj.projectColor(contribs);
 								IJ.save(new ImagePlus("", overlay), contribout);
-//								overlay.multiply(0.5);
-//								ip.copyBits(overlay, 0, 0, Blitter.ADD);
 							}
 							IJ.save(new ImagePlus("", ip), outfile);
 						} catch(Exception e) {

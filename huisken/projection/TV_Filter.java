@@ -54,16 +54,21 @@ public class TV_Filter implements PlugIn {
 
 			smp.loadMaxima(files[i].getAbsolutePath());
 			double diff = 0;
-			float[] current = smp.getMaxima();
+			short[] original = smp.getMaxima();
+			float[] current = new float[original.length];
+			for(int c = 0; c < current.length; c++)
+				current[c] = original[c];
 			int iter = 0;
 			do {
 				float[] next = new float[vertices.length];
-				diff = step(neighbors, current, next, smp.getMaxima(), lambda, a);
+				diff = step(neighbors, current, next, original, lambda, a);
 				current = next;
 				iter++;
 			} while(diff > tolerance);
 
-			smp.setMaxima(current);
+			for(int c = 0; c < current.length; c++)
+				original[c] = (short)Math.round(current[c]);
+			smp.setMaxima(original);
 			System.out.println(iter + " iterations");
 
 			smp.saveMaxima(new File(outdir, files[i].getName()).getAbsolutePath());
@@ -100,7 +105,7 @@ public class TV_Filter implements PlugIn {
 		return neigh;
 	}
 
-	private double step(int[][] neighbors, float[] u, float[] unext, float[] orig, double lambda, double a) {
+	private double step(int[][] neighbors, float[] u, float[] unext, short[] orig, double lambda, double a) {
 		float[] lv = calculateLocalVariation(neighbors, u, a);
 
 		double diff = 0;
@@ -110,7 +115,7 @@ public class TV_Filter implements PlugIn {
 				w_ag += 1 / lv[n] + 1 / lv[v];
 
 			double h_aa = lambda / (lambda + w_ag);
-			double F = h_aa * orig[v];
+			double F = h_aa * (orig[v] & 0xffff);
 
 			for(int n : neighbors[v]) {
 				double w_ab = 1.0 / lv[v] + 1.0 / lv[n];

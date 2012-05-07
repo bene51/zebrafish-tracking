@@ -124,20 +124,24 @@ public class CustomContent extends Content {
 	}
 
 	public float getCurrentMinimum() {
-		float[] maxima = smp.getMaxima();
-		float min = maxima[0];
-		for(int i = 1; i < maxima.length; i++)
-			if(maxima[i] < min)
-				min = maxima[i];
+		short[] maxima = smp.getMaxima();
+		float min = maxima[0] & 0xffff;
+		for(int i = 1; i < maxima.length; i++) {
+			float v = maxima[i] & 0xffff;
+			if(v < min)
+				min = v;
+		}
 		return min;
 	}
 
 	public float getCurrentMaximum() {
-		float[] maxima = smp.getMaxima();
-		float max = maxima[0];
-		for(int i = 1; i < maxima.length; i++)
-			if(maxima[i] > max)
+		short[] maxima = smp.getMaxima();
+		float max = maxima[0] & 0xffff;
+		for(int i = 1; i < maxima.length; i++) {
+			float v = maxima[i] & 0xffff;
+			if(v > max)
 				max = maxima[i];
+		}
 		return max;
 	}
 
@@ -152,18 +156,19 @@ public class CustomContent extends Content {
 	}
 
 	private void updateDisplayRange() {
-		float[] maxima = smp.getMaxima();
+		short[] maxima = smp.getMaxima();
 		boolean[] isMax = smp.isMaximum();
 		for(int i = 0; i < mesh.colors.length; i++) {
-			if(showMaxima && isMax[i] && maxima[i] > maximaThreshold)
+			float m = maxima[i] & 0xffff;
+			if(showMaxima && isMax[i] && m > maximaThreshold)
 				mesh.colors[i].set(1, 0, 0);
 			else {
-				float v = maxima[i];
 				if(showAsColor) {
-					mesh.colors[i].set(new java.awt.Color(Float.floatToIntBits(v)));
+					// TODO
+					// mesh.colors[i].set(new java.awt.Color(Float.floatToIntBits(v)));
 				} else {
-					v = (v - displayedMinimum) / (displayedMaximum - displayedMinimum);
-					mesh.colors[i].set(v, v, v);
+					m = (m - displayedMinimum) / (displayedMaximum - displayedMinimum);
+					mesh.colors[i].set(m, m, m);
 				}
 			}
 		}
@@ -172,9 +177,9 @@ public class CustomContent extends Content {
 
 	void readColors(String file, Color3f[] colors) throws IOException {
 		smp.loadMaxima(file);
-		float[] maxima = smp.getMaxima();
+		short[] maxima = smp.getMaxima();
 		for(int i = 0; i < colors.length; i++) {
-			float v = maxima[i];
+			float v = maxima[i] & 0xffff;
 			v = (v - displayedMinimum) / (displayedMaximum - displayedMinimum);
 			colors[i].set(v, v, v);
 		}
@@ -187,16 +192,17 @@ public class CustomContent extends Content {
 	public void scaleForAngle(float angleFactor) throws IOException {
 		Point3f[] vertices = smp.getSphere().getVertices();
 		smp.loadMaxima(getCurrentFile());
-		float[] maxima = smp.getMaxima();
+		short[] maxima = smp.getMaxima();
 		float cz = smp.getCenter().z;
 		float radius = smp.getRadius();
 		float bg = SphericalMaxProjection.getMode(maxima);
 		System.out.println("bg = " + bg);
 		for(int i = 0; i < vertices.length; i++) {
+			float m = maxima[i] & 0xffff;
 			float alpha = (float)Math.acos(Math.abs(vertices[i].z - cz) / radius);
 			float factor = (float)(1.0 / (Math.cos(angleFactor * alpha)));
 			float toSubtract = maxima[i] - bg - 10 > 0 ? bg + 10 : maxima[i];
-			maxima[i] = (maxima[i] - toSubtract) * factor + toSubtract;
+			maxima[i] = (short)((m - toSubtract) * factor + toSubtract);
 		}
 		updateDisplayRange();
 	}

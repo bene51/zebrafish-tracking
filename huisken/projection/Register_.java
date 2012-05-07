@@ -168,9 +168,9 @@ public class Register_ implements PlugIn {
 		overall.setIdentity();
 
 		ArrayList<Point3f> tgtPts = loadPoints(new File(fullerDir, files[0]));
-		float[] contrib = SphericalMaxProjection.loadFloatData(dataDirectory + "contributions.vertices",
+		int[] contrib = SphericalMaxProjection.loadIntData(dataDirectory + "contributions.vertices",
 					src.getSphere().nVertices);
-		SphericalMaxProjection.saveFloatData(contrib, contributionsDirectory + vName);
+		SphericalMaxProjection.saveIntData(contrib, contributionsDirectory + vName);
 
 		// register
 		for(int i = 1; i < files.length; i++) {
@@ -205,9 +205,8 @@ public class Register_ implements PlugIn {
 			}
 
 			if(!new File(contributionsDirectory, vName).exists()) {
-				src.setMaxima(contrib);
-				src.applyTransformNearestNeighbor(overall);
-				src.saveMaxima(contributionsDirectory + vName);
+				int[] con = src.applyTransformNearestNeighbor(overall, contrib);
+				SphericalMaxProjection.saveIntData(con, contributionsDirectory + vName);
 			}
 
 			tgtPts = nextTgtPts;

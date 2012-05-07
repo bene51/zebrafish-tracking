@@ -164,24 +164,24 @@ public class TwoCameraFusion implements PlugIn {
 			for(int cam = 0; cam < 2; cam++) {
 				int as = cam == CAMERA1 ? 180 : 0;
 				for(int a = 0; a < nAngles; a++) {
-					float[] res = new float[vertices.length];
+					short[] res = new short[vertices.length];
 					for(int v = 0; v < vertices.length; v++) {
 						Point3f vertex = new Point3f(vertices[v]);
 						if(transforms[a] != null)
 							transforms[a].transform(vertex);
-						res[v] = 100 * weights[cam][ill][a].getWeight(vertex.x, vertex.y, vertex.z);
+						res[v] = (short)(100 * weights[cam][ill][a].getWeight(vertex.x, vertex.y, vertex.z));
 					}
-					SphericalMaxProjection.saveFloatData(res, new File(dir, String.format(format, 0, as + a * angleInc, ill)).getAbsolutePath());
+					SphericalMaxProjection.saveShortData(res, new File(dir, String.format(format, 0, as + a * angleInc, ill)).getAbsolutePath());
 				}
 			}
 		}
 	}
 
-	public float[] indicateCameraContributions(int[][][] colors) throws IOException {
+	public int[] indicateCameraContributions(int[][][] colors) throws IOException {
 		File out = new File(outputdir, "contributions.vertices");
 
 		Point3f[] vertices = smp.getSphere().getVertices();
-		float[] res = new float[vertices.length];
+		int[] res = new int[vertices.length];
 		for(int v = 0; v < vertices.length; v++) {
 			Point3f vertex = vertices[v];
 			double r = 0, g = 0, b = 0;
@@ -216,9 +216,9 @@ public class TwoCameraFusion implements PlugIn {
 			int ir = r > 255 ? 255 : (int)r;
 			int ig = g > 255 ? 255 : (int)g;
 			int ib = b > 255 ? 255 : (int)b;
-			res[v] = Float.intBitsToFloat((ir << 16) + (ig << 8) + ib);
+			res[v] = (ir << 16) + (ig << 8) + ib;
 		}
-		SphericalMaxProjection.saveFloatData(res, out.getAbsolutePath());
+		SphericalMaxProjection.saveIntData(res, out.getAbsolutePath());
 		return res;
 	}
 
@@ -229,33 +229,33 @@ public class TwoCameraFusion implements PlugIn {
 
 		int nVertices = smp.getSphere().nVertices;
 
-		float[][][][] m = new float[2][2][nAngles][];
+		short[][][][] m = new short[2][2][nAngles][];
 		for(int a = 0; a < nAngles; a++) {
-			m[CAMERA1][LEFT] [a] = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp, 180 + a * angleInc, LEFT),  nVertices);
-			m[CAMERA1][RIGHT][a] = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp, 180 + a * angleInc, RIGHT), nVertices);
-			m[CAMERA2][LEFT] [a] = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp,   0 + a * angleInc, LEFT),  nVertices);
-			m[CAMERA2][RIGHT][a] = SphericalMaxProjection.loadFloatData(inputdir + String.format(format, tp,   0 + a * angleInc, RIGHT), nVertices);
+			m[CAMERA1][LEFT] [a] = SphericalMaxProjection.loadShortData(inputdir + String.format(format, tp, 180 + a * angleInc, LEFT),  nVertices);
+			m[CAMERA1][RIGHT][a] = SphericalMaxProjection.loadShortData(inputdir + String.format(format, tp, 180 + a * angleInc, RIGHT), nVertices);
+			m[CAMERA2][LEFT] [a] = SphericalMaxProjection.loadShortData(inputdir + String.format(format, tp,   0 + a * angleInc, LEFT),  nVertices);
+			m[CAMERA2][RIGHT][a] = SphericalMaxProjection.loadShortData(inputdir + String.format(format, tp,   0 + a * angleInc, RIGHT), nVertices);
 		}
 
 
 		if(adjustModes) {
 			float refmode = SphericalMaxProjection.getMode(m[CAMERA1][LEFT][0]);
 			for(int a = 0; a < nAngles; a++) {
-				float[] data = m[CAMERA1][LEFT][a];
+				short[] data = m[CAMERA1][LEFT][a];
 				float mode = SphericalMaxProjection.getMode(data);
-				SphericalMaxProjection.add(data, refmode - mode);
+				SphericalMaxProjection.add(data, (short)(refmode - mode));
 
 				data = m[CAMERA1][RIGHT][a];
 				mode = SphericalMaxProjection.getMode(data);
-				SphericalMaxProjection.add(data, refmode - mode);
+				SphericalMaxProjection.add(data, (short)(refmode - mode));
 
 				data = m[CAMERA2][LEFT][a];
 				mode = SphericalMaxProjection.getMode(data);
-				SphericalMaxProjection.add(data, refmode - mode);
+				SphericalMaxProjection.add(data, (short)(refmode - mode));
 
 				data = m[CAMERA2][RIGHT][a];
 				mode = SphericalMaxProjection.getMode(data);
-				SphericalMaxProjection.add(data, refmode - mode);
+				SphericalMaxProjection.add(data, (short)(refmode - mode));
 			}
 		}
 
@@ -282,8 +282,12 @@ public class TwoCameraFusion implements PlugIn {
 			}
 			res[v] = sum == 0 ? 0 : res[v] / sum;
 		}
+		short[] sData = new short[res.length];
+		for(int v = 0; v < res.length; v++)
+			sData[v] = (short)res[v];
+
 		if(saveOutput)
-			SphericalMaxProjection.saveFloatData(res, out.getAbsolutePath());
+			SphericalMaxProjection.saveShortData(sData, out.getAbsolutePath());
 		return res;
 	}
 
