@@ -327,7 +327,8 @@ public class SphericalMaxProjection {
 	public void smooth() {
 		int[] nNeighbors = new int[maxima.length];
 		float[] newMaxima = new float[maxima.length];
-		System.arraycopy(maxima, 0, newMaxima, 0, maxima.length);
+		for(int i = 0; i < maxima.length; i++)
+			newMaxima[i] = maxima[i];
 
 		int[] faces = sphere.getFaces();
 		for(int i = 0; i < sphere.nFaces; i += 3) {
