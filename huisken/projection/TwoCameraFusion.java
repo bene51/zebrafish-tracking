@@ -4,10 +4,7 @@ import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
 import ij.plugin.PlugIn;
 
-import java.awt.Button;
 import java.awt.Color;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,7 +14,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import javax.swing.JColorChooser;
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
 
@@ -46,7 +42,7 @@ public class TwoCameraFusion implements PlugIn {
 		String transformationFile = gd.getNextString();
 		boolean adjustModes = gd.getNextBoolean();
 
-		Matrix4f[] transformations = new Matrix4f[0];
+		Matrix4f[] transformations = new Matrix4f[1];
 		if(nAngles > 1) {
 			try {
 				transformations = TwoCameraSphericalMaxProjection.loadTransformations(transformationFile);
@@ -59,45 +55,51 @@ public class TwoCameraFusion implements PlugIn {
 			}
 		}
 		final int[][][] colors = new int[2][2][nAngles];
-		final Button[][][] buttons = new Button[2][2][nAngles];
-		class ColorActionListener implements ActionListener {
-			private final int cam, ill, a;
-			public ColorActionListener(int cam, int ill, int a) {
-				this.cam = cam; this.ill = ill; this.a = a;
-			}
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				Color c = JColorChooser.showDialog(
-						null,
-						"Choose Background Color",
-						Color.RED);
-				colors[cam][ill][a] = c.getRGB();
-				buttons[cam][ill][a].setForeground(c);
-			}
-		}
-		gd = new GenericDialogPlus("Colors");
-		for(int a = 0; a < nAngles; a++) {
-			gd.addButton("Camera1_Left_Illumination", new ColorActionListener(CAMERA1, LEFT, a));
-			buttons[CAMERA1][LEFT] [a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
-			gd.addButton("Camera1_Right_Illumination", new ColorActionListener(CAMERA1, RIGHT, a));
-			buttons[CAMERA1][RIGHT][a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
-			gd.addButton("Camera2_Left_Illumination", new ColorActionListener(CAMERA2, LEFT, a));
-			buttons[CAMERA2][LEFT] [a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
-			gd.addButton("Camera2_Right_Illumination", new ColorActionListener(CAMERA2, RIGHT, a));
-			buttons[CAMERA2][RIGHT][a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
-		}
-		colors[CAMERA1][LEFT] [0] = 0xff0000;
-		colors[CAMERA1][RIGHT][0] = 0xff0000;
-		colors[CAMERA2][LEFT] [0] = 0x00ff00;
-		colors[CAMERA2][RIGHT][0] = 0x00ff00;
-		colors[CAMERA1][LEFT] [1] = 0x00ffff;
-		colors[CAMERA1][RIGHT][1] = 0x00ffff;
-		colors[CAMERA2][LEFT] [1] = 0xff00ff;
-		colors[CAMERA2][RIGHT][1] = 0xff00ff;
-		gd.showDialog();
-		if(gd.wasCanceled())
-			return;
+//		final Button[][][] buttons = new Button[2][2][nAngles];
+//		class ColorActionListener implements ActionListener {
+//			private final int cam, ill, a;
+//			public ColorActionListener(int cam, int ill, int a) {
+//				this.cam = cam; this.ill = ill; this.a = a;
+//			}
+//			@Override
+//			public void actionPerformed(ActionEvent e) {
+//				Color c = JColorChooser.showDialog(
+//						null,
+//						"Choose Background Color",
+//						Color.RED);
+//				colors[cam][ill][a] = c.getRGB();
+//				buttons[cam][ill][a].setForeground(c);
+//			}
+//		}
+//		gd = new GenericDialogPlus("Colors");
+//		for(int a = 0; a < nAngles; a++) {
+//			gd.addButton("Camera1_Left_Illumination", new ColorActionListener(CAMERA1, LEFT, a));
+//			buttons[CAMERA1][LEFT] [a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
+//			gd.addButton("Camera1_Right_Illumination", new ColorActionListener(CAMERA1, RIGHT, a));
+//			buttons[CAMERA1][RIGHT][a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
+//			gd.addButton("Camera2_Left_Illumination", new ColorActionListener(CAMERA2, LEFT, a));
+//			buttons[CAMERA2][LEFT] [a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
+//			gd.addButton("Camera2_Right_Illumination", new ColorActionListener(CAMERA2, RIGHT, a));
+//			buttons[CAMERA2][RIGHT][a] = (Button)gd.getComponent(gd.getComponentCount() - 1);
+//		}
+//		gd.showDialog();
+//		if(gd.wasCanceled())
+//			return;
 
+//		colors[CAMERA1][LEFT] [0] = colors[CAMERA1][RIGHT][0] = 0xff0000;
+//		colors[CAMERA2][LEFT] [0] = colors[CAMERA2][RIGHT][0] = 0x00ff00;
+//		colors[CAMERA1][LEFT] [1] = colors[CAMERA1][RIGHT][1] = 0x00ffff;
+//		colors[CAMERA2][LEFT] [1] = colors[CAMERA2][RIGHT][1] = 0xff00ff;
+
+		colors[CAMERA1][LEFT] [0] = colors[CAMERA1][RIGHT][0] = new Color(206, 47, 42).getRGB();
+		colors[CAMERA2][LEFT] [0] = colors[CAMERA2][RIGHT][0] = new Color(241, 183, 51).getRGB();
+		colors[CAMERA1][LEFT] [1] = colors[CAMERA1][RIGHT][1] = new Color(162, 198, 231).getRGB();
+		colors[CAMERA2][LEFT] [1] = colors[CAMERA2][RIGHT][1] = new Color(42, 76, 149).getRGB();
+
+//		colors[CAMERA1][LEFT] [0] = colors[CAMERA1][RIGHT][0] = new Color(149, 79, 15).getRGB();
+//		colors[CAMERA2][LEFT] [0] = colors[CAMERA2][RIGHT][0] = new Color(215, 184, 103).getRGB();
+//		colors[CAMERA1][LEFT] [1] = colors[CAMERA1][RIGHT][1] = new Color(110, 196, 180).getRGB();
+//		colors[CAMERA2][LEFT] [1] = colors[CAMERA2][RIGHT][1] = new Color(8, 116, 93).getRGB();
 
 		try {
 			fuse(folder, nAngles, angleInc, transformations, adjustModes, colors, true);
@@ -164,6 +166,9 @@ public class TwoCameraFusion implements PlugIn {
 			for(int cam = 0; cam < 2; cam++) {
 				int as = cam == CAMERA1 ? 180 : 0;
 				for(int a = 0; a < nAngles; a++) {
+					File outf = new File(dir, String.format(format, 0, as + a * angleInc, ill));
+					if(outf.exists())
+						continue;
 					short[] res = new short[vertices.length];
 					for(int v = 0; v < vertices.length; v++) {
 						Point3f vertex = new Point3f(vertices[v]);
@@ -171,20 +176,23 @@ public class TwoCameraFusion implements PlugIn {
 							transforms[a].transform(vertex);
 						res[v] = (short)(100 * weights[cam][ill][a].getWeight(vertex.x, vertex.y, vertex.z));
 					}
-					SphericalMaxProjection.saveShortData(res, new File(dir, String.format(format, 0, as + a * angleInc, ill)).getAbsolutePath());
+					SphericalMaxProjection.saveShortData(res, outf.getAbsolutePath());
 				}
 			}
 		}
 	}
 
-	public int[] indicateCameraContributions(int[][][] colors) throws IOException {
+	public void indicateCameraContributions(int[][][] colors) throws IOException {
 		File out = new File(outputdir, "contributions.vertices");
+		if(out.exists())
+			return;
 
 		Point3f[] vertices = smp.getSphere().getVertices();
 		int[] res = new int[vertices.length];
 		for(int v = 0; v < vertices.length; v++) {
 			Point3f vertex = vertices[v];
 			double r = 0, g = 0, b = 0;
+			double sum = 0;
 			for(int a = 0; a < nAngles; a++) {
 				Point3f xvtx = new Point3f(vertex);
 				if(transforms[a] != null)
@@ -212,14 +220,19 @@ public class TwoCameraFusion implements PlugIn {
 				r += rc;
 				g += gc;
 				b += bc;
+
+				sum += w1 + w2 + w3 + w4;
 			}
+			r /= sum;
+			g /= sum;
+			b /= sum;
+
 			int ir = r > 255 ? 255 : (int)r;
 			int ig = g > 255 ? 255 : (int)g;
 			int ib = b > 255 ? 255 : (int)b;
 			res[v] = (ir << 16) + (ig << 8) + ib;
 		}
 		SphericalMaxProjection.saveIntData(res, out.getAbsolutePath());
-		return res;
 	}
 
 	public float[] fuse(int tp) throws IOException {
