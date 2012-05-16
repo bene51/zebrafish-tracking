@@ -47,6 +47,9 @@ public class Create_Overlay implements PlugIn {
 			IJ.showProgress(++cnt, tot);
 			if(!name.startsWith("tp") || !name.endsWith(".tif"))
 				continue;
+			File outfile = new File(outdir, name);
+			if(outfile.exists())
+				continue;
 
 			ImageProcessor ip = IJ.openImage(f.getAbsolutePath()).getProcessor();
 			ImageProcessor co = IJ.openImage(new File(contribDir, name).getAbsolutePath()).getProcessor();
@@ -65,7 +68,7 @@ public class Create_Overlay implements PlugIn {
 				int l = li.get(i);
 
 				if(l == 255)
-					rgb = 0;
+					rgb = (255 << 16) + (57 << 8) + 0;
 				else {
 					// v == 0 : 0.5
 					// v == 255: 0
@@ -78,7 +81,7 @@ public class Create_Overlay implements PlugIn {
 
 				co.set(i, rgb);
 			}
-			IJ.save(new ImagePlus("", co), new File(outdir, name).getAbsolutePath());
+			IJ.save(new ImagePlus("", co), outfile.getAbsolutePath());
 		}
 	}
 }
