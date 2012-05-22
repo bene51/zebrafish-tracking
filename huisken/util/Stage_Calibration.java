@@ -49,7 +49,7 @@ public class Stage_Calibration extends BaseCameraApplication {
 	public static final double DZ = 4;
 	public static final double DX = 0.65;
 	public static final int N_POSITIONS = 7;
-	public static final Point3f REF_POS = new Point3f(126.5f, 4.0f, 18.62f);
+	public static final Point3f REF_POS = new Point3f(125.3f, 4f, 18.92f);
 
 	public static final String CALIBRATION_FILE = System.getProperty("user.home") + File.separator + ".spim2_stage_calibration";
 
@@ -69,7 +69,7 @@ public class Stage_Calibration extends BaseCameraApplication {
 					@Override
 					public void run() {
 						try {
-							test();
+							calibrate();
 						} catch (IOException e) {
 							IJ.error(e.getMessage());
 							e.printStackTrace();
@@ -340,12 +340,12 @@ public class Stage_Calibration extends BaseCameraApplication {
 			TimeLapseDisplay.plotData( reconstruction.getRegistrationStatistics(), -1, false );
 	}
 
-	public static void calibrate() throws IOException {
+	public void calibrate() throws IOException {
 		System.out.println(DIR);
 
-		// acquire(DIR, N_POSITIONS, D, DX, DZ);
+		acquire(DIR, N_POSITIONS, D, DX, DZ);
 
-		// register(DIR, N_POSITIONS, DX, DZ);
+		register(DIR, N_POSITIONS, DX, DZ);
 
 		System.out.println();
 		System.out.println("Analyzing 300 um stage movement in x-direction:");
@@ -404,7 +404,8 @@ public class Stage_Calibration extends BaseCameraApplication {
 		xStep.scale(1 / 300f);
 		yStep.scale(1 / 300f);
 		zStep.scale(1 / 300f);
-		// saveCalibration(xStep, yStep, zStep, axis, center, REF_POS);
+
+		saveCalibration(xStep, yStep, zStep, axis, center, REF_POS);
 	}
 
 	public static float checkTransformation(String beadfileRef, String beadFileMod, Matrix4f mat) throws IOException {
