@@ -1,12 +1,34 @@
+importPackage(Packages.huisken.projection);
 importClass(Packages.javax.vecmath.Point3f);
+importClass(Packages.java.util.Arrays);
 importClass(Packages.java.util.Properties);
 importClass(Packages.fiji.util.gui.GenericDialogPlus);
 importPackage(java.io);
 importPackage(java.net);
 
+defaultdir = new File("D:\\SPIMdata");
+tmp = defaultdir.listFiles();
+if(tmp != null && tmp.length != 0) {
+	Arrays.sort(tmp);
+	defaultdir = tmp[tmp.length - 1];
+}
+tmp = defaultdir.listFiles();
+if(tmp != null && tmp.length != 0) {
+	Arrays.sort(tmp);
+	defaultdir = tmp[tmp.length - 1];
+}
+dz = 0;
+try{
+	dz = LabView.readDouble("z spacing") * 1000;
+	system.out.println("dz = " + dz);
+} catch(err) {
+	System.out.println(err);
+}
+
+
 gd = new GenericDialogPlus("");
-gd.addDirectoryField("Directory", "D:/SPIMdata/");
-gd.addNumericField("z spacing", 0, 5);
+gd.addDirectoryField("Directory", defaultdir.getAbsolutePath());
+gd.addNumericField("z spacing", dz, 5);
 gd.showDialog();
 
 
@@ -20,16 +42,6 @@ properties.loadFromXML(new FileInputStream(folder + 'camera.xml'));
 w = Integer.parseInt(properties.getProperty("AOIWidth"));
 h = Integer.parseInt(properties.getProperty("AOIHeight"));
 System.out.println(w + "x" + h);
-/*
-s = new Socket("10.1.199.6", 1235);
-new PrintStream(s.getOutputStream()).println("z spacing");
-l = new BufferedReader(new InputStreamReader(s.getInputStream())).readLine();
-s.close();
-
-pw = 0.65;
-pd = Double.parseDouble(l);
-IJ.log("pd = " + pd);
-*/
 
 command = 
 	'run("Raw...", "open=' + folder + 'data/0000.dat image=[16-bit Unsigned] width=' + w + ' height=' + h + ' offset=0 number=1 gap=0 little-endian open")' +
