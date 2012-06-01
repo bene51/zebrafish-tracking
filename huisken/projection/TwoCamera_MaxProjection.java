@@ -4,6 +4,7 @@ import fiji.util.gui.GenericDialogPlus;
 import huisken.util.Stage_Calibration;
 import ij.IJ;
 import ij.ImagePlus;
+import ij.Prefs;
 import ij.plugin.PlugIn;
 import ij.process.ShortProcessor;
 
@@ -61,14 +62,18 @@ public class TwoCamera_MaxProjection implements PlugIn {
 		String[] cChoice = new String[2];
 		cChoice[TwoCameraSphericalMaxProjection.CAMERA1] = "Camera 1";
 		cChoice[TwoCameraSphericalMaxProjection.CAMERA2] = "Camera 2";
+		int lastCamera = (int)Prefs.get("sphere_proj.camera", 0);
+		System.out.println("lastCamera = " + lastCamera);
 		gd.addDirectoryField("Output directory", defaultdir.getAbsolutePath());
-		gd.addChoice("Camera", cChoice, cChoice[0]);
+		gd.addChoice("Camera", cChoice, cChoice[lastCamera]);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
 
 		outputdir = new File(gd.getNextString());
 		int camera = gd.getNextChoiceIndex();
+		Prefs.set("sphere_proj.camera", camera);
+		Prefs.savePreferences();
 
 		if(!outputdir.exists() || !outputdir.isDirectory())
 			throw new RuntimeException("Output directory must be a folder");
