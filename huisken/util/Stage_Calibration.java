@@ -166,6 +166,23 @@ public class Stage_Calibration extends BaseCameraApplication {
 		return pos;
 	}
 
+	public static ArrayList<Point4f> readPositionsFromString(String s) {
+		String[] lines = s.split("\n");
+		System.out.println("***");
+		ArrayList<Point4f> pos = new ArrayList<Point4f>();
+		for(int i = 2; i < lines.length; i++) {
+			String l = lines[i];
+			String[] tok = l.split("\t");
+			Point4f p = new Point4f();
+			p.w = (float)Double.parseDouble(tok[1]);
+			p.x = (float)Double.parseDouble(tok[2]);
+			p.y = (float)Double.parseDouble(tok[3]);
+			p.z = (float)Double.parseDouble(tok[4]);
+			pos.add(p);
+		}
+		return pos;
+	}
+
 	public void acquire(String dir, int npos, int d, double dx, double dz) throws IOException {
 		File folder = new File(dir);
 		if(!folder.exists())
