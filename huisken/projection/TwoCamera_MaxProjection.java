@@ -55,7 +55,6 @@ public class TwoCamera_MaxProjection implements PlugIn {
 		Point3f center = new Point3f();
 		float radius = 0;
 		int timepoints = 0;
-		int nAngles = 0;
 		int angleInc = 0;
 
 		GenericDialogPlus gd = new GenericDialogPlus("Spherical_Max_Projection");
@@ -104,6 +103,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				angleInc = Math.round(positions.get(1).w - positions.get(0).w);
 
 		} catch(Exception e) {
+			e.printStackTrace();
 		}
 
 
