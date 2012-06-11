@@ -54,13 +54,8 @@ public class Register_ implements PlugIn {
 
 	public void createFullerProjection(SphericalMaxProjection smp, String datadir) throws IOException {
 		File outputdir = new File(datadir, "fuller");
-		if(outputdir.exists()) {
-			boolean cancelled = !IJ.showMessageWithCancel("Recalculate Fuller projection?", "Recalculate Fuller projection?");
-			if(cancelled)
-				return;
-		} else {
+		if(!outputdir.exists())
 			outputdir.mkdirs();
-		}
 
 		int w = 1000;
 
@@ -72,6 +67,10 @@ public class Register_ implements PlugIn {
 		for(File file : new File(datadir).listFiles()) {
 			String filename = file.getName();
 			if(!filename.startsWith("tp") || !filename.endsWith(".vertices"))
+				continue;
+
+			File outf = new File(outputdir, filename.substring(0, filename.length() - 9) + ".pts");
+			if(outf.exists())
 				continue;
 
 			smp.loadMaxima(file.getAbsolutePath());
@@ -91,9 +90,7 @@ public class Register_ implements PlugIn {
 				if(proj.getPointOnSphere(x, y, ptmp))
 					pts.add(ptmp);
 			}
-			filename = file.getName();
-			filename = filename.substring(0, filename.length() - 9) + ".pts";
-			savePoints(pts, new File(outputdir, filename));
+			savePoints(pts, outf);
 		}
 	}
 
@@ -121,14 +118,8 @@ public class Register_ implements PlugIn {
 			throw new IllegalArgumentException(dataDirectory + " is not a directory");
 
 		File outputdir = new File(outputDirectory);
-		if(outputdir.isDirectory() && outputdir.list().length > 0) {
-			boolean cancelled = !IJ.showMessageWithCancel("Overwrite",
-					outputdir + " already exists. Overwrite?");
-			if(cancelled)
-				return;
-		} else {
+		if(!outputdir.exists())
 			outputdir.mkdir();
-		}
 
 		File objfile = new File(dataDirectory, "Sphere.obj");
 		if(!objfile.exists())

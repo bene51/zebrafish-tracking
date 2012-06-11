@@ -26,6 +26,7 @@ import javax.media.j3d.Transform3D;
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point2f;
 import javax.vecmath.Point3f;
+import javax.vecmath.Vector3f;
 
 import com.jhlabs.map.proj.AugustProjection;
 import com.jhlabs.map.proj.BonneProjection;
@@ -61,11 +62,13 @@ public class Map_Projection implements PlugIn {
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Create 2D Maps");
 		gd.addDirectoryField("Data directory", "");
-		gd.addCheckbox("Create coastlines", false);
-		gd.addCheckbox("Create Longitude/Latitude lines", false);
-		gd.addCheckbox("Create camera contribution overlay", false);
+		gd.addCheckbox("Create_coastlines", false);
+		gd.addCheckbox("Create_Longitude/Latitude lines", true);
+		gd.addCheckbox("Create_camera contribution overlay", true);
+		gd.addCheckbox("Interactively choose initial transform", false);
+		gd.addNumericField("Target width", 800, 0);
 		for(int i = 0; i < MAP_TYPES.length; i++)
-			gd.addCheckbox(MAP_TYPES[i], true);
+			gd.addCheckbox(MAP_TYPES[i], false);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
@@ -73,6 +76,8 @@ public class Map_Projection implements PlugIn {
 		boolean doCoast = gd.getNextBoolean();
 		boolean doLines = gd.getNextBoolean();
 		boolean doContributions = gd.getNextBoolean();
+		boolean chooseInitial = gd.getNextBoolean();
+		int tgtWidth = (int)gd.getNextNumber();
 
 		if(!datadir.isDirectory()) {
 			IJ.error(datadir + " is not a directory");
@@ -85,21 +90,35 @@ public class Map_Projection implements PlugIn {
 			return;
 		}
 
-		File previewdir = new File(datadir, "resampled");
-		if(!previewdir.exists() || !previewdir.isDirectory())
-			previewdir = datadir;
-
 		Matrix4f initial = new Matrix4f();
-		Image3DUniverse univ = SphereProjectionViewer.show(previewdir.getAbsolutePath() + "/Sphere.obj", previewdir.getAbsolutePath(), null);
-		new WaitForUserDialog("",
-			"Please rotate the sphere to the desired orientation, then click OK").show();
-		Transform3D trans = new Transform3D();
-		CustomContent cc = (CustomContent)univ.getContent("bla");
-		float min = cc.getDisplayedMinimum();
-		float max = cc.getDisplayedMaximum();
-		cc.getLocalRotate(trans);
-		trans.get(initial);
-		univ.close();
+		initial.setIdentity();
+
+		if(chooseInitial) {
+			File previewdir = new File(datadir, "resampled");
+			if(!previewdir.exists() || !previewdir.isDirectory())
+				previewdir = datadir;
+
+			Image3DUniverse univ = SphereProjectionViewer.show(previewdir.getAbsolutePath() + "/Sphere.obj", previewdir.getAbsolutePath(), null);
+			new WaitForUserDialog("",
+				"Please rotate the sphere to the desired orientation, then click OK").show();
+			Transform3D trans = new Transform3D();
+			CustomContent cc = (CustomContent)univ.getContent("bla");
+			cc.getLocalRotate(trans);
+			trans.get(initial);
+			univ.close();
+		} else if(new File(datadir, "initial_map_transform.mat").exists()) {
+			try {
+				initial = Register_.loadTransform(new File(datadir, "initial_map_transform.mat").getAbsolutePath());
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+		try {
+			Register_.saveTransform(initial, new File(datadir, "initial_map_transform.mat").getAbsolutePath());
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
 
 		for(int i = 0; i < MAP_TYPES.length; i++) {
 			if(!gd.getNextBoolean())
@@ -117,7 +136,7 @@ public class Map_Projection implements PlugIn {
 			new File(outputdir, "lines").mkdir();
 
 			try {
-				createProjections(objfile.getAbsolutePath(), datadir.getAbsolutePath(), initial, min, max, i, outputdir.getAbsolutePath(), doCoast, doLines, doContributions);
+				createProjections(objfile.getAbsolutePath(), datadir.getAbsolutePath(), initial, i, outputdir.getAbsolutePath(), doCoast, doLines, doContributions, tgtWidth);
 			} catch(Exception e) {
 				IJ.error(e.getMessage());
 				e.printStackTrace();
@@ -125,7 +144,7 @@ public class Map_Projection implements PlugIn {
 		}
 	}
 
-	public void createProjections(final String objfile, final String datadir, final Matrix4f initial, final float min, final float max, final int mapType, final String outputdir, final boolean doCoast, final boolean doLines, final boolean doContributions) throws IOException {
+	public void createProjections(final String objfile, final String datadir, final Matrix4f initial, final int mapType, final String outputdir, final boolean doCoast, final boolean doLines, final boolean doContributions, int tgtWidth) throws IOException {
 		final SphericalMaxProjection smp = new SphericalMaxProjection(objfile, initial);
 		final GeneralProjProjection proj;
 		switch(mapType) {
@@ -139,21 +158,21 @@ public class Map_Projection implements PlugIn {
 			case FULLER:                proj = new FullerProjection(); break;
 			default: throw new IllegalArgumentException("Unsupported map type: " + mapType);
 		}
-		proj.prepareForProjection(smp);
+		proj.prepareForProjection(smp, tgtWidth);
 
 		if(doCoast) {
 			// create a postscript file with the coastline
-			GeneralPath coast = GeneralProjProjection.readDatFile("/Users/bschmid/PostDoc/paper/SphereProj/figure2/coast.dat");
-			coast = proj.transform(coast);
-			GeneralProjProjection.savePath(coast, outputdir + File.separator + "coastline.ps", proj.getWidth(), proj.getHeight(), true);
-		}
+			if(new File("coast.dat").exists()) {
+				GeneralPath coast = GeneralProjProjection.readDatFile("coast.dat");
+				coast = proj.transform(coast);
+				GeneralProjProjection.savePath(coast, outputdir + File.separator + "coastline.ps", proj.getWidth(), proj.getHeight(), true);
+			}
 
-//		if(doLines) {
-//			// create a postscript file with the lines
-//			GeneralPath lines = proj.createLines();
-//			lines = proj.transform(lines, true);
-//			GeneralProjProjection.savePath(lines, outputdir + File.separator + "lines.ps", proj.getWidth(), proj.getHeight(), false);
-//		}
+			// create a postscript file with the lines
+			GeneralPath lines = proj.createLines();
+			lines = proj.transform(lines);
+			GeneralProjProjection.savePath(lines, outputdir + File.separator + "lines.ps", proj.getWidth(), proj.getHeight(), false);
+		}
 
 		// collect files
 		List<String> tmp = new ArrayList<String>();
@@ -192,17 +211,24 @@ public class Map_Projection implements PlugIn {
 							if(!new File(contribfile).exists())
 								contribfile = datadir + File.separator + "contributions.vertices";
 							short[] maxima = SphericalMaxProjection.loadShortData(datafile, nVertices);
+//							maxima = smp.applyTransform(get90DegRot(smp), maxima);
 							ImageProcessor ip = proj.project(maxima);
 							if(doLines) {
 								GeneralPath lines = proj.createLines();
 								Matrix4f mat = new Matrix4f(initial);
 								if(new File(matrixfile).exists())
 									mat.mul(Register_.loadTransform(matrixfile));
+								else
+									System.out.println(matrixfile + " does not exist");
+
+								// rotate the lines by 90 deg
+								Matrix4f rot = get90DegRot(smp);
+								lines = transform(smp, rot, lines);
 
 								lines = transform(smp, mat, lines);
 								lines = proj.transform(lines);
 								ImageProcessor lip = new ByteProcessor(ip.getWidth(), ip.getHeight());
-								proj.drawInto(lip, 255, 3, lines);
+								proj.drawInto(lip, 255, 1, lines);
 								IJ.save(new ImagePlus("", lip), linesout);
 							}
 							if(doContributions) {
@@ -227,6 +253,27 @@ public class Map_Projection implements PlugIn {
 		}
 	}
 
+	public static Matrix4f get90DegRot(SphericalMaxProjection smp) {
+		Matrix4f rot = new Matrix4f();
+		Matrix4f cen = new Matrix4f();
+
+		rot.rotZ((float)(Math.PI / 2));
+		cen.set(new Vector3f(smp.center));
+
+		rot.mul(cen, rot);
+		cen.invert();
+		rot.mul(rot, cen);
+
+		return rot;
+	}
+
+	/**
+	 * In- and output coordinates are in degrees.
+	 * @param smp
+	 * @param trans
+	 * @param path
+	 * @return
+	 */
 	public static GeneralPath transform(SphericalMaxProjection smp, Matrix4f trans, GeneralPath path) {
 		GeneralPath out = new GeneralPath();
 		PathIterator it = path.getPathIterator(null);

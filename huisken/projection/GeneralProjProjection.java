@@ -1,8 +1,8 @@
 package huisken.projection;
 
 import ij.process.ColorProcessor;
-import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
+import ij.process.ShortProcessor;
 
 import java.awt.geom.GeneralPath;
 import java.awt.geom.PathIterator;
@@ -13,6 +13,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import javax.vecmath.Point2f;
 import javax.vecmath.Point3f;
 
 import com.jhlabs.map.Ellipsoid;
@@ -76,10 +77,6 @@ public class GeneralProjProjection {
 
 	public GeneralPath createLines() {
 		GeneralPath lines = new GeneralPath();
-//		double minLon = projection.getMinLongitudeDegrees();
-//		double maxLon = projection.getMaxLongitudeDegrees();
-//		double minLat = projection.getMinLatitudeDegrees();
-//		double maxLat = projection.getMaxLatitudeDegrees();
 		int pad = 0;
 		int nLos = 24;
 		int nLas = 100;
@@ -88,8 +85,6 @@ public class GeneralProjProjection {
 			for(int la = pad; la <= nLas - pad; la++) {
 				float x = (lo - nLos/2) * (360.0f / nLos);
 				float y = (la - nLas/2) * (180.0f / nLas);
-//				if(x < minLon || x > maxLon || y < minLat || y > maxLat)
-//					continue;
 				if(first)
 					lines.moveTo(x, y);
 				else
@@ -105,8 +100,6 @@ public class GeneralProjProjection {
 			for(int lo = pad; lo <= nLos - pad; lo++) {
 				float x = (lo - nLos/2) * (360.0f / nLos);
 				float y = (la - nLas/2) * (180.0f / nLas);
-//				if(x < minLon || x > maxLon || y < minLat || y > maxLat)
-//					continue;
 				if(first)
 					lines.moveTo(x, y);
 				else
@@ -117,9 +110,90 @@ public class GeneralProjProjection {
 		return lines;
 	}
 
-	public void prepareForProjection(SphericalMaxProjection smp) {
+	public GeneralPath createOutline() {
+		GeneralPath outline = new GeneralPath();
+		int nLos = 100;
+		int nLas = 100;
+		boolean first = true;
 
-		float globeRadius = 300f;
+		for(int lo = 0; lo <= nLos; lo++) {
+			float x = (lo - nLos / 2) * (360.0f / nLos);
+			float y = -90;
+			if(first)
+				outline.moveTo(x, y);
+			else
+				outline.lineTo(x, y);
+			first = false;
+		}
+
+		for(int la = 0; la <= nLos; la++) {
+			float x = 180;
+			float y = (la - nLas/2) * (180.0f / nLas);
+			outline.lineTo(x, y);
+		}
+
+		for(int lo = nLos; lo >= 0; lo--) {
+			float x = (lo - nLos / 2) * (360.0f / nLos);
+			float y = 90;
+			outline.lineTo(x, y);
+		}
+
+		for(int la = nLas; la >= 0; la--) {
+			float x = -180;
+			float y = (la - nLas/2) * (180.0f / nLas);
+			outline.lineTo(x, y);
+		}
+
+		return outline;
+	}
+
+	private double findRadiusForWidth(int w, double rLower, double rUpper) {
+
+		double rGuess = (rUpper + rLower) / 2;
+
+		if(rGuess == rLower || rGuess == rUpper)
+			return rGuess;
+
+		projection.setEllipsoid(new Ellipsoid("", rGuess, rGuess, 0.0D, ""));
+		projection.initialize();
+
+		int minx = Integer.MAX_VALUE;
+		int maxx = -minx;
+		int miny = minx;
+		int maxy = -minx;
+
+		Point2D.Double tmpin = new Point2D.Double();
+		Point2D.Double tmpout = new Point2D.Double();
+		double dlon = projection.getMaxLongitude() - projection.getMinLongitude();
+		double dlat = projection.getMaxLatitude() - projection.getMinLatitude();
+
+		for(int lo = 0; lo <= 100; lo++) {
+			for(int la = 0; la <= 100; la++) {
+				tmpin.x = (lo - 50) * dlon / 100;
+				tmpin.y = (la - 50) * dlat / 100;
+				tmpin.x = (lo - 50) * dlon / 100;
+				tmpin.y = (la - 50) * dlat / 100;
+				projection.transformRadians(tmpin, tmpout);
+				if(tmpout.x < minx) minx = (int)tmpout.x;
+				if(tmpout.y < miny) miny = (int)tmpout.y;
+				if(tmpout.x > maxx) maxx = (int)tmpout.x;
+				if(tmpout.y > maxy) maxy = (int)tmpout.y;
+			}
+		}
+		int foundWidth = maxx - minx + 1;
+
+		if(w == foundWidth)
+			return rGuess;
+
+		else if(foundWidth > w)
+			return findRadiusForWidth(w, rLower, rGuess);
+		else
+			return findRadiusForWidth(w, rGuess, rUpper);
+	}
+
+	public void prepareForProjection(SphericalMaxProjection smp, int width) {
+
+		double globeRadius = findRadiusForWidth(width, 0, 1000f);
 		projection.setEllipsoid(new Ellipsoid("", globeRadius, globeRadius, 0.0D, ""));
 		projection.initialize();
 
@@ -138,32 +212,20 @@ public class GeneralProjProjection {
 		Point2D.Double tmpout = new Point2D.Double();
 		for(int lo = 0; lo <= 100; lo++) {
 			for(int la = 0; la <= 100; la++) {
-				tmpin.x = (lo - 50) * dlon / 100;// - 0.001;
-				tmpin.y = (la - 50) * dlat / 100;// - 0.001;
-				tmpin.x = (lo - 50) * dlon / 100;// - 0.001;
-				tmpin.y = (la - 50) * dlat / 100;// - 0.001;
+				tmpin.x = (lo - 50) * dlon / 100;
+				tmpin.y = (la - 50) * dlat / 100;
+				tmpin.x = (lo - 50) * dlon / 100;
+				tmpin.y = (la - 50) * dlat / 100;
 				projection.transformRadians(tmpin, tmpout);
-				if(tmpout.x < minx) {
-					minx = (int)tmpout.x;
-				}
-				if(tmpout.y < miny) {
-					miny = (int)tmpout.y;
-				}
-				if(tmpout.x > maxx) {
-					maxx = (int)tmpout.x;
-				}
-				if(tmpout.y > maxy) {
-					maxy = (int)tmpout.y;
-				}
+				if(tmpout.x < minx) minx = (int)tmpout.x;
+				if(tmpout.y < miny) miny = (int)tmpout.y;
+				if(tmpout.x > maxx) maxx = (int)tmpout.x;
+				if(tmpout.y > maxy) maxy = (int)tmpout.y;
 			}
 		}
-		System.out.println(maxx + " " + maxy);
-		System.out.println(minx + " " + miny);
 
 		this.w = maxx - minx + 1;
 		this.h = maxy - miny + 1;
-		System.out.println(w);
-		System.out.println(h);
 
 		vIndices = new int[w * h][3];
 		vertexWeights = new float[w * h][3];
@@ -222,14 +284,16 @@ public class GeneralProjProjection {
 			int l = it.currentSegment(seg);
 			din.x = seg[0];
 			din.y = seg[1];
-//			// clip to min/max long/lat
-//			if(din.x < projection.getMinLongitudeDegrees()) din.x = projection.getMinLongitudeDegrees();
-//			if(din.y < projection.getMinLatitudeDegrees()) din.y = projection.getMinLatitudeDegrees();
-//			if(din.x > projection.getMaxLongitudeDegrees()) din.x = projection.getMaxLongitudeDegrees();
-//			if(din.y > projection.getMaxLatitudeDegrees()) din.y = projection.getMaxLatitudeDegrees();
 			projection.transform(din, dout);
 			float x = (float)dout.x - minx;
 			float y = maxy - (float)dout.y;
+
+			try {
+				if(!projection.inside(din.x, din.y))
+					l = PathIterator.SEG_MOVETO;
+			} catch(Exception e) {
+				l = PathIterator.SEG_MOVETO;
+			}
 
 			if(l == PathIterator.SEG_MOVETO) {
 				out.moveTo(x, y);
@@ -253,7 +317,7 @@ public class GeneralProjProjection {
 			int y = Math.round(seg[1]);
 			double d = Math.sqrt((px - x) * (px - x) + (py - y) * (py - y));
 
-			if(l == PathIterator.SEG_MOVETO || d > w/4)
+			if(l == PathIterator.SEG_MOVETO || d > 15)
 				ip.moveTo(x, y);
 			else
 				ip.lineTo(x, y);
@@ -263,7 +327,63 @@ public class GeneralProjProjection {
 		}
 	}
 
+	public static GeneralPath filter(GeneralPath in) {
+		GeneralPath out = new GeneralPath();
+		PathIterator it = in.getPathIterator(null);
+		float[] seg = new float[6];
+		float px = 0, py = 0;
+
+		int n = 0;
+		GeneralPath next = new GeneralPath();
+
+		while(!it.isDone()) {
+			int l = it.currentSegment(seg);
+
+			double d = Math.sqrt((px - seg[0]) * (px - seg[0]) + (py - seg[1]) * (py - seg[1]));
+			if(d > 20) {
+				l = PathIterator.SEG_MOVETO;
+			}
+
+			if(l == PathIterator.SEG_MOVETO) {
+				if(n > 50)
+					out.append(next.getPathIterator(null), false);
+				next = new GeneralPath();
+				next.moveTo(seg[0], seg[1]);
+				n = 0;
+			}
+			else {
+				next.lineTo(seg[0], seg[1]);
+				n++;
+			}
+			px = seg[0];
+			py = seg[1];
+			it.next();
+		}
+		if(n > 50)
+			out.append(next.getPathIterator(null), false);
+		return out;
+	}
+
+	public int[] setSphereColors(SphericalMaxProjection smp, ColorProcessor ip) {
+		Point2f polar = new Point2f();
+		Point2D.Double out = new Point2D.Double();
+		int[] colors = new int[smp.getSphere().nVertices];
+		int idx = 0;
+		for(Point3f v : smp.getSphere().getVertices()) {
+			smp.getPolar(v, polar);
+			projection.transformRadians(polar.x, polar.y, out);
+			int x = (int)out.x - minx;
+			int y = maxy - (int)out.y;
+
+			colors[idx++] = ip.get(x, y);
+		}
+		return colors;
+	}
+
+
 	public static void savePath(GeneralPath path, String file, int w, int h, boolean fill) throws IOException {
+		// path = filter(path);
+
 		PrintWriter out = new PrintWriter(new FileWriter(file));
 		out.println("%%!PS-Adobe-1.0");
 		out.println("%%%%BoundingBox: 0 0 " + w + " " + h);
@@ -282,12 +402,19 @@ public class GeneralProjProjection {
 
 		PathIterator it = path.getPathIterator(null);
 		float[] seg = new float[6];
+		int px = 0, py = 0;
 		while(!it.isDone()) {
 			int l = it.currentSegment(seg);
-			if(l == PathIterator.SEG_MOVETO)
-				out.println(seg[0] + " " + seg[1] + " moveto");
+			int x = Math.round(seg[0]);
+			int y = Math.round(seg[1]);
+			double d = Math.sqrt((px - x) * (px - x) + (py - y) * (py - y));
+
+			if(l == PathIterator.SEG_MOVETO || d > 15)
+				out.println(x + " " + y + " moveto");
 			else
-				out.println(seg[0] + " " + seg[1] + " lineto");
+				out.println(x + " " + y + " lineto");
+			px = x;
+			py = y;
 			it.next();
 		}
 		out.println("1 setcolor");
@@ -299,7 +426,7 @@ public class GeneralProjProjection {
 	}
 
 	public ImageProcessor project(short[] maxima) {
-		FloatProcessor ip = new FloatProcessor(w, h);
+		ShortProcessor ip = new ShortProcessor(w, h);
 		for(int y = 0; y < h; y++) {
 			for(int x = 0; x < w; x++) {
 				int index = y * w + x;
