@@ -67,12 +67,6 @@ public class FullerProjection extends GeneralProjProjection {
 	}
 
 	@Override
-	public void prepareForProjection(SphericalMaxProjection smp) {
-		float globeRadius = 300f;
-		int w = (int)Math.round(2 * Math.PI * globeRadius);
-		prepareForProjection(smp, w);
-	}
-
 	public void prepareForProjection(SphericalMaxProjection smp, int w) {
 		this.smp = smp;
 		this.w = w;
