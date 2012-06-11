@@ -28,15 +28,17 @@ import customnode.CustomTriangleMesh;
 public class CustomContent extends Content {
 
 	private final CustomIndexedTriangleMesh mesh;
-	public final String[] files;
+	public final File[] files;
 
 	private float displayedMaximum = 0;
 	private float displayedMinimum = 0;
 
 	private final SphericalMaxProjection smp;
 
+	private int currentIdx = 0;
+
 	private boolean showMaxima = false;
-	private boolean showAsColor = false;
+	private boolean showColorOverlay = false;
 
 	private float maximaThreshold = Spherical_Max_Projection.FIT_SPHERE_THRESHOLD;
 
@@ -45,19 +47,17 @@ public class CustomContent extends Content {
 		super("bla", 0);
 		smp = new SphericalMaxProjection(objfile);
 
-		List<String> tmp = new ArrayList<String>();
-		tmp.addAll(Arrays.asList(new File(vertexDir).list()));
+		List<File> tmp = new ArrayList<File>();
+		tmp.addAll(Arrays.asList(new File(vertexDir).listFiles()));
 		for(int i = tmp.size() - 1; i >= 0; i--) {
-			String name = tmp.get(i);
+			String name = tmp.get(i).getName();
 			if(!name.endsWith(".vertices"))
 				tmp.remove(i);
 			else if(filenameContains != null && !name.contains(filenameContains))
 				tmp.remove(i);
 		}
-		this.files = new String[tmp.size()];
+		this.files = new File[tmp.size()];
 		tmp.toArray(files);
-		for(int i = 0; i < files.length; i++)
-			files[i] = vertexDir + File.separator + files[i];
 		Arrays.sort(files);
 
 		int nVertices = smp.getSphere().nVertices;
@@ -66,7 +66,7 @@ public class CustomContent extends Content {
 			colors[i] = new Color3f(0, 1, 0);
 
 		try {
-			readColors(files[0], colors);
+			readColors(files[0]);
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot load " + files[0], e);
 		}
@@ -78,10 +78,12 @@ public class CustomContent extends Content {
 
 		displayedMinimum = getCurrentMinimum();
 		displayedMaximum = getCurrentMaximum();
+
+		updateDisplayRange();
 	}
 
 	public String getCurrentFile() {
-		return files[getCurrent().getTimepoint()];
+		return files[currentIdx].getAbsolutePath();
 	}
 
 	public boolean areMaximaShown() {
@@ -94,11 +96,11 @@ public class CustomContent extends Content {
 	}
 
 	public boolean isShowAsColor() {
-		return showAsColor;
+		return showColorOverlay;
 	}
 
 	public void toggleShowAsColor() {
-		showAsColor = !showAsColor;
+		showColorOverlay = !showColorOverlay;
 		updateDisplayRange();
 	}
 
@@ -158,16 +160,43 @@ public class CustomContent extends Content {
 	private void updateDisplayRange() {
 		short[] maxima = smp.getMaxima();
 		boolean[] isMax = smp.isMaximum();
+		int[] overlay = null;
+		if(showColorOverlay) {
+			File cf = files[currentIdx];
+			File colorfile = new File(new File(cf.getParentFile(), "contributions"), cf.getName());
+			if(!colorfile.exists())
+				colorfile = new File(cf.getParentFile(), "contributions.vertices");
+			if(colorfile.exists()) {
+				try {
+					System.out.println("Loading " + colorfile.getAbsolutePath());
+					overlay = SphericalMaxProjection.loadIntData(colorfile.getAbsolutePath(), maxima.length);
+				} catch(IOException e) {
+					e.printStackTrace();
+					showColorOverlay = false;
+				}
+			}
+		}
+
 		for(int i = 0; i < mesh.colors.length; i++) {
 			float m = maxima[i] & 0xffff;
 			if(showMaxima && isMax[i] && m > maximaThreshold)
 				mesh.colors[i].set(1, 0, 0);
 			else {
-				if(showAsColor) {
-					// TODO
-					// mesh.colors[i].set(new java.awt.Color(Float.floatToIntBits(v)));
+				m = (m - displayedMinimum) / (displayedMaximum - displayedMinimum);
+				if(showColorOverlay) {
+					int rgb = overlay[i];
+					int r = (rgb & 0xff0000) >> 16;
+					int g = (rgb & 0xff00) >> 8;
+					int b = (rgb & 0xff);
+
+					double v = 255 * m;
+					double c = 1 - (1/2.0 + m/2.0);
+					r = Math.min(255 , (int)Math.round((c * r) + (1-c) * v));
+					g = Math.min(255 , (int)Math.round((c * g) + (1-c) * v));
+					b = Math.min(255 , (int)Math.round((c * b) + (1-c) * v));
+
+					mesh.colors[i].set(r / 255f, g / 255f, b / 255f);
 				} else {
-					m = (m - displayedMinimum) / (displayedMaximum - displayedMinimum);
 					mesh.colors[i].set(m, m, m);
 				}
 			}
@@ -175,14 +204,8 @@ public class CustomContent extends Content {
 		setColors(mesh.colors);
 	}
 
-	void readColors(String file, Color3f[] colors) throws IOException {
-		smp.loadMaxima(file);
-		short[] maxima = smp.getMaxima();
-		for(int i = 0; i < colors.length; i++) {
-			float v = maxima[i] & 0xffff;
-			v = (v - displayedMinimum) / (displayedMaximum - displayedMinimum);
-			colors[i].set(v, v, v);
-		}
+	void readColors(File file) throws IOException {
+		smp.loadMaxima(file.getAbsolutePath());
 	}
 
 	public void setColors(Color3f[] colors) {
@@ -218,8 +241,8 @@ public class CustomContent extends Content {
 
 	@Override public ContentInstant getInstant(int t) {
 		try {
-			readColors(files[t], mesh.colors);
-			setColors(mesh.colors);
+			readColors(files[t]);
+			updateDisplayRange();
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot load " + files[t], e);
 		}
@@ -232,8 +255,9 @@ public class CustomContent extends Content {
 
 	@Override public void showTimepoint(int t) {
 		try {
-			readColors(files[t], mesh.colors);
-			setColors(mesh.colors);
+			currentIdx = t;
+			readColors(files[t]);
+			updateDisplayRange();
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot load " + files[t], e);
 		}
