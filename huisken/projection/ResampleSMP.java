@@ -69,6 +69,9 @@ public class ResampleSMP implements PlugIn {
 				return;
 		}
 		outf.mkdir();
+		File contin = new File(dataf, "contributions");
+		File contout = new File(outf, "contributions");
+		contout.mkdir();
 		SphericalMaxProjection.saveSphere(sphere, new File(outf, "Sphere.obj").getAbsolutePath());
 
 		IJ.showStatus("Resampling timepoints");
@@ -76,8 +79,14 @@ public class ResampleSMP implements PlugIn {
 		for(int i = 0; i < files.length; i++) {
 			File file = files[i];
 			String name = file.getName();
-			if(!name.endsWith(".vertices"))
+			if(!name.endsWith(".vertices") || !name.startsWith("tp"))
 				continue;
+			File outfile = new File(outf, name);
+			if(outfile.exists())
+				continue;
+
+			IJ.showProgress(i+1, files.length);
+
 			smp.loadMaxima(file.getAbsolutePath());
 			for(int j = 0; j < f; j++)
 				smp.smooth();
@@ -86,8 +95,25 @@ public class ResampleSMP implements PlugIn {
 			for(int j = 0; j < indices.length; j++)
 				maxima[j] = smp.getMaxima()[indices[j]];
 
-			SphericalMaxProjection.saveShortData(maxima, new File(outf, name).getAbsolutePath());
-			IJ.showProgress(i+1, files.length);
+			SphericalMaxProjection.saveShortData(maxima, outfile.getAbsolutePath());
+
+			File contfile = new File(contin, name);
+			if(!contfile.exists())
+				continue;
+			int[] overlayold = SphericalMaxProjection.loadIntData(contfile.getAbsolutePath(), smp.getSphere().nVertices);
+			int[] overlaynew = new int[sphere.nVertices];
+			for(int j = 0; j < indices.length; j++)
+				overlaynew[j] = overlayold[indices[j]];
+			SphericalMaxProjection.saveIntData(overlaynew, new File(contout, name).getAbsolutePath());
 		}
+
+		File contfile = new File(dataf, "contributions.vertices");
+		if(!contfile.exists())
+			return;
+		int[] overlayold = SphericalMaxProjection.loadIntData(contfile.getAbsolutePath(), smp.getSphere().nVertices);
+		int[] overlaynew = new int[sphere.nVertices];
+		for(int j = 0; j < indices.length; j++)
+			overlaynew[j] = overlayold[indices[j]];
+		SphericalMaxProjection.saveIntData(overlaynew, new File(outf, "contributions.vertices").getAbsolutePath());
 	}
 }
