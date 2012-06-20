@@ -202,7 +202,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 						for(int f = 0; f < d2; f++) {
 							at.AT_NextFrame(toProcess);
 							cameraAcquiring = true;
-							if(a == 0 && f == 0)
+							if(f == 0)
 								start = System.currentTimeMillis();
 
 
@@ -212,9 +212,9 @@ public class TwoCamera_MaxProjection implements PlugIn {
 						}
 						at.AT_Command("AcquisitionStop");
 						cameraAcquiring = false;
+						long end = System.currentTimeMillis();
+						System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
 					}
-					long end = System.currentTimeMillis();
-					System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
 				}
 			}
 		});
