@@ -3,6 +3,9 @@ package huisken.projection.viz;
 import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
 import ij.gui.GenericDialog;
+import ij.io.OpenDialog;
+import ij.io.SaveDialog;
+import ij.plugin.LutLoader;
 import ij.plugin.PlugIn;
 import ij3d.Image3DUniverse;
 import ij3d.behaviors.InteractiveBehavior;
@@ -13,6 +16,7 @@ import java.awt.event.TextEvent;
 import java.awt.event.TextListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.image.IndexColorModel;
 import java.io.File;
 import java.io.IOException;
 
@@ -117,6 +121,11 @@ public class SphereProjectionViewer implements PlugIn {
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_S) {
 				cc.smooth();
 			}
+			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_F) {
+				double f = IJ.getNumber("Elevation factor", cc.getElevationFactor());
+				if(f != IJ.CANCELED)
+					cc.setElevationFactor((float)f);
+			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_M) {
 				if(!cc.areMaximaShown()) {
 					float th = cc.getMaximaThreshold();
@@ -139,6 +148,34 @@ public class SphereProjectionViewer implements PlugIn {
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_O) {
 				cc.toggleShowAsColor();
+			}
+			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_E) {
+				OpenDialog od = new OpenDialog("Open LUT", "luts", "elevation.lut");
+				String path = new File(od.getDirectory(), od.getFileName()).getAbsolutePath();
+				IndexColorModel cm = null;
+				try {
+					cm = LutLoader.open(path);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+				byte[] r = new byte[256];
+				byte[] g = new byte[256];
+				byte[] b = new byte[256];
+				cm.getReds(r);
+				cm.getGreens(g);
+				cm.getBlues(b);
+				byte[][] lut = new byte[][] {r, g, b};
+				cc.setLUT(lut);
+			}
+			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_P) {
+				SaveDialog od = new SaveDialog("Save as PLY", "", ".ply");
+				String path = new File(od.getDirectory(), od.getFileName()).getAbsolutePath();
+				try {
+					cc.exportToPLY(path);
+				} catch(Exception ex) {
+					ex.printStackTrace();
+					IJ.error(ex.getMessage());
+				}
 			}
 		}
 	}

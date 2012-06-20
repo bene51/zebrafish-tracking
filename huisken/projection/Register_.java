@@ -2,7 +2,6 @@ package huisken.projection;
 
 import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
-import ij.ImagePlus;
 import ij.Prefs;
 import ij.plugin.PlugIn;
 import ij.plugin.filter.GaussianBlur;
@@ -11,11 +10,9 @@ import ij.process.ImageProcessor;
 import java.awt.Polygon;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,171 +42,137 @@ public class Register_ implements PlugIn {
 		Prefs.savePreferences();
 
 		try {
-			register(datadir, outputdir);
+			prepareRegistration(new File(datadir), new File(outputdir));
+			register();
 		} catch(Exception e) {
 		IJ.error(e.getMessage());
 			e.printStackTrace();
 		}
 	}
 
-	public void createFullerProjection(SphericalMaxProjection smp, String datadir) throws IOException {
-		File outputdir = new File(datadir, "fuller");
-		if(outputdir.exists()) {
-			boolean cancelled = !IJ.showMessageWithCancel("Recalculate Fuller projection?", "Recalculate Fuller projection?");
-			if(cancelled)
-				return;
-		} else {
-			outputdir.mkdirs();
+	private static ArrayList<Point3f> getPoints(FullerProjection proj, GaussianBlur gauss, short[] maxima) {
+		ImageProcessor fuller = proj.project(maxima);
+		gauss.blur(fuller, 1.5);
+		Polygon pt = new MaximumFinder().getMaxima(fuller, 10, true);
+
+		ArrayList<Point3f> pts = new ArrayList<Point3f>();
+		for(int i = 0; i < pt.npoints; i++) {
+			int x = pt.xpoints[i];
+			int y = pt.ypoints[i];
+
+			Point3f ptmp = new Point3f();
+			if(proj.getPointOnSphere(x, y, ptmp))
+				pts.add(ptmp);
 		}
-
-		int w = 1000;
-
-		FullerProjection proj = new FullerProjection();
-		proj.prepareForProjection(smp, w);
-
-		GaussianBlur gauss = new GaussianBlur();
-
-		for(File file : new File(datadir).listFiles()) {
-			String filename = file.getName();
-			if(!filename.startsWith("tp") || !filename.endsWith(".vertices"))
-				continue;
-
-			smp.loadMaxima(file.getAbsolutePath());
-			filename = filename.substring(0, filename.length() - 9) + ".tif";
-			ImageProcessor fuller = proj.project(smp.getMaxima());
-			IJ.save(new ImagePlus("", fuller), new File(outputdir, filename).getAbsolutePath());
-
-			gauss.blur(fuller, 1.5);
-			Polygon pt = new MaximumFinder().getMaxima(fuller, 10, true);
-
-			ArrayList<Point3f> pts = new ArrayList<Point3f>();
-			for(int i = 0; i < pt.npoints; i++) {
-				int x = pt.xpoints[i];
-				int y = pt.ypoints[i];
-
-				Point3f ptmp = new Point3f();
-				if(proj.getPointOnSphere(x, y, ptmp))
-					pts.add(ptmp);
-			}
-			filename = file.getName();
-			filename = filename.substring(0, filename.length() - 9) + ".pts";
-			savePoints(pts, new File(outputdir, filename));
-		}
+		return pts;
 	}
 
-	private void savePoints(ArrayList<Point3f> pts, File outfile) throws IOException {
-		PrintStream out = new PrintStream(new FileOutputStream(outfile));
-		for(Point3f p : pts)
-			out.println(p.x + " " + p.y + " " + p.z);
-		out.close();
-	}
+	private SphericalMaxProjection smp;
+	private int nVertices;
+	private FullerProjection proj;
+	private GaussianBlur gauss;
+	private Matrix4f overall;
+	private File outputDirectory, dataDirectory, contributionsDirectory, matrixDirectory;
+	private int[] contributions;
 
-	private ArrayList<Point3f> loadPoints(File file) throws IOException {
-		BufferedReader in = new BufferedReader(new FileReader(file));
-		String line = null;
-		ArrayList<Point3f> list = new ArrayList<Point3f>();
-		while((line = in.readLine()) != null) {
-			String[] toks = line.split(" ");
-			list.add(new Point3f(Float.parseFloat(toks[0]), Float.parseFloat(toks[1]), Float.parseFloat(toks[2])));
-		}
-		return list;
-	}
-
-	public void register(String dataDirectory, String outputDirectory) throws IOException {
-		// check and create files and folders
-		if(!new File(dataDirectory).isDirectory())
-			throw new IllegalArgumentException(dataDirectory + " is not a directory");
-
-		File outputdir = new File(outputDirectory);
-		if(outputdir.isDirectory() && outputdir.list().length > 0) {
-			boolean cancelled = !IJ.showMessageWithCancel("Overwrite",
-					outputdir + " already exists. Overwrite?");
-			if(cancelled)
-				return;
-		} else {
-			outputdir.mkdir();
-		}
+	public void prepareRegistration(File dDir, File oDir) throws IOException {
+		this.dataDirectory = dDir;
+		this.outputDirectory = oDir;
+		if(!outputDirectory.exists())
+			outputDirectory.mkdir();
 
 		File objfile = new File(dataDirectory, "Sphere.obj");
 		if(!objfile.exists())
 			throw new IllegalArgumentException("Cannot find " + objfile.getAbsolutePath());
 
+		this.contributionsDirectory = new File(outputDirectory, "contributions");
+		contributionsDirectory.mkdir();
+		this.matrixDirectory = new File(outputDirectory, "transformations");
+		matrixDirectory.mkdir();
 
-		if(!dataDirectory.endsWith(File.separator))
-			dataDirectory += File.separator;
-		if(!outputDirectory.endsWith(File.separator))
-			outputDirectory += File.separator;
-		String contributionsDirectory = outputDirectory + File.separator + "contributions" + File.separator;
-		new File(contributionsDirectory).mkdir();
-		String matrixDirectory = outputDirectory + File.separator + "transformations" + File.separator;
-		new File(matrixDirectory).mkdir();
+		this.smp = new SphericalMaxProjection(objfile.getAbsolutePath());
+		this.nVertices = smp.getSphere().nVertices;
+		smp.saveSphere(new File(outputDirectory, "Sphere.obj").getAbsolutePath());
 
-		SphericalMaxProjection src = new SphericalMaxProjection(objfile.getAbsolutePath());
-		createFullerProjection(src, dataDirectory);
 
+		contributions = SphericalMaxProjection.loadIntData(new File(dataDirectory, "contributions.vertices").getAbsolutePath(), nVertices);
+
+		this.proj = new FullerProjection();
+		proj.prepareForProjection(smp, 1000);
+		this.gauss = new GaussianBlur();
+
+		this.overall = new Matrix4f();
+		overall.setIdentity();
+	}
+
+	private ArrayList<Point3f> tgtPts;
+
+	public void registerTimepoint(int tp) throws IOException {
+		String basename = String.format("tp%04d", tp);
+		File outputfile = new File(outputDirectory, basename + ".vertices");
+		File contributionsfile = new File(contributionsDirectory, basename + ".vertices");
+		System.out.println("reg: src = " + new File(dataDirectory, basename + ".vertices").getAbsolutePath());
+		short[] maxima = SphericalMaxProjection.loadShortData(new File(dataDirectory, basename + ".vertices").getAbsolutePath(), nVertices);
+
+		if(tp == 0) {
+			SphericalMaxProjection.saveShortData(maxima, outputfile.getAbsolutePath());
+			System.out.println("reg: tgt = " + outputfile.getAbsolutePath());
+			SphericalMaxProjection.saveIntData(contributions, contributionsfile.getAbsolutePath());
+			tgtPts = getPoints(proj, gauss, maxima);
+			return;
+		}
+
+		ArrayList<Point3f> nextTgtPts = null, srcPts = null;
+		String matName = basename + ".matrix";
+		if(!new File(matrixDirectory, matName).exists()) {
+
+			srcPts = getPoints(proj, gauss, maxima);
+			if(tgtPts == null) {
+				short[] pmaxima = SphericalMaxProjection.loadShortData(new File(dataDirectory, String.format("tp%04d", tp-1) + ".vertices").getAbsolutePath(), nVertices);
+				tgtPts = getPoints(proj, gauss, pmaxima);
+			}
+
+			// make a deep copy of src points, to be used as target points for the next iteration
+			nextTgtPts = new ArrayList<Point3f>(srcPts.size());
+			for(Point3f p : srcPts)
+				nextTgtPts.add(new Point3f(p));
+
+			Matrix4f mat = new Matrix4f();
+			mat.setIdentity();
+			ICPRegistration.register(tgtPts, srcPts, mat, smp.center);
+			overall.mul(mat);
+			saveTransform(overall, new File(matrixDirectory, matName).getAbsolutePath());
+		} else {
+			overall = loadTransform(new File(matrixDirectory, matName).getAbsolutePath());
+		}
+
+		if(!outputfile.exists()) {
+			maxima = smp.applyTransform(overall, maxima);
+			SphericalMaxProjection.saveShortData(maxima, outputfile.getAbsolutePath());
+		}
+
+		if(!contributionsfile.exists()) {
+			int[] con = smp.applyTransformNearestNeighbor(overall, contributions);
+			SphericalMaxProjection.saveIntData(con, contributionsfile.getAbsolutePath());
+		}
+
+		tgtPts = nextTgtPts;
+	}
+
+	public void register() throws IOException {
 		// obtain list of local maxima files
 		List<String> tmp = new ArrayList<String>();
-		File fullerDir = new File(dataDirectory, "fuller");
-		tmp.addAll(Arrays.asList(fullerDir.list()));
-		for(int i = tmp.size() - 1; i >= 0; i--)
-			if(!tmp.get(i).endsWith(".pts"))
-				tmp.remove(i);
+		for(String f : dataDirectory.list())
+			if(f.startsWith("tp") && f.endsWith(".vertices"))
+				tmp.add(f);
 		String[] files = new String[tmp.size()];
 		tmp.toArray(files);
 		Arrays.sort(files);
 
-		// load spherical maximum projection for source
-		src.saveSphere(outputDirectory + "Sphere.obj");
-		String vName = files[0].substring(0, files[0].lastIndexOf('.')) + ".vertices";
-		src.loadMaxima(dataDirectory + vName);
-		src.saveMaxima(outputDirectory + vName);
-
-		Matrix4f overall = new Matrix4f();
-		overall.setIdentity();
-
-		ArrayList<Point3f> tgtPts = loadPoints(new File(fullerDir, files[0]));
-		int[] contrib = SphericalMaxProjection.loadIntData(dataDirectory + "contributions.vertices",
-					src.getSphere().nVertices);
-		SphericalMaxProjection.saveIntData(contrib, contributionsDirectory + vName);
-
 		// register
-		for(int i = 1; i < files.length; i++) {
-			System.out.println(files[i]);
-			ArrayList<Point3f> nextTgtPts = null, srcPts = null;
-
-			String matName = files[i].substring(0, files[i].lastIndexOf('.')) + ".matrix";
-			if(!new File(matrixDirectory, matName).exists()) {
-
-				srcPts = loadPoints(new File(fullerDir, files[i]));
-
-				// make a deep copy of src points, to be used as target points for the next iteration
-				nextTgtPts = new ArrayList<Point3f>(srcPts.size());
-				for(Point3f p : srcPts)
-					nextTgtPts.add(new Point3f(p));
-
-				Matrix4f mat = new Matrix4f();
-				mat.setIdentity();
-				ICPRegistration.register(tgtPts, srcPts, mat, src.center);
-				overall.mul(mat);
-
-				saveTransform(overall, matrixDirectory + matName);
-			} else {
-				overall = loadTransform(matrixDirectory + matName);
-			}
-
-			vName = files[i].substring(0, files[i].lastIndexOf('.')) + ".vertices";
-			if(!new File(outputDirectory, vName).exists()) {
-				src.loadMaxima(dataDirectory + vName);
-				src.applyTransform(overall);
-				src.saveMaxima(outputDirectory + vName);
-			}
-
-			if(!new File(contributionsDirectory, vName).exists()) {
-				int[] con = src.applyTransformNearestNeighbor(overall, contrib);
-				SphericalMaxProjection.saveIntData(con, contributionsDirectory + vName);
-			}
-
-			tgtPts = nextTgtPts;
+		for(int i = 0; i < files.length; i++) {
+			int tp = Integer.parseInt(files[i].substring(2, 6));
+			registerTimepoint(tp);
 			IJ.showProgress(i, files.length);
 		}
 		IJ.showProgress(1);

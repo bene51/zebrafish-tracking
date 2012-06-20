@@ -378,6 +378,12 @@ public class SphericalMaxProjection {
 		applyInverseTransform(inverse);
 	}
 
+	public short[] applyTransform(Matrix4f matrix, short[] data) {
+		Matrix4f inverse = new Matrix4f(matrix);
+		inverse.invert();
+		return applyInverseTransform(inverse, data);
+	}
+
 	public int[] applyTransformNearestNeighbor(Matrix4f matrix, int[] data) {
 		Matrix4f inverse = new Matrix4f(matrix);
 		inverse.invert();
@@ -385,7 +391,7 @@ public class SphericalMaxProjection {
 	}
 
 	public int[] applyInverseTransformNearestNeighbor(final Matrix4f inverse, final int[] data) {
-		final int[] newmaxima = new int[maxima.length];
+		final int[] newmaxima = new int[sphere.nVertices];
 		final Point3f[] vertices = sphere.getVertices();
 
 		final int nProcessors = Runtime.getRuntime().availableProcessors();
@@ -417,7 +423,7 @@ public class SphericalMaxProjection {
 		return newmaxima;
 	}
 
-	public void applyInverseTransform(final Matrix4f inverse) {
+	public short[] applyInverseTransform(final Matrix4f inverse, final short[] data) {
 		final short[] newmaxima = new short[sphere.nVertices];
 		final Point3f[] vertices = sphere.getVertices();
 
@@ -436,7 +442,7 @@ public class SphericalMaxProjection {
 					for(int i = start; i < end; i++) {
 						p.set(vertices[i]);
 						inverse.transform(p);
-						newmaxima[i] = (short)getInterpolatedValue(p);
+						newmaxima[i] = (short)getInterpolatedValue(p, data);
 					}
 				}
 			});
@@ -447,7 +453,11 @@ public class SphericalMaxProjection {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		maxima = newmaxima;
+		return newmaxima;
+	}
+
+	public void applyInverseTransform(final Matrix4f inverse) {
+		maxima = applyInverseTransform(inverse, maxima);
 	}
 
 	public void prepareForProjection(final int w, final int h, final int d, final double pw, final double ph, final double pd, final FusionWeight weighter) {
@@ -621,6 +631,10 @@ public class SphericalMaxProjection {
 	}
 
 	public float getInterpolatedValue(Point3f p) {
+		return getInterpolatedValue(p, maxima);
+	}
+
+	public float getInterpolatedValue(Point3f p, short[] maxima) {
 		// get three nearest neighbors
 		int[] nn = new int[3];
 		getThreeNearestVertexIndices(p, nn);

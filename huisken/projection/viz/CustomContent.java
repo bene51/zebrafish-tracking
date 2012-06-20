@@ -7,7 +7,9 @@ import ij3d.ContentInstant;
 
 import java.awt.Polygon;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,15 +30,20 @@ import customnode.CustomTriangleMesh;
 public class CustomContent extends Content {
 
 	private final CustomIndexedTriangleMesh mesh;
-	public final String[] files;
+	public final File[] files;
 
 	private float displayedMaximum = 0;
 	private float displayedMinimum = 0;
 
+	private float elevationFactor = 0.00001f;
+
 	private final SphericalMaxProjection smp;
 
+	private int currentIdx = 0;
+
 	private boolean showMaxima = false;
-	private boolean showAsColor = false;
+	private boolean showColorOverlay = false;
+	private byte[][] lut = null;
 
 	private float maximaThreshold = Spherical_Max_Projection.FIT_SPHERE_THRESHOLD;
 
@@ -45,19 +52,17 @@ public class CustomContent extends Content {
 		super("bla", 0);
 		smp = new SphericalMaxProjection(objfile);
 
-		List<String> tmp = new ArrayList<String>();
-		tmp.addAll(Arrays.asList(new File(vertexDir).list()));
+		List<File> tmp = new ArrayList<File>();
+		tmp.addAll(Arrays.asList(new File(vertexDir).listFiles()));
 		for(int i = tmp.size() - 1; i >= 0; i--) {
-			String name = tmp.get(i);
+			String name = tmp.get(i).getName();
 			if(!name.endsWith(".vertices"))
 				tmp.remove(i);
 			else if(filenameContains != null && !name.contains(filenameContains))
 				tmp.remove(i);
 		}
-		this.files = new String[tmp.size()];
+		this.files = new File[tmp.size()];
 		tmp.toArray(files);
-		for(int i = 0; i < files.length; i++)
-			files[i] = vertexDir + File.separator + files[i];
 		Arrays.sort(files);
 
 		int nVertices = smp.getSphere().nVertices;
@@ -66,7 +71,7 @@ public class CustomContent extends Content {
 			colors[i] = new Color3f(0, 1, 0);
 
 		try {
-			readColors(files[0], colors);
+			readColors(files[0]);
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot load " + files[0], e);
 		}
@@ -78,10 +83,29 @@ public class CustomContent extends Content {
 
 		displayedMinimum = getCurrentMinimum();
 		displayedMaximum = getCurrentMaximum();
+
+		updateDisplayRange();
+	}
+
+	public void exportToPLY(String path) throws IOException {
+		mesh.createNormalizedVersion(smp.getCenter(), smp.getRadius()).exportToPLY(path);
+	}
+
+	public void setElevationFactor(float f) {
+		this.elevationFactor = f;
+	}
+
+	public float getElevationFactor() {
+		return elevationFactor;
+	}
+
+	public void setLUT(byte[][] lut) {
+		this.lut = lut;
+		updateDisplayRange();
 	}
 
 	public String getCurrentFile() {
-		return files[getCurrent().getTimepoint()];
+		return files[currentIdx].getAbsolutePath();
 	}
 
 	public boolean areMaximaShown() {
@@ -94,11 +118,11 @@ public class CustomContent extends Content {
 	}
 
 	public boolean isShowAsColor() {
-		return showAsColor;
+		return showColorOverlay;
 	}
 
 	public void toggleShowAsColor() {
-		showAsColor = !showAsColor;
+		showColorOverlay = !showColorOverlay;
 		updateDisplayRange();
 	}
 
@@ -158,31 +182,66 @@ public class CustomContent extends Content {
 	private void updateDisplayRange() {
 		short[] maxima = smp.getMaxima();
 		boolean[] isMax = smp.isMaximum();
+		int[] overlay = null;
+		if(showColorOverlay) {
+			File cf = files[currentIdx];
+			File colorfile = new File(new File(cf.getParentFile(), "contributions"), cf.getName());
+			if(!colorfile.exists())
+				colorfile = new File(cf.getParentFile(), "contributions.vertices");
+			if(colorfile.exists()) {
+				try {
+					System.out.println("Loading " + colorfile.getAbsolutePath());
+					overlay = SphericalMaxProjection.loadIntData(colorfile.getAbsolutePath(), maxima.length);
+				} catch(IOException e) {
+					e.printStackTrace();
+					showColorOverlay = false;
+				}
+			}
+		}
+
+		Point3f[] newvertices = new Point3f[smp.getSphere().nVertices];
 		for(int i = 0; i < mesh.colors.length; i++) {
 			float m = maxima[i] & 0xffff;
 			if(showMaxima && isMax[i] && m > maximaThreshold)
 				mesh.colors[i].set(1, 0, 0);
 			else {
-				if(showAsColor) {
-					// TODO
-					// mesh.colors[i].set(new java.awt.Color(Float.floatToIntBits(v)));
-				} else {
-					m = (m - displayedMinimum) / (displayedMaximum - displayedMinimum);
+				m = (m - displayedMinimum) / (displayedMaximum - displayedMinimum);
+				if(m < 0) m = 0;
+				if(m > 1) m = 1;
+				newvertices[i] = new Point3f(
+					smp.getCenter().x + (1 + elevationFactor * m) * (mesh.vertices[i].x - smp.getCenter().x),
+					smp.getCenter().y + (1 + elevationFactor * m) * (mesh.vertices[i].y - smp.getCenter().y),
+					smp.getCenter().z + (1 + elevationFactor * m) * (mesh.vertices[i].z - smp.getCenter().z));
+				if(showColorOverlay) {
+					int rgb = overlay[i];
+					int r = (rgb & 0xff0000) >> 16;
+					int g = (rgb & 0xff00) >> 8;
+					int b = (rgb & 0xff);
+
+					double v = 255 * m;
+					double c = 1 - (1/2.0 + m/2.0);
+					r = Math.min(255 , (int)Math.round((c * r) + (1-c) * v));
+					g = Math.min(255 , (int)Math.round((c * g) + (1-c) * v));
+					b = Math.min(255 , (int)Math.round((c * b) + (1-c) * v));
+
+					mesh.colors[i].set(r / 255f, g / 255f, b / 255f);
+				} else if(lut == null) {
 					mesh.colors[i].set(m, m, m);
+				} else {
+					int idx = Math.round(m * 255);
+					int rv = lut[0][idx] & 0xff;
+					int gv = lut[1][idx] & 0xff;
+					int bv = lut[2][idx] & 0xff;
+					mesh.colors[i].set(rv / 255f, gv / 255f, bv / 255f);
 				}
 			}
 		}
+		((IndexedTriangleArray)mesh.getGeometry()).setCoordinates(0, newvertices);
 		setColors(mesh.colors);
 	}
 
-	void readColors(String file, Color3f[] colors) throws IOException {
-		smp.loadMaxima(file);
-		short[] maxima = smp.getMaxima();
-		for(int i = 0; i < colors.length; i++) {
-			float v = maxima[i] & 0xffff;
-			v = (v - displayedMinimum) / (displayedMaximum - displayedMinimum);
-			colors[i].set(v, v, v);
-		}
+	void readColors(File file) throws IOException {
+		smp.loadMaxima(file.getAbsolutePath());
 	}
 
 	public void setColors(Color3f[] colors) {
@@ -218,8 +277,8 @@ public class CustomContent extends Content {
 
 	@Override public ContentInstant getInstant(int t) {
 		try {
-			readColors(files[t], mesh.colors);
-			setColors(mesh.colors);
+			readColors(files[t]);
+			updateDisplayRange();
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot load " + files[t], e);
 		}
@@ -232,8 +291,9 @@ public class CustomContent extends Content {
 
 	@Override public void showTimepoint(int t) {
 		try {
-			readColors(files[t], mesh.colors);
-			setColors(mesh.colors);
+			currentIdx = t;
+			readColors(files[t]);
+			updateDisplayRange();
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot load " + files[t], e);
 		}
@@ -270,6 +330,53 @@ public class CustomContent extends Content {
 			this.colors = colors;
 			this.faces = faces;
 			update();
+		}
+
+		CustomIndexedTriangleMesh createNormalizedVersion(Point3f center, float radius) {
+			Point3f[] nvertices = new Point3f[vertices.length];
+			for(int i = 0; i < nvertices.length; i++)
+				nvertices[i] = new Point3f();
+			((IndexedTriangleArray)getGeometry()).getCoordinates(0, nvertices);
+
+			for(int i = 0; i < vertices.length; i++) {
+				nvertices[i].set(
+					(nvertices[i].x - center.x) / radius,
+					(nvertices[i].y - center.y) / radius,
+					(nvertices[i].z - center.z) / radius);
+			}
+			return new CustomIndexedTriangleMesh(nvertices, colors, faces);
+		}
+
+		public void exportToPLY(String path) throws IOException {
+			PrintStream out = new PrintStream(new FileOutputStream(path));
+			out.println("ply");
+			out.println("format ascii 1.0");
+			out.println("element vertex " + vertices.length);
+			out.println("property float x");
+			out.println("property float y");
+			out.println("property float z");
+			out.println("property uchar red");
+			out.println("property uchar green");
+			out.println("property uchar blue");
+			out.println("element face " + (faces.length / 3));
+			out.println("property list uchar int vertex_index");
+			out.println("end_header");
+			for(int i = 0; i < vertices.length; i++) {
+				Point3f v = vertices[i];
+				Color3f c = colors[i];
+				int r = Math.round(255 * c.x);
+				int g = Math.round(255 * c.y);
+				int b = Math.round(255 * c.z);
+				out.println(v.x + " " + v.y + " " + v.z + " " + r + " " + g + " " + b);
+			}
+			int fl = faces.length / 3;
+			for(int i = 0; i < fl; i++) {
+				int f1 = faces[3 * i + 0];
+				int f2 = faces[3 * i + 1];
+				int f3 = faces[3 * i + 2];
+				out.println("3 " + f1 + " " + f2 + " " + f3);
+			}
+			out.close();
 		}
 
 		@Override
@@ -314,6 +421,7 @@ public class CustomContent extends Content {
 			ta.setCoordinateIndices(0, faces);
 			ta.setColorIndices(0, faces);
 
+			ta.setCapability(GeometryArray.ALLOW_COORDINATE_WRITE);
 			ta.setCapability(GeometryArray.ALLOW_COLOR_WRITE);
 			ta.setCapability(GeometryArray.ALLOW_INTERSECT);
 

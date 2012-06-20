@@ -24,6 +24,20 @@ public class TwoCameraFusion implements PlugIn {
 	private static final int CAMERA1 = TwoCameraSphericalMaxProjection.CAMERA1;
 	private static final int CAMERA2 = TwoCameraSphericalMaxProjection.CAMERA2;
 
+	private InputFolder inputdir;
+
+	private File outputdir;
+	private SphericalMaxProjection smp;
+	private FusionWeight[][][] weights;
+	private Matrix4f[] transforms;
+	private boolean saveOutput;
+	private int angleInc;
+	private int nAngles;
+
+	private static final String format = "tp%04d_a%04d_ill%d.vertices";
+	private static final boolean adjustModes = false;
+
+
 	@Override
 	public void run(String args) {
 		GenericDialogPlus gd = new GenericDialogPlus("Fuse from 2 cameras");
@@ -46,10 +60,6 @@ public class TwoCameraFusion implements PlugIn {
 		if(nAngles > 1) {
 			try {
 				transformations = TwoCameraSphericalMaxProjection.loadTransformations(transformationFile);
-				for(int i = 0; i < transformations.length; i++) {
-					System.out.println("transformation " + i);
-					System.out.println(transformations[i]);
-				}
 			} catch(IOException e) {
 				e.printStackTrace();
 			}
@@ -86,20 +96,10 @@ public class TwoCameraFusion implements PlugIn {
 //		if(gd.wasCanceled())
 //			return;
 
-//		colors[CAMERA1][LEFT] [0] = colors[CAMERA1][RIGHT][0] = 0xff0000;
-//		colors[CAMERA2][LEFT] [0] = colors[CAMERA2][RIGHT][0] = 0x00ff00;
-//		colors[CAMERA1][LEFT] [1] = colors[CAMERA1][RIGHT][1] = 0x00ffff;
-//		colors[CAMERA2][LEFT] [1] = colors[CAMERA2][RIGHT][1] = 0xff00ff;
-
 		colors[CAMERA1][LEFT] [0] = colors[CAMERA1][RIGHT][0] = new Color(206, 47, 42).getRGB();
 		colors[CAMERA2][LEFT] [0] = colors[CAMERA2][RIGHT][0] = new Color(241, 183, 51).getRGB();
 		colors[CAMERA1][LEFT] [1] = colors[CAMERA1][RIGHT][1] = new Color(162, 198, 231).getRGB();
 		colors[CAMERA2][LEFT] [1] = colors[CAMERA2][RIGHT][1] = new Color(42, 76, 149).getRGB();
-
-//		colors[CAMERA1][LEFT] [0] = colors[CAMERA1][RIGHT][0] = new Color(149, 79, 15).getRGB();
-//		colors[CAMERA2][LEFT] [0] = colors[CAMERA2][RIGHT][0] = new Color(215, 184, 103).getRGB();
-//		colors[CAMERA1][LEFT] [1] = colors[CAMERA1][RIGHT][1] = new Color(110, 196, 180).getRGB();
-//		colors[CAMERA2][LEFT] [1] = colors[CAMERA2][RIGHT][1] = new Color(8, 116, 93).getRGB();
 
 		try {
 			fuse(folder, nAngles, angleInc, transformations, adjustModes, colors, true);
@@ -109,25 +109,74 @@ public class TwoCameraFusion implements PlugIn {
 		}
 	}
 
-	private String inputdir;
-	private String outputdir;
-	private SphericalMaxProjection smp;
-	private FusionWeight[][][] weights;
-	private Matrix4f[] transforms;
-	private boolean saveOutput;
-	private int angleInc;
-	private int nAngles;
+	public static void fuse(String indir, int nAngles, int angleInc, final Matrix4f[] transformations, final  boolean adjustModes, int[][][] colors, boolean saveOutput) throws IOException {
+		if(!indir.endsWith(File.separator))
+			indir += File.separator;
+		final String inputdir = indir;
 
-	private static final String format = "tp%04d_a%04d_ill%d.vertices";
-	private static final boolean adjustModes = false;
+		final TwoCameraFusion tcf = new TwoCameraFusion();
+		tcf.prepareFusion(inputdir, nAngles, angleInc, transformations, saveOutput);
+		tcf.indicateCameraContributions(colors);
+		tcf.testCameraFusion();
 
+		final Set<Integer> tps = new TreeSet<Integer>();
+		for(File f : new File(inputdir).listFiles()) {
+			String name = f.getName();
+			if(name.startsWith("tp") && name.endsWith(".vertices")) {
+				int n = Integer.parseInt(name.substring(2, 6));
+				tps.add(n);
+			}
+		}
+
+
+		int nTimepoints = tps.size();
+		final ArrayList<Integer> timepoints = new ArrayList<Integer>(tps);
+
+		final int nProcessors = Runtime.getRuntime().availableProcessors();
+		ExecutorService exec = Executors.newFixedThreadPool(nProcessors);
+		int nTimepointsPerThread = (int)Math.ceil(nTimepoints / (double)nProcessors);
+		for(int p = 0; p < nProcessors; p++) {
+			final int start = p * nTimepointsPerThread;
+			final int end = Math.min(nTimepoints, (p + 1) * nTimepointsPerThread);
+
+			exec.submit(new Runnable() {
+				@Override
+				public void run() {
+					for(int tp = start; tp < end; tp++) {
+						try {
+							tcf.fuse(timepoints.get(tp));
+						} catch(Exception e) {
+							e.printStackTrace();
+							System.out.println("Couldn't fuse timepoint " + tp);
+						}
+					}
+				}
+			});
+		}
+		try {
+			exec.shutdown();
+			exec.awaitTermination(300, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Prepare fusion, using a single input folder.
+	 * @param indir
+	 * @param nAngles
+	 * @param angleInc
+	 * @param transformations
+	 * @param saveOutput
+	 * @throws IOException
+	 */
 	public void prepareFusion(String indir, int nAngles, int angleInc, Matrix4f[] transformations, boolean saveOutput) throws IOException {
 		if(!indir.endsWith(File.separator))
 			indir += File.separator;
-		this.inputdir = indir;
+		this.inputdir = new SingleInputFolder(new File(indir));
 		this.saveOutput = saveOutput;
-		this.smp = new SphericalMaxProjection(inputdir + "Sphere.obj");
-		this.outputdir = inputdir + "fused" + File.separator;
+		this.smp = new SphericalMaxProjection(indir + "Sphere.obj");
+		this.outputdir = new File(indir, "fused");
 		this.angleInc = angleInc;
 		this.nAngles = nAngles;
 		this.transforms = transformations;
@@ -136,10 +185,44 @@ public class TwoCameraFusion implements PlugIn {
 		int aperture = 90 / nAngles;
 
 		if(saveOutput) {
-			if(!new File(outputdir).exists())
-				new File(outputdir).mkdirs();
+			if(!outputdir.exists())
+				outputdir.mkdirs();
 
-			smp.saveSphere(outputdir + "Sphere.obj");
+			smp.saveSphere(new File(outputdir, "Sphere.obj").getAbsolutePath());
+		}
+
+		Point3f center = smp.getCenter();
+
+		weights = new FusionWeight[2][2][nAngles];
+
+		for(int a = 0; a < nAngles; a++) {
+			Point3f cen = new Point3f(center);
+			if(transforms[a] != null)
+				transforms[a].transform(cen);
+			weights[CAMERA1][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  135, aperture, new Point3f(cen));
+			weights[CAMERA1][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS, -135, aperture, new Point3f(cen));
+			weights[CAMERA2][LEFT] [a] = new AngleWeighter2(AngleWeighter2.X_AXIS,   45, aperture, new Point3f(cen));
+			weights[CAMERA2][RIGHT][a] = new AngleWeighter2(AngleWeighter2.X_AXIS,  -45, aperture, new Point3f(cen));
+		}
+	}
+
+	public void prepareFusion(File cam1Folder, File cam2Folder, File outputdir, int nAngles, int angleInc, Matrix4f[] transformations, boolean saveOutput) throws IOException {
+		this.inputdir = new DoubleInputFolder(cam1Folder, cam2Folder);
+		this.saveOutput = saveOutput;
+		this.smp = new SphericalMaxProjection(new File(cam1Folder, "Sphere.obj").getAbsolutePath());
+		this.outputdir = outputdir;
+		this.angleInc = angleInc;
+		this.nAngles = nAngles;
+		this.transforms = transformations;
+
+		// see TwoCameraSphericalMaxProjection.initSphericalMaximumProjection
+		int aperture = 90 / nAngles;
+
+		if(saveOutput) {
+			if(!outputdir.exists())
+				outputdir.mkdirs();
+
+			smp.saveSphere(new File(outputdir, "Sphere.obj").getAbsolutePath());
 		}
 
 		Point3f center = smp.getCenter();
@@ -244,10 +327,10 @@ public class TwoCameraFusion implements PlugIn {
 
 		short[][][][] m = new short[2][2][nAngles][];
 		for(int a = 0; a < nAngles; a++) {
-			m[CAMERA1][LEFT] [a] = SphericalMaxProjection.loadShortData(inputdir + String.format(format, tp, 180 + a * angleInc, LEFT),  nVertices);
-			m[CAMERA1][RIGHT][a] = SphericalMaxProjection.loadShortData(inputdir + String.format(format, tp, 180 + a * angleInc, RIGHT), nVertices);
-			m[CAMERA2][LEFT] [a] = SphericalMaxProjection.loadShortData(inputdir + String.format(format, tp,   0 + a * angleInc, LEFT),  nVertices);
-			m[CAMERA2][RIGHT][a] = SphericalMaxProjection.loadShortData(inputdir + String.format(format, tp,   0 + a * angleInc, RIGHT), nVertices);
+			m[CAMERA1][LEFT] [a] = SphericalMaxProjection.loadShortData(inputdir.getFile(CAMERA1, String.format(format, tp, 180 + a * angleInc, LEFT)).getAbsolutePath(),  nVertices);
+			m[CAMERA1][RIGHT][a] = SphericalMaxProjection.loadShortData(inputdir.getFile(CAMERA1, String.format(format, tp, 180 + a * angleInc, RIGHT)).getAbsolutePath(), nVertices);
+			m[CAMERA2][LEFT] [a] = SphericalMaxProjection.loadShortData(inputdir.getFile(CAMERA2, String.format(format, tp,   0 + a * angleInc, LEFT)).getAbsolutePath(),  nVertices);
+			m[CAMERA2][RIGHT][a] = SphericalMaxProjection.loadShortData(inputdir.getFile(CAMERA2, String.format(format, tp,   0 + a * angleInc, RIGHT)).getAbsolutePath(), nVertices);
 		}
 
 
@@ -304,55 +387,44 @@ public class TwoCameraFusion implements PlugIn {
 		return res;
 	}
 
-	public static void fuse(String indir, int nAngles, int angleInc, final Matrix4f[] transformations, final  boolean adjustModes, int[][][] colors, boolean saveOutput) throws IOException {
-		if(!indir.endsWith(File.separator))
-			indir += File.separator;
-		final String inputdir = indir;
+	static interface InputFolder {
+		File getFile(int camera, String filename);
+	}
 
-		final TwoCameraFusion tcf = new TwoCameraFusion();
-		tcf.prepareFusion(inputdir, nAngles, angleInc, transformations, saveOutput);
+	static class SingleInputFolder implements InputFolder {
 
-		final Set<Integer> tps = new TreeSet<Integer>();
-		for(File f : new File(inputdir).listFiles()) {
-			String name = f.getName();
-			if(name.startsWith("tp") && name.endsWith(".vertices")) {
-				int n = Integer.parseInt(name.substring(2, 6));
-				tps.add(n);
-			}
+		private final File folder;
+
+		SingleInputFolder(File folder) {
+			this.folder = folder;
 		}
 
+		@Override
+		public File getFile(int camera, String file) {
+			return new File(folder, file);
+		}
+	}
 
-		int nTimepoints = tps.size();
-		final ArrayList<Integer> timepoints = new ArrayList<Integer>(tps);
+	static class DoubleInputFolder implements InputFolder {
 
-		final int nProcessors = Runtime.getRuntime().availableProcessors();
-		ExecutorService exec = Executors.newFixedThreadPool(nProcessors);
-		int nTimepointsPerThread = (int)Math.ceil(nTimepoints / (double)nProcessors);
-		for(int p = 0; p < nProcessors; p++) {
-			final int start = p * nTimepointsPerThread;
-			final int end = Math.min(nTimepoints, (p + 1) * nTimepointsPerThread);
+		private final File cam1Folder, cam2Folder;
 
-			exec.submit(new Runnable() {
-				@Override
-				public void run() {
-					for(int tp = start; tp < end; tp++) {
-						try {
-							tcf.fuse(timepoints.get(tp));
-						} catch(Exception e) {
-							e.printStackTrace();
-							System.out.println("Couldn't fuse timepoint " + tp);
-						}
-					}
+		DoubleInputFolder(File cam1Folder, File cam2Folder) {
+			this.cam1Folder = cam1Folder;
+			this.cam2Folder = cam2Folder;
+		}
+
+		@Override
+		public File getFile(int camera, String file) {
+			File f = new File(camera == CAMERA1 ? cam1Folder : cam2Folder, file);
+			while(!f.exists()) {
+				try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
-			});
+			}
+			return f;
 		}
-		try {
-			exec.shutdown();
-			exec.awaitTermination(300, TimeUnit.MINUTES);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		tcf.indicateCameraContributions(colors);
-		tcf.testCameraFusion();
 	}
 }
