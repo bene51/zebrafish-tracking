@@ -178,7 +178,7 @@ public class TwoCameraSphericalMaxProjection {
 
 		Matrix4f[] transforms = null;
 		if(nAngles > 1) {
-			transforms = readTransforms(nAngles);
+			transforms = readTransformsFromLabview();
 			writeTransformations(new File(outputdir, "transformations").getAbsolutePath(), transforms);
 		}
 
@@ -212,6 +212,21 @@ public class TwoCameraSphericalMaxProjection {
 		ArrayList<Point4f> positions = Stage_Calibration.readPositions(gd.getNextString());
 		if(nAngles != positions.size())
 			throw new IllegalArgumentException();
+
+		Point4f refpos = positions.get(0);
+		Matrix4f[] ret = new Matrix4f[nAngles];
+		for(int i = 1; i < nAngles; i++) {
+			ret[i] = Stage_Calibration.getRegistration(refpos, positions.get(i));
+			ret[i].invert();
+		}
+
+		return ret;
+	}
+
+	public static Matrix4f[] readTransformsFromLabview() throws IOException {
+		String s = LabView.read("Positions");
+		ArrayList<Point4f> positions = Stage_Calibration.readPositionsFromString(s);
+		int nAngles = positions.size();
 
 		Point4f refpos = positions.get(0);
 		Matrix4f[] ret = new Matrix4f[nAngles];

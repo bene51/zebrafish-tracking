@@ -499,9 +499,9 @@ public class SphericalMaxProjection {
 						float scale = 1f / (float)Math.max(Math.abs(dx.x / pw), Math.max(
 								Math.abs(dx.y / ph), Math.abs(dx.z / pd)));
 
-						int k = Math.round(0.4f * radius / scale);
+						int k = Math.round(0.2f * radius / scale);
 
-						for(int i = -k; i <= k; i++) {
+						for(int i = -k; i <= 1.5 * k; i++) {
 							pos.scaleAdd(i * scale, dx, vertex);
 
 							// calculate the position in pixel dims

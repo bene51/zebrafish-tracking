@@ -1,8 +1,10 @@
 package huisken.projection;
 
 import fiji.util.gui.GenericDialogPlus;
+import huisken.util.Stage_Calibration;
 import ij.IJ;
 import ij.ImagePlus;
+import ij.Prefs;
 import ij.plugin.PlugIn;
 import ij.process.ShortProcessor;
 
@@ -16,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
@@ -24,6 +27,7 @@ import java.util.concurrent.Executors;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.vecmath.Point3f;
+import javax.vecmath.Point4f;
 
 import neo.AT;
 import neo.BaseCameraApplication;
@@ -51,19 +55,24 @@ public class TwoCamera_MaxProjection implements PlugIn {
 		Point3f center = new Point3f();
 		float radius = 0;
 		int timepoints = 0;
+		int angleInc = 0;
 
 		GenericDialogPlus gd = new GenericDialogPlus("Spherical_Max_Projection");
 		String[] cChoice = new String[2];
 		cChoice[TwoCameraSphericalMaxProjection.CAMERA1] = "Camera 1";
 		cChoice[TwoCameraSphericalMaxProjection.CAMERA2] = "Camera 2";
+		int lastCamera = (int)Prefs.get("sphere_proj.camera", 0);
+		System.out.println("lastCamera = " + lastCamera);
 		gd.addDirectoryField("Output directory", defaultdir.getAbsolutePath());
-		gd.addChoice("Camera", cChoice, cChoice[0]);
+		gd.addChoice("Camera", cChoice, cChoice[lastCamera]);
 		gd.showDialog();
 		if(gd.wasCanceled())
 			return;
 
 		outputdir = new File(gd.getNextString());
 		int camera = gd.getNextChoiceIndex();
+		Prefs.set("sphere_proj.camera", camera);
+		Prefs.savePreferences();
 
 		if(!outputdir.exists() || !outputdir.isDirectory())
 			throw new RuntimeException("Output directory must be a folder");
@@ -86,14 +95,22 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				Float.parseFloat(props.getProperty("centerz")));
 			radius = (float)Double.parseDouble(props.getProperty("radius"));
 			timepoints = LabView.readInt("n timepoints");
+
+			String s = LabView.read("Positions");
+			ArrayList<Point4f> positions = Stage_Calibration.readPositionsFromString(s);
+			nAngles = positions.size();
+			if(nAngles > 1)
+				angleInc = Math.round(positions.get(1).w - positions.get(0).w);
+
 		} catch(Exception e) {
+			e.printStackTrace();
 		}
 
 
 		gd = new GenericDialogPlus("Spherical_Max_Projection");
 		gd.addNumericField("Timepoints", timepoints, 0);
-		gd.addNumericField("Angle Increment", 0, 0);
-		gd.addNumericField("#Angles", 1, 0);
+		gd.addNumericField("Angle Increment", angleInc, 0);
+		gd.addNumericField("#Angles", nAngles, 0);
 		gd.addNumericField("Center_x", center.x, 3);
 		gd.addNumericField("Center_y", center.y, 3);
 		gd.addNumericField("Center_z", center.z, 3);
@@ -110,7 +127,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 
 
 		timepoints = (int)gd.getNextNumber();
-		int angleInc = (int)gd.getNextNumber();
+		angleInc = (int)gd.getNextNumber();
 		nAngles = (int)gd.getNextNumber();
 		center.set(
 			(float)gd.getNextNumber(),

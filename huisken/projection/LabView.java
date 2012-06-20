@@ -11,10 +11,14 @@ public class LabView {
 		try {
 			Socket s = new Socket("10.1.199.6", 1235);
 			new PrintStream(s.getOutputStream()).println(name);
-			String l = new BufferedReader(new InputStreamReader(s.getInputStream())).readLine();
+			String l = "";
+			StringBuffer buf = new StringBuffer();
+			BufferedReader r = new BufferedReader(new InputStreamReader(s.getInputStream()));
+			while((l = r.readLine()) != null)
+				buf.append(l).append("\n");
 			s.close();
 
-			return l;
+			return buf.toString();
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot read " + name, e);
 		}
@@ -29,6 +33,6 @@ public class LabView {
 	}
 
 	public static void main(String[] args) {
-		System.out.println(readInt("n timepoints"));
+		System.out.println(read("Positions"));
 	}
 }
