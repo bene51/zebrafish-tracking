@@ -7,7 +7,9 @@ import ij3d.ContentInstant;
 
 import java.awt.Polygon;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -33,12 +35,15 @@ public class CustomContent extends Content {
 	private float displayedMaximum = 0;
 	private float displayedMinimum = 0;
 
+	private float elevationFactor = 0.00001f;
+
 	private final SphericalMaxProjection smp;
 
 	private int currentIdx = 0;
 
 	private boolean showMaxima = false;
 	private boolean showColorOverlay = false;
+	private byte[][] lut = null;
 
 	private float maximaThreshold = Spherical_Max_Projection.FIT_SPHERE_THRESHOLD;
 
@@ -79,6 +84,23 @@ public class CustomContent extends Content {
 		displayedMinimum = getCurrentMinimum();
 		displayedMaximum = getCurrentMaximum();
 
+		updateDisplayRange();
+	}
+
+	public void exportToPLY(String path) throws IOException {
+		mesh.createNormalizedVersion(smp.getCenter(), smp.getRadius()).exportToPLY(path);
+	}
+
+	public void setElevationFactor(float f) {
+		this.elevationFactor = f;
+	}
+
+	public float getElevationFactor() {
+		return elevationFactor;
+	}
+
+	public void setLUT(byte[][] lut) {
+		this.lut = lut;
 		updateDisplayRange();
 	}
 
@@ -177,12 +199,19 @@ public class CustomContent extends Content {
 			}
 		}
 
+		Point3f[] newvertices = new Point3f[smp.getSphere().nVertices];
 		for(int i = 0; i < mesh.colors.length; i++) {
 			float m = maxima[i] & 0xffff;
 			if(showMaxima && isMax[i] && m > maximaThreshold)
 				mesh.colors[i].set(1, 0, 0);
 			else {
 				m = (m - displayedMinimum) / (displayedMaximum - displayedMinimum);
+				if(m < 0) m = 0;
+				if(m > 1) m = 1;
+				newvertices[i] = new Point3f(
+					smp.getCenter().x + (1 + elevationFactor * m) * (mesh.vertices[i].x - smp.getCenter().x),
+					smp.getCenter().y + (1 + elevationFactor * m) * (mesh.vertices[i].y - smp.getCenter().y),
+					smp.getCenter().z + (1 + elevationFactor * m) * (mesh.vertices[i].z - smp.getCenter().z));
 				if(showColorOverlay) {
 					int rgb = overlay[i];
 					int r = (rgb & 0xff0000) >> 16;
@@ -196,11 +225,18 @@ public class CustomContent extends Content {
 					b = Math.min(255 , (int)Math.round((c * b) + (1-c) * v));
 
 					mesh.colors[i].set(r / 255f, g / 255f, b / 255f);
-				} else {
+				} else if(lut == null) {
 					mesh.colors[i].set(m, m, m);
+				} else {
+					int idx = Math.round(m * 255);
+					int rv = lut[0][idx] & 0xff;
+					int gv = lut[1][idx] & 0xff;
+					int bv = lut[2][idx] & 0xff;
+					mesh.colors[i].set(rv / 255f, gv / 255f, bv / 255f);
 				}
 			}
 		}
+		((IndexedTriangleArray)mesh.getGeometry()).setCoordinates(0, newvertices);
 		setColors(mesh.colors);
 	}
 
@@ -296,6 +332,53 @@ public class CustomContent extends Content {
 			update();
 		}
 
+		CustomIndexedTriangleMesh createNormalizedVersion(Point3f center, float radius) {
+			Point3f[] nvertices = new Point3f[vertices.length];
+			for(int i = 0; i < nvertices.length; i++)
+				nvertices[i] = new Point3f();
+			((IndexedTriangleArray)getGeometry()).getCoordinates(0, nvertices);
+
+			for(int i = 0; i < vertices.length; i++) {
+				nvertices[i].set(
+					(nvertices[i].x - center.x) / radius,
+					(nvertices[i].y - center.y) / radius,
+					(nvertices[i].z - center.z) / radius);
+			}
+			return new CustomIndexedTriangleMesh(nvertices, colors, faces);
+		}
+
+		public void exportToPLY(String path) throws IOException {
+			PrintStream out = new PrintStream(new FileOutputStream(path));
+			out.println("ply");
+			out.println("format ascii 1.0");
+			out.println("element vertex " + vertices.length);
+			out.println("property float x");
+			out.println("property float y");
+			out.println("property float z");
+			out.println("property uchar red");
+			out.println("property uchar green");
+			out.println("property uchar blue");
+			out.println("element face " + (faces.length / 3));
+			out.println("property list uchar int vertex_index");
+			out.println("end_header");
+			for(int i = 0; i < vertices.length; i++) {
+				Point3f v = vertices[i];
+				Color3f c = colors[i];
+				int r = Math.round(255 * c.x);
+				int g = Math.round(255 * c.y);
+				int b = Math.round(255 * c.z);
+				out.println(v.x + " " + v.y + " " + v.z + " " + r + " " + g + " " + b);
+			}
+			int fl = faces.length / 3;
+			for(int i = 0; i < fl; i++) {
+				int f1 = faces[3 * i + 0];
+				int f2 = faces[3 * i + 1];
+				int f3 = faces[3 * i + 2];
+				out.println("3 " + f1 + " " + f2 + " " + f3);
+			}
+			out.close();
+		}
+
 		@Override
 		protected GeometryArray createGeometry() {
 			if(vertices != null)
@@ -338,6 +421,7 @@ public class CustomContent extends Content {
 			ta.setCoordinateIndices(0, faces);
 			ta.setColorIndices(0, faces);
 
+			ta.setCapability(GeometryArray.ALLOW_COORDINATE_WRITE);
 			ta.setCapability(GeometryArray.ALLOW_COLOR_WRITE);
 			ta.setCapability(GeometryArray.ALLOW_INTERSECT);
 

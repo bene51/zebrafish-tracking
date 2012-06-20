@@ -16,7 +16,6 @@ import java.awt.geom.PathIterator;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -136,7 +135,8 @@ public class Map_Projection implements PlugIn {
 			new File(outputdir, "lines").mkdir();
 
 			try {
-				createProjections(objfile.getAbsolutePath(), datadir.getAbsolutePath(), initial, i, outputdir.getAbsolutePath(), doCoast, doLines, doContributions, tgtWidth);
+				prepareForProjection(datadir, initial, i, outputdir, doCoast, doLines, doContributions, tgtWidth);
+				createProjections();
 			} catch(Exception e) {
 				IJ.error(e.getMessage());
 				e.printStackTrace();
@@ -144,10 +144,24 @@ public class Map_Projection implements PlugIn {
 		}
 	}
 
-	public void createProjections(final String objfile, final String datadir, final Matrix4f initial, final int mapType, final String outputdir, final boolean doCoast, final boolean doLines, final boolean doContributions, int tgtWidth) throws IOException {
-		final SphericalMaxProjection smp = new SphericalMaxProjection(objfile, initial);
-		final GeneralProjProjection proj;
-		switch(mapType) {
+	private SphericalMaxProjection smp;
+	private GeneralProjProjection proj;
+	private File datadir, outputdir;
+	private int nVertices;
+	private boolean doContributions, doLines;
+	private Matrix4f initial;
+
+	public void prepareForProjection(final File datadir, final Matrix4f initial, final int maptype, final File outputdir, final boolean doCoast, final boolean doLines, final boolean doContributions, final int tgtWidth) throws IOException {
+		this.smp = new SphericalMaxProjection(new File(datadir, "Sphere.obj").getAbsolutePath());
+		this.nVertices = smp.getSphere().nVertices;
+		this.doLines = doLines;
+		this.doContributions = doContributions;
+		this.initial = initial;
+		this.datadir = datadir;
+		this.outputdir = outputdir;
+		if(!outputdir.exists())
+			outputdir.mkdirs();
+		switch(maptype) {
 			case MERCATOR:              proj = new GeneralProjProjection(new MercatorProjection());   break;
 			case GALLPETER:             proj = new GeneralProjProjection(new GallProjection()); break;
 			case KAVRAYSKIY:            proj = new GeneralProjProjection(new Kavraisky7Projection()); break;
@@ -156,7 +170,7 @@ public class Map_Projection implements PlugIn {
 			case BONNE:                 proj = new GeneralProjProjection(new BonneProjection()); break;
 			case ORTHO_AZIMUTAL:        proj = new GeneralProjProjection(new OrthographicAzimuthalProjection()); break;
 			case FULLER:                proj = new FullerProjection(); break;
-			default: throw new IllegalArgumentException("Unsupported map type: " + mapType);
+			default: throw new IllegalArgumentException("Unsupported map type: " + maptype);
 		}
 		proj.prepareForProjection(smp, tgtWidth);
 
@@ -165,32 +179,74 @@ public class Map_Projection implements PlugIn {
 			if(new File("coast.dat").exists()) {
 				GeneralPath coast = GeneralProjProjection.readDatFile("coast.dat");
 				coast = proj.transform(coast);
-				GeneralProjProjection.savePath(coast, outputdir + File.separator + "coastline.ps", proj.getWidth(), proj.getHeight(), true);
+				GeneralProjProjection.savePath(coast, new File(outputdir, "coastline.ps").getAbsolutePath(), proj.getWidth(), proj.getHeight(), true);
 			}
 
 			// create a postscript file with the lines
 			GeneralPath lines = proj.createLines();
 			lines = proj.transform(lines);
-			GeneralProjProjection.savePath(lines, outputdir + File.separator + "lines.ps", proj.getWidth(), proj.getHeight(), false);
+			GeneralProjProjection.savePath(lines, new File(outputdir, "lines.ps").getAbsolutePath(), proj.getWidth(), proj.getHeight(), false);
 		}
+	}
 
+	public void project(int tp) throws IOException {
+		String basename = String.format("tp%04d", tp);
+
+		File matdir = new File(datadir, "transformations");
+		File contribindir = new File(datadir, "contributions");
+		File contriboutdir = new File(outputdir, "contributions");
+		File linesdir = new File(outputdir, "lines");
+
+		File outfile = new File(outputdir, basename + ".tif");
+		File infile = new File(datadir, basename + ".vertices");
+		File matfile = new File(matdir, basename + ".matrix");
+		File contribin = new File(contribindir, basename + ".vertices");
+		File contribout = new File(contriboutdir, basename + ".tif");
+		File linesout = new File(linesdir, basename + ".tif");
+
+		if(!contribin.exists())
+			contribin = new File(datadir, "contributions.vertices");
+		short[] maxima = SphericalMaxProjection.loadShortData(infile.getAbsolutePath(), nVertices);
+//		maxima = smp.applyTransform(get90DegRot(smp), maxima);
+		ImageProcessor ip = proj.project(maxima);
+		if(doLines) {
+			GeneralPath lines = proj.createLines();
+			Matrix4f mat = new Matrix4f(initial);
+			if(matfile.exists())
+				mat.mul(Register_.loadTransform(matfile.getAbsolutePath()));
+			else
+				System.out.println(matfile + " does not exist");
+
+			// rotate the lines by 90 deg
+			Matrix4f rot = get90DegRot(smp);
+			lines = transform(smp, rot, lines);
+
+			lines = transform(smp, mat, lines);
+			lines = proj.transform(lines);
+			ImageProcessor lip = new ByteProcessor(ip.getWidth(), ip.getHeight());
+			proj.drawInto(lip, 255, 1, lines);
+			IJ.save(new ImagePlus("", lip), linesout.getAbsolutePath());
+		}
+		if(doContributions) {
+			int[] contribs = SphericalMaxProjection.loadIntData(contribin.getAbsolutePath(), nVertices);
+			ImageProcessor overlay = proj.projectColor(contribs);
+			IJ.save(new ImagePlus("", overlay), contribout.getAbsolutePath());
+		}
+		IJ.save(new ImagePlus("", ip), outfile.getAbsolutePath());
+	}
+
+	public void createProjections() {
 		// collect files
 		List<String> tmp = new ArrayList<String>();
-		tmp.addAll(Arrays.asList(new File(datadir).list()));
-		for(int i = tmp.size() - 1; i >= 0; i--)
-			if(!tmp.get(i).endsWith(".vertices"))
-				tmp.remove(i);
+		for(String f : datadir.list())
+			if(f.startsWith("tp") && f.endsWith(".vertices"))
+				tmp.add(f);
 		final String[] files = new String[tmp.size()];
 		tmp.toArray(files);
-		for(int i = 0; i < files.length; i++)
-			files[i] = File.separator + files[i];
-		Arrays.sort(files);
 
 		final int nProcessors = Runtime.getRuntime().availableProcessors();
 		ExecutorService exec = Executors.newFixedThreadPool(nProcessors);
 		int nFilesPerThread = (int)Math.ceil(files.length / (double)nProcessors);
-
-		final int nVertices = smp.getSphere().nVertices;
 
 		for(int p = 0; p < nProcessors; p++) {
 			final int start = p * nFilesPerThread;
@@ -202,41 +258,8 @@ public class Map_Projection implements PlugIn {
 					for(int f = start; f < end; f++) {
 						String file = files[f];
 						try {
-							String outfile = outputdir + File.separator + file.substring(0, file.length() - 9) + ".tif";
-							String datafile = datadir + File.separator + file;
-							String matrixfile = datadir + File.separator + "transformations" + File.separator + file.substring(0, file.length() - 9) + ".matrix";
-							String contribfile = datadir + File.separator + "contributions" + File.separator + file;
-							String contribout = outputdir + File.separator + "contributions" + File.separator + file.substring(0, file.length() - 9) + ".tif";
-							String linesout = outputdir + File.separator + "lines" + File.separator + file.substring(0, file.length() - 9) + ".tif";
-							if(!new File(contribfile).exists())
-								contribfile = datadir + File.separator + "contributions.vertices";
-							short[] maxima = SphericalMaxProjection.loadShortData(datafile, nVertices);
-//							maxima = smp.applyTransform(get90DegRot(smp), maxima);
-							ImageProcessor ip = proj.project(maxima);
-							if(doLines) {
-								GeneralPath lines = proj.createLines();
-								Matrix4f mat = new Matrix4f(initial);
-								if(new File(matrixfile).exists())
-									mat.mul(Register_.loadTransform(matrixfile));
-								else
-									System.out.println(matrixfile + " does not exist");
-
-								// rotate the lines by 90 deg
-								Matrix4f rot = get90DegRot(smp);
-								lines = transform(smp, rot, lines);
-
-								lines = transform(smp, mat, lines);
-								lines = proj.transform(lines);
-								ImageProcessor lip = new ByteProcessor(ip.getWidth(), ip.getHeight());
-								proj.drawInto(lip, 255, 1, lines);
-								IJ.save(new ImagePlus("", lip), linesout);
-							}
-							if(doContributions) {
-								int[] contribs = SphericalMaxProjection.loadIntData(contribfile, nVertices);
-								ImageProcessor overlay = proj.projectColor(contribs);
-								IJ.save(new ImagePlus("", overlay), contribout);
-							}
-							IJ.save(new ImagePlus("", ip), outfile);
+							int tp = Integer.parseInt(file.substring(2, 6));
+							project(tp);
 						} catch(Exception e) {
 							System.err.println("Cannot project " + file);
 							e.printStackTrace();

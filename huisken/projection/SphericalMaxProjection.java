@@ -391,7 +391,7 @@ public class SphericalMaxProjection {
 	}
 
 	public int[] applyInverseTransformNearestNeighbor(final Matrix4f inverse, final int[] data) {
-		final int[] newmaxima = new int[maxima.length];
+		final int[] newmaxima = new int[sphere.nVertices];
 		final Point3f[] vertices = sphere.getVertices();
 
 		final int nProcessors = Runtime.getRuntime().availableProcessors();
