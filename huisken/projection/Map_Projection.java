@@ -152,7 +152,7 @@ public class Map_Projection implements PlugIn {
 	private Matrix4f initial;
 
 	public void prepareForProjection(final File datadir, final Matrix4f initial, final int maptype, final File outputdir, final boolean doCoast, final boolean doLines, final boolean doContributions, final int tgtWidth) throws IOException {
-		this.smp = new SphericalMaxProjection(new File(datadir, "Sphere.obj").getAbsolutePath());
+		this.smp = new SphericalMaxProjection(new File(datadir, "Sphere.obj").getAbsolutePath(), initial);
 		this.nVertices = smp.getSphere().nVertices;
 		this.doLines = doLines;
 		this.doContributions = doContributions;
