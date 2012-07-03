@@ -35,7 +35,6 @@ import neo.BaseCameraApplication;
 public class TwoCamera_MaxProjection implements PlugIn {
 
 	private static final int PORT = 1236;
-	private File outputdir;
 
 	@Override
 	public void run(String arg) {
@@ -69,7 +68,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 		if(gd.wasCanceled())
 			return;
 
-		outputdir = new File(gd.getNextString());
+		File outputdir = new File(gd.getNextString());
 		int camera = gd.getNextChoiceIndex();
 		Prefs.set("sphere_proj.camera", camera);
 		Prefs.savePreferences();
@@ -77,108 +76,83 @@ public class TwoCamera_MaxProjection implements PlugIn {
 		if(!outputdir.exists() || !outputdir.isDirectory())
 			throw new RuntimeException("Output directory must be a folder");
 
-		try {
-			FileInputStream config = new FileInputStream(new File(outputdir, "SMP.xml"));
-			Properties props = new Properties();
-			props.loadFromXML(config);
-			config.close();
+		nSamples = 0;
+		while(new File(outputdir, "sample" + nSamples).exists())
+			nSamples++;
 
-			w = Integer.parseInt(props.getProperty("w", "0"));
-			h = Integer.parseInt(props.getProperty("h", "0"));
-			d = Integer.parseInt(props.getProperty("d", "0"));
-			pw = Double.parseDouble(props.getProperty("pw", "0"));
-			ph = Double.parseDouble(props.getProperty("ph", "0"));
-			pd = Double.parseDouble(props.getProperty("pd", "0"));
-			center.set(
-				Float.parseFloat(props.getProperty("centerx")),
-				Float.parseFloat(props.getProperty("centery")),
-				Float.parseFloat(props.getProperty("centerz")));
-			radius = (float)Double.parseDouble(props.getProperty("radius"));
+		try {
 			timepoints = LabView.readInt("n timepoints");
 
 			String s = LabView.read("Positions");
 			ArrayList<Point4f> positions = Stage_Calibration.readPositionsFromString(s);
-			nAngles = positions.size();
+			nAngles = positions.size() / nSamples;
 			if(nAngles > 1)
 				angleInc = Math.round(positions.get(1).w - positions.get(0).w);
 
+			gd = new GenericDialogPlus("Spherical_Max_Projection");
+			gd.addNumericField("Timepoints", timepoints, 0);
+			gd.addNumericField("Angle Increment", angleInc, 0);
+			gd.addNumericField("#Angles", nAngles, 0);
+			gd.showDialog();
+			if(gd.wasCanceled())
+				return;
+
+
+			timepoints = (int)gd.getNextNumber();
+			angleInc = (int)gd.getNextNumber();
+			nAngles = (int)gd.getNextNumber();
+
+
+			int timepointStart = 0;
+			int timepointInc   = 1;
+			nTimepoints    = timepoints;
+
+			mmsmp = new TwoCameraSphericalMaxProjection[nSamples];
+			for(int sample = 0; sample < nSamples; sample++) {
+				File sampledir = new File(outputdir, "sample" + sample);
+				FileInputStream config = new FileInputStream(new File(sampledir, "SMP.xml"));
+				Properties props = new Properties();
+				props.loadFromXML(config);
+				config.close();
+
+				w = Integer.parseInt(props.getProperty("w", "0"));
+				h = Integer.parseInt(props.getProperty("h", "0"));
+				d = Integer.parseInt(props.getProperty("d", "0"));
+				pw = Double.parseDouble(props.getProperty("pw", "0"));
+				ph = Double.parseDouble(props.getProperty("ph", "0"));
+				pd = Double.parseDouble(props.getProperty("pd", "0"));
+				center.set(
+					Float.parseFloat(props.getProperty("centerx")),
+					Float.parseFloat(props.getProperty("centery")),
+					Float.parseFloat(props.getProperty("centerz")));
+				radius = (float)Double.parseDouble(props.getProperty("radius"));
+
+				// account for double-sided illumination:
+				d /= 2;
+				pd *= 2;
+
+				mmsmp[sample] = new TwoCameraSphericalMaxProjection(
+						sampledir.getAbsolutePath(),
+						timepointStart, timepointInc, nTimepoints,
+						camera,
+						angleInc, nAngles,
+						w, h, d,
+						pw, ph, pd,
+						center, radius);
+			}
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
 
-
-		gd = new GenericDialogPlus("Spherical_Max_Projection");
-		gd.addNumericField("Timepoints", timepoints, 0);
-		gd.addNumericField("Angle Increment", angleInc, 0);
-		gd.addNumericField("#Angles", nAngles, 0);
-		gd.addNumericField("Center_x", center.x, 3);
-		gd.addNumericField("Center_y", center.y, 3);
-		gd.addNumericField("Center_z", center.z, 3);
-		gd.addNumericField("Radius", radius, 3);
-		gd.addNumericField("Width", w, 0);
-		gd.addNumericField("Height", h, 0);
-		gd.addNumericField("Depth", d, 0);
-		gd.addNumericField("Pixel_width", pw, 5);
-		gd.addNumericField("Pixel_height", ph, 5);
-		gd.addNumericField("Pixel_depth", pd, 5);
-		gd.showDialog();
-		if(gd.wasCanceled())
-			return;
-
-
-		timepoints = (int)gd.getNextNumber();
-		angleInc = (int)gd.getNextNumber();
-		nAngles = (int)gd.getNextNumber();
-		center.set(
-			(float)gd.getNextNumber(),
-			(float)gd.getNextNumber(),
-			(float)gd.getNextNumber());
-		radius = (float)gd.getNextNumber();
-		w = (int)gd.getNextNumber();
-		h = (int)gd.getNextNumber();
-		d = (int)gd.getNextNumber();
-		pw = gd.getNextNumber();
-		ph = gd.getNextNumber();
-		pd = gd.getNextNumber();
-
-
-		// account for double-sided illumination:
-		d /= 2;
-		pd *= 2;
-
-		System.out.println(w);
-		System.out.println(h);
-		System.out.println(d);
-		System.out.println(pw);
-		System.out.println(ph);
-		System.out.println(pd);
-		System.out.println(center);
-		System.out.println(radius);
-		System.out.println(timepoints);
-
-		int timepointStart = 0;
-		int timepointInc   = 1;
-		nTimepoints    = timepoints;
-
 		toProcess = new short[w * h];
-
-		mmsmp = new TwoCameraSphericalMaxProjection(
-				outputdir.getAbsolutePath(),
-				timepointStart, timepointInc, nTimepoints,
-				camera,
-				angleInc, nAngles,
-				w, h, d,
-				pw, ph, pd,
-				center, radius);
-
 		cameraApp = new CameraApp(); // double-sided illumination} catch(Exception e) {
 	}
 
-	private TwoCameraSphericalMaxProjection mmsmp;
+	private TwoCameraSphericalMaxProjection[] mmsmp;
 	private CameraApp cameraApp;
 
 
-	private int w, h, d, nTimepoints, nAngles;
+	private int w, h, d, nTimepoints, nSamples, nAngles;
 	private short[] toProcess = null;
 	private static final boolean SAVE_RAW = false;
 	private boolean cameraAcquiring = false;
@@ -190,30 +164,32 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				int d2 = 2 * d;
 				AT at = cameraApp.getAT();
 				for(int t = 0; t < nTimepoints; t++) {
-					long start = 0;
-					for(int a = 0; a < nAngles; a++) {
-						at.AT_SetInt("FrameCount", d2);
-						at.AT_Command("AcquisitionStart");
-						File tpDir = null;
-						if(SAVE_RAW) {
-							tpDir = new File(outputdir, String.format("tp%04d_a%03d", t, a));
-							tpDir.mkdir();
-						}
-						for(int f = 0; f < d2; f++) {
-							at.AT_NextFrame(toProcess);
-							cameraAcquiring = true;
-							if(f == 0)
-								start = System.currentTimeMillis();
+					for(int s = 0; s < nSamples; s++) {
+						for(int a = 0; a < nAngles; a++) {
+							at.AT_SetInt("FrameCount", d2);
+							at.AT_Command("AcquisitionStart");
+							File tpDir = null;
+							if(SAVE_RAW) {
+								tpDir = new File(mmsmp[s].getOutputDirectory(), String.format("tp%04d_a%03d", t, a));
+								tpDir.mkdir();
+							}
+							long start = 0;
+							for(int f = 0; f < d2; f++) {
+								at.AT_NextFrame(toProcess);
+								cameraAcquiring = true;
+								if(f == 0)
+									start = System.currentTimeMillis();
 
 
-							mmsmp.process(toProcess);
-							if(SAVE_RAW)
-								IJ.save(new ImagePlus("", new ShortProcessor(w, h, toProcess, null)), new File(tpDir, String.format("%04d.tif", f)).getAbsolutePath());
+								mmsmp[s].process(toProcess);
+								if(SAVE_RAW)
+									IJ.save(new ImagePlus("", new ShortProcessor(w, h, toProcess, null)), new File(tpDir, String.format("%04d.tif", f)).getAbsolutePath());
+							}
+							at.AT_Command("AcquisitionStop");
+							cameraAcquiring = false;
+							long end = System.currentTimeMillis();
+							System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
 						}
-						at.AT_Command("AcquisitionStop");
-						cameraAcquiring = false;
-						long end = System.currentTimeMillis();
-						System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
 					}
 				}
 			}

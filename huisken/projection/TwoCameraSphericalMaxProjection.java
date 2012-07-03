@@ -74,6 +74,10 @@ public class TwoCameraSphericalMaxProjection {
 		iterator = new Iterator();
 	}
 
+	public String getOutputDirectory() {
+		return outputdir;
+	}
+
 	class Iterator implements java.util.Iterator<Iterator> {
 		public int timepoint, angle, angleIndex, plane, illumination;
 
