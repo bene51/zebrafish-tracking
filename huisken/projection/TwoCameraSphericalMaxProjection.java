@@ -1,7 +1,5 @@
 package huisken.projection;
 
-import huisken.util.Stage_Calibration;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -12,10 +10,8 @@ import java.util.ArrayList;
 
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
-import javax.vecmath.Point4f;
 
 import meshtools.IndexedTriangleMesh;
-import fiji.util.gui.GenericDialogPlus;
 
 public class TwoCameraSphericalMaxProjection {
 
@@ -38,7 +34,8 @@ public class TwoCameraSphericalMaxProjection {
 			int angleInc, int nAngles,
 			int w, int h, int d,
 			double pw, double ph, double pd,
-			Point3f center, float radius) {
+			Point3f center, float radius,
+			Matrix4f[] transforms) {
 
 		if(!outputdir.endsWith(File.separator))
 			outputdir += File.separator;
@@ -58,7 +55,8 @@ public class TwoCameraSphericalMaxProjection {
 					center, radius,
 					camera,
 					angleInc, nAngles,
-					w, h, d, pw, ph, pd);
+					w, h, d, pw, ph, pd,
+					transforms);
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot load transformations.", e);
 		}
@@ -163,13 +161,21 @@ public class TwoCameraSphericalMaxProjection {
 
 	/**
 	 * @param transform Array with one transformation for each angle;
+	 * the first angle is not transformed, all following angles are transformed;
+	 * example:
+	 * 	2 samples,
+	 * 	2 angles each
+	 *
+	 * called twice with 2 transforms:
+	 * 	- [I], [a1->a0]
 	 */
 	private SphericalMaxProjection[][] initSphericalMaximumProjection(
 			Point3f center, float radius,
 			int camera,
 			int angleInc, int nAngles,
 			int w, int h, int d,
-			double pw, double ph, double pd) throws IOException {
+			double pw, double ph, double pd,
+			Matrix4f[] transforms) throws IOException {
 
 		int subd = (int)Math.round(radius / (Math.min(pw, Math.min(ph, pd))));
 		// subd /= 4;
@@ -180,11 +186,8 @@ public class TwoCameraSphericalMaxProjection {
 		int aperture = 90 / nAngles;
 		int angle = camera == CAMERA1 ? 135 : 45;
 
-		Matrix4f[] transforms = null;
-		if(nAngles > 1) {
-			transforms = readTransformsFromLabview();
+		if(nAngles > 1)
 			writeTransformations(new File(outputdir, "transformations").getAbsolutePath(), transforms);
-		}
 
 		for(int a = 0; a < nAngles; a++) {
 			Matrix4f transform = null;
@@ -206,41 +209,26 @@ public class TwoCameraSphericalMaxProjection {
 		return smp;
 	}
 
-	private static Matrix4f[] readTransforms(int nAngles) throws IOException {
-		GenericDialogPlus gd = new GenericDialogPlus("Transformations");
-		gd.addFileField("Positions", "");
-		gd.showDialog();
-		if(gd.wasCanceled())
-			return null;
-
-		ArrayList<Point4f> positions = Stage_Calibration.readPositions(gd.getNextString());
-		if(nAngles != positions.size())
-			throw new IllegalArgumentException();
-
-		Point4f refpos = positions.get(0);
-		Matrix4f[] ret = new Matrix4f[nAngles];
-		for(int i = 1; i < nAngles; i++) {
-			ret[i] = Stage_Calibration.getRegistration(refpos, positions.get(i));
-			ret[i].invert();
-		}
-
-		return ret;
-	}
-
-	public static Matrix4f[] readTransformsFromLabview() throws IOException {
-		String s = LabView.read("Positions");
-		ArrayList<Point4f> positions = Stage_Calibration.readPositionsFromString(s);
-		int nAngles = positions.size();
-
-		Point4f refpos = positions.get(0);
-		Matrix4f[] ret = new Matrix4f[nAngles];
-		for(int i = 1; i < nAngles; i++) {
-			ret[i] = Stage_Calibration.getRegistration(refpos, positions.get(i));
-			ret[i].invert();
-		}
-
-		return ret;
-	}
+//	private static Matrix4f[] readTransforms(int nAngles) throws IOException {
+//		GenericDialogPlus gd = new GenericDialogPlus("Transformations");
+//		gd.addFileField("Positions", "");
+//		gd.showDialog();
+//		if(gd.wasCanceled())
+//			return null;
+//
+//		ArrayList<Point4f> positions = Stage_Calibration.readPositions(gd.getNextString());
+//		if(nAngles != positions.size())
+//			throw new IllegalArgumentException();
+//
+//		Point4f refpos = positions.get(0);
+//		Matrix4f[] ret = new Matrix4f[nAngles];
+//		for(int i = 1; i < nAngles; i++) {
+//			ret[i] = Stage_Calibration.getRegistration(refpos, positions.get(i));
+//			ret[i].invert();
+//		}
+//
+//		return ret;
+//	}
 
 	public static Matrix4f[] loadTransformations(String file) throws IOException {
 		BufferedReader in = new BufferedReader(new FileReader(file));

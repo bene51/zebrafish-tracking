@@ -14,8 +14,11 @@ import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -26,6 +29,7 @@ import java.util.concurrent.Executors;
 
 import javax.swing.JButton;
 import javax.swing.JPanel;
+import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
 import javax.vecmath.Point4f;
 
@@ -81,10 +85,11 @@ public class TwoCamera_MaxProjection implements PlugIn {
 			nSamples++;
 
 		try {
-			timepoints = LabView.readInt("n timepoints");
-
 			String s = LabView.read("Positions");
 			ArrayList<Point4f> positions = Stage_Calibration.readPositionsFromString(s);
+
+			timepoints = LabView.readInt("n timepoints");
+
 			nAngles = positions.size() / nSamples;
 			if(nAngles > 1)
 				angleInc = Math.round(positions.get(1).w - positions.get(0).w);
@@ -131,6 +136,14 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				d /= 2;
 				pd *= 2;
 
+				Matrix4f[] trans = new Matrix4f[nAngles];
+				Point4f refpos = positions.get(sample * nAngles);
+				for(int i = 1; i < nAngles; i++) {
+					Point4f sampos = positions.get(sample * nAngles + i);
+					trans[i] = Stage_Calibration.getRegistration(refpos, sampos);
+					trans[i].invert();
+				}
+
 				mmsmp[sample] = new TwoCameraSphericalMaxProjection(
 						sampledir.getAbsolutePath(),
 						timepointStart, timepointInc, nTimepoints,
@@ -138,7 +151,8 @@ public class TwoCamera_MaxProjection implements PlugIn {
 						angleInc, nAngles,
 						w, h, d,
 						pw, ph, pd,
-						center, radius);
+						center, radius,
+						trans);
 			}
 		} catch(Exception e) {
 			e.printStackTrace();
@@ -156,11 +170,13 @@ public class TwoCamera_MaxProjection implements PlugIn {
 	private short[] toProcess = null;
 	private static final boolean SAVE_RAW = false;
 	private boolean cameraAcquiring = false;
+	private long[] millis;
 
 	private void startAcq() {
 		exec.execute(new Runnable() {
 			@Override
 			public void run() {
+				millis = new long[nTimepoints];
 				int d2 = 2 * d;
 				AT at = cameraApp.getAT();
 				for(int t = 0; t < nTimepoints; t++) {
@@ -177,8 +193,11 @@ public class TwoCamera_MaxProjection implements PlugIn {
 							for(int f = 0; f < d2; f++) {
 								at.AT_NextFrame(toProcess);
 								cameraAcquiring = true;
-								if(f == 0)
+								if(f == 0) {
 									start = System.currentTimeMillis();
+									if(s == 0 && a == 0)
+										millis[t] = start;
+								}
 
 
 								mmsmp[s].process(toProcess);
@@ -191,6 +210,15 @@ public class TwoCamera_MaxProjection implements PlugIn {
 							System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
 						}
 					}
+				}
+				try {
+					File times = new File(new File(mmsmp[0].getOutputDirectory()).getParentFile(), "times.csv");
+					PrintStream out = new PrintStream(new FileOutputStream(times));
+					for(int i = 0; i < millis.length; i++)
+						out.println(i + "\t" + millis[i]);
+					out.close();
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
 				}
 			}
 		});

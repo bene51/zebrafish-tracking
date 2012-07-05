@@ -70,7 +70,7 @@ public class Simulated_TwoCamera_MaxProjection implements PlugIn {
 				180, 1,
 				w, h, d,
 				pw, ph, pd,
-				center, radius);
+				center, radius, null); // null just inserted to avoid compilation error
 
 		startCamera(timepoints * d, TwoCameraSphericalMaxProjection.CAMERA1);
 
@@ -81,7 +81,7 @@ public class Simulated_TwoCamera_MaxProjection implements PlugIn {
 				180, 1,
 				w, h, d,
 				pw, ph, pd,
-				center, radius);
+				center, radius, null); // null just inserted to avoid compilation error
 
 		startCamera(timepoints * d, TwoCameraSphericalMaxProjection.CAMERA2);
 	}
