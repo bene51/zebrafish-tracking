@@ -159,7 +159,6 @@ public class TwoCamera_MaxProjection implements PlugIn {
 			e.printStackTrace();
 		}
 
-		toProcess = new short[w * h];
 		cameraApp = new CameraApp(); // double-sided illumination} catch(Exception e) {
 	}
 
@@ -169,17 +168,45 @@ public class TwoCamera_MaxProjection implements PlugIn {
 
 	private int w, h, d, nTimepoints, nSamples, nAngles, nLayers;
 	private double layerWidth;
-	private short[] toProcess = null;
 	private static final boolean SAVE_RAW = false;
 	private boolean cameraAcquiring = false;
+	private FIFO fifo;
+
+	private final void process() {
+		final short[] toProcess = new short[w * h];
+		final int d2 = 2 * d;
+		for(int t = 0; t < nTimepoints; t++) {
+			for(int s = 0; s < nSamples; s++) {
+				for(int a = 0; a < nAngles; a++) {
+					long start =  System.currentTimeMillis();
+					for(int f = 0; f < d; f++) {
+						for(int ill = 0; ill < 2; ill++) {
+							fifo.get(toProcess);
+							mmsmp[s].process(toProcess, t, a, f, ill);
+						}
+					}
+					long end = System.currentTimeMillis();
+					System.out.println("Processing: Needed " + (end - start) + "ms " + 1000f * d2 / (end - start) + " fps");
+				}
+			}
+		}
+	}
 
 	private void startAcq() {
 		exec.execute(new Runnable() {
 			@Override
 			public void run() {
-				int d2 = 2 * d;
+				fifo = new FIFO(100, w * h);
+				new Thread() {
+					public void run() {
+						process();
+					}
+				}.start();
 				AT at = cameraApp.getAT();
+				final short[] cache = new short[w * h];
+				int d2 = 2 * d;
 				for(int t = 0; t < nTimepoints; t++) {
+					long tStart = -1;
 					for(int s = 0; s < nSamples; s++) {
 						for(int a = 0; a < nAngles; a++) {
 							at.AT_SetInt("FrameCount", d2);
@@ -192,22 +219,27 @@ public class TwoCamera_MaxProjection implements PlugIn {
 							long start = -1;
 							for(int f = 0; f < d; f++) {
 								for(int ill = 0; ill < 2; ill++) {
-									at.AT_NextFrame(toProcess);
+									at.AT_NextFrame(cache);
 									cameraAcquiring = true;
 									if(start == -1)
 										start = System.currentTimeMillis();
+									if(tStart == -1)
+										tStart = start;
 
-									mmsmp[s].process(toProcess, t, a, f, ill);
+									fifo.add(cache);
+									System.out.println("--- buffer: " + fifo.size() + "/100");
 									if(SAVE_RAW)
-										IJ.save(new ImagePlus("", new ShortProcessor(w, h, toProcess, null)), new File(tpDir, String.format("%04d_ill%d.tif", f, ill)).getAbsolutePath());
+										IJ.save(new ImagePlus("", new ShortProcessor(w, h, cache, null)), new File(tpDir, String.format("%04d_ill%d.tif", f, ill)).getAbsolutePath());
 								}
 							}
 							at.AT_Command("AcquisitionStop");
 							cameraAcquiring = false;
 							long end = System.currentTimeMillis();
-							System.out.println("Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
+							System.out.println("Acquisition: Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
 						}
 					}
+					long tEnd = System.currentTimeMillis();
+					System.out.println("Timepoint " + t + ": " + (tEnd - tStart) + "ms");
 				}
 			}
 		});
