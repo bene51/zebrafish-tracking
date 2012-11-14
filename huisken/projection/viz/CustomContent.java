@@ -1,7 +1,6 @@
 package huisken.projection.viz;
 
-import huisken.projection.SphericalMaxProjection;
-import huisken.projection.Spherical_Max_Projection;
+import huisken.projection.processing.SphericalMaxProjection;
 import ij3d.Content;
 import ij3d.ContentInstant;
 
@@ -38,6 +37,7 @@ public class CustomContent extends Content {
 	private float elevationFactor = 0.00001f;
 
 	private final SphericalMaxProjection smp;
+	private short[] maxima;
 
 	private int currentIdx = 0;
 
@@ -45,7 +45,7 @@ public class CustomContent extends Content {
 	private boolean showColorOverlay = false;
 	private byte[][] lut = null;
 
-	private float maximaThreshold = Spherical_Max_Projection.FIT_SPHERE_THRESHOLD;
+	private float maximaThreshold = 0;
 
 	public CustomContent(String objfile, String vertexDir, String filenameContains) throws IOException {
 
@@ -127,7 +127,7 @@ public class CustomContent extends Content {
 	}
 
 	public void smooth() {
-		smp.smooth();
+		smp.smooth(maxima);
 		updateDisplayRange();
 	}
 
@@ -148,7 +148,6 @@ public class CustomContent extends Content {
 	}
 
 	public float getCurrentMinimum() {
-		short[] maxima = smp.getMaxima();
 		float min = maxima[0] & 0xffff;
 		for(int i = 1; i < maxima.length; i++) {
 			float v = maxima[i] & 0xffff;
@@ -159,7 +158,6 @@ public class CustomContent extends Content {
 	}
 
 	public float getCurrentMaximum() {
-		short[] maxima = smp.getMaxima();
 		float max = maxima[0] & 0xffff;
 		for(int i = 1; i < maxima.length; i++) {
 			float v = maxima[i] & 0xffff;
@@ -180,8 +178,7 @@ public class CustomContent extends Content {
 	}
 
 	private void updateDisplayRange() {
-		short[] maxima = smp.getMaxima();
-		boolean[] isMax = smp.isMaximum();
+		boolean[] isMax = smp.isMaximum(maxima);
 		int[] overlay = null;
 		if(showColorOverlay) {
 			File cf = files[currentIdx];
@@ -241,7 +238,7 @@ public class CustomContent extends Content {
 	}
 
 	void readColors(File file) throws IOException {
-		smp.loadMaxima(file.getAbsolutePath());
+		this.maxima = smp.loadMaxima(file.getAbsolutePath());
 	}
 
 	public void setColors(Color3f[] colors) {
@@ -250,8 +247,6 @@ public class CustomContent extends Content {
 
 	public void scaleForAngle(float angleFactor) throws IOException {
 		Point3f[] vertices = smp.getSphere().getVertices();
-		smp.loadMaxima(getCurrentFile());
-		short[] maxima = smp.getMaxima();
 		float cz = smp.getCenter().z;
 		float radius = smp.getRadius();
 		float bg = SphericalMaxProjection.getMode(maxima);

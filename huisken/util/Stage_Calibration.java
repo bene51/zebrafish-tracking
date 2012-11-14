@@ -2,7 +2,6 @@ package huisken.util;
 
 import fiji.plugin.timelapsedisplay.TimeLapseDisplay;
 import fiji.util.gui.GenericDialogPlus;
-import huisken.opener.SPIMExperiment;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
@@ -37,6 +36,7 @@ import mpicbg.spim.io.ConfigurationParserException;
 import mpicbg.spim.io.IOFunctions;
 import mpicbg.spim.io.SPIMConfiguration;
 import neo.BaseCameraApplication;
+import spimopener.SPIMExperiment;
 import vib.FastMatrix;
 
 

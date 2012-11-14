@@ -5,13 +5,86 @@ import ij.ImagePlus;
 import ij.measure.Calibration;
 import ij.process.ImageProcessor;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Properties;
+
 public class ArtificialEmbryo {
+
+	static final int w = 256;
+	static final int h = 256;
+	static final int d = 128;
+
+	static final double pw = 1.0;
+	static final double ph = 1.0;
+	static final double pd = 2.0;
 
 	static final float cx = 128.0f;
 	static final float cy = 128.0f;
 	static final float cz = 128.0f;
 	static final float radius = 100.0f;
-	static final int d = 128;
+
+	public static void main(String[] args) {
+		new ij.ImageJ();
+		File outputdir = new File("/Users/bschmid/Desktop/bla");
+
+		File dir = new File(outputdir, "camera1");
+		dir = new File(dir, "sample0");
+		dir = new File(dir, String.format("tp%04d_a%03d", 0, 0));
+		dir.mkdirs();
+
+		ImagePlus imp = createCamera1Left(); imp.setTitle("c1l"); imp.show();
+		saveStack(imp, 0, dir);
+		imp = createCamera1Right(); imp.setTitle("c1r"); imp.show();
+		saveStack(imp, 1, dir);
+
+		dir = new File(outputdir, "camera2");
+		dir = new File(dir, "sample0");
+		dir = new File(dir, String.format("tp%04d_a%03d", 0, 0));
+		dir.mkdirs();
+
+		imp = createCamera2Left(); imp.setTitle("c2l"); imp.show();
+		saveStack(imp, 0, dir);
+		imp = createCamera2Right(); imp.setTitle("c2r"); imp.show();
+		saveStack(imp, 1, dir);
+
+		Properties props = new Properties();
+		props.setProperty("nTimepoints", Integer.toString(1));
+		props.setProperty("nAngles", Integer.toString(1));
+		props.setProperty("angleInc", Integer.toString(90));
+		props.setProperty("w", Integer.toString(w));
+		props.setProperty("h", Integer.toString(h));
+		props.setProperty("d", Integer.toString(d));
+		props.setProperty("pixelwidth", Float.toString((float)pw));
+		props.setProperty("pixelheight", Float.toString((float)ph));
+		props.setProperty("pixeldepth", Float.toString((float)pd));
+		props.setProperty("centerX", Float.toString(cx));
+		props.setProperty("centerY", Float.toString(cy));
+		props.setProperty("centerZ", Float.toString(cz));
+		props.setProperty("radius", Float.toString(radius));
+		props.setProperty("doublesided", Boolean.toString(true));
+		props.setProperty("twocameras", Boolean.toString(true));
+
+		dir = new File(outputdir, "camera1");
+		try {
+			props.store(new FileOutputStream(new File(dir, "RadialMaxProj.conf")), "");
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	private static void saveStack(ImagePlus imp, int ill, File dir) {
+		int d = imp.getStackSize();
+		for(int z = 0; z < d; z++) {
+			String name = String.format("%04d_ill%d.tif", z, ill);
+			IJ.save(new ImagePlus("", imp.getStack().getProcessor(z + 1)), new File(dir, name).getAbsolutePath());
+		}
+	}
 
 	public static ImagePlus createCamera1Left() {
 		Helper e1 = new Helper();
@@ -19,8 +92,8 @@ public class ArtificialEmbryo {
 			for(int la = -9; la <= 0; la++)
 				e1.drawSphere(10 * lo * Math.PI / 180.0, 10 * la * Math.PI / 180.0, cx, cy, cz, radius);
 
-		addDuplicate(e1.imp, d, 30000);
-		addDuplicate(e1.imp, d, 15000);
+		//addDuplicate(e1.imp, d, 30000);
+		//addDuplicate(e1.imp, d, 15000);
 		return e1.imp;
 	}
 
@@ -30,8 +103,8 @@ public class ArtificialEmbryo {
 			for(int la = -9; la <= 0; la++)
 				e1.drawSphere(10 * lo * Math.PI / 180.0, 10 * la * Math.PI / 180.0, cx, cy, cz, radius);
 
-		addDuplicate(e1.imp, d, 30000);
-		addDuplicate(e1.imp, d, 15000);
+		//addDuplicate(e1.imp, d, 30000);
+		//addDuplicate(e1.imp, d, 15000);
 		return e1.imp;
 	}
 
@@ -41,8 +114,8 @@ public class ArtificialEmbryo {
 			for(int la = 0; la <= 9; la++)
 				e1.drawSphere(10 * lo * Math.PI / 180.0, 10 * la * Math.PI / 180.0, cx, cy, cz, radius);
 
-		addDuplicate(e1.imp, d, 30000);
-		addDuplicate(e1.imp, d, 15000);
+		//addDuplicate(e1.imp, d, 30000);
+		//addDuplicate(e1.imp, d, 15000);
 		return e1.imp;
 	}
 
@@ -52,8 +125,8 @@ public class ArtificialEmbryo {
 			for(int la = 0; la <= 9; la++)
 				e1.drawSphere(10 * lo * Math.PI / 180.0, 10 * la * Math.PI / 180.0, cx, cy, cz, radius);
 
-		addDuplicate(e1.imp, d, 30000);
-		addDuplicate(e1.imp, d, 15000);
+		//addDuplicate(e1.imp, d, 30000);
+		//addDuplicate(e1.imp, d, 15000);
 		return e1.imp;
 	}
 
