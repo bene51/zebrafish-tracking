@@ -10,7 +10,8 @@ import java.io.DataOutputStream;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.zip.GZIPOutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 public class ImageProvider implements PlugInFilter {
 
@@ -19,7 +20,8 @@ public class ImageProvider implements PlugInFilter {
 	public void run(int port) throws Exception {
 		ServerSocket serverSocket = new ServerSocket(port);
 		Socket clientSocket = serverSocket.accept();
-		DataOutputStream out = new DataOutputStream(new GZIPOutputStream(clientSocket.getOutputStream()));
+		ZipOutputStream zip = new ZipOutputStream(clientSocket.getOutputStream());
+		DataOutputStream out = new DataOutputStream(zip);
 		BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		String inputLine;
 		while ((inputLine = in.readLine()) != null) {
@@ -27,6 +29,7 @@ public class ImageProvider implements PlugInFilter {
 				break;
 			}
 			if(inputLine.equals("getImage")) {
+				zip.putNextEntry(new ZipEntry("bla"));
 				double mean = getImage().getProcessor().getStatistics().mean;
 				System.out.println("writing image to socket: mean = " + mean);
 				ImagePlus im = getImage();
@@ -34,6 +37,7 @@ public class ImageProvider implements PlugInFilter {
 				out.writeInt(im.getHeight());
 				out.write((byte[])im.getProcessor().getPixels());
 				out.flush();
+				zip.closeEntry();
 			}
 		}
 		System.out.println("Shutting down server");

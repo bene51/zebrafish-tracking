@@ -10,13 +10,14 @@ import java.io.DataInputStream;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipInputStream;
 
 public class ImageReceiver implements PlugIn {
 
 	private Socket socket;
 	private PrintWriter out;
 	private DataInputStream in;
+	private ZipInputStream zip;
 
 	@Override
 	public void run(String args) {
@@ -54,7 +55,8 @@ public class ImageReceiver implements PlugIn {
 			throw new RuntimeException("Already running");
 		socket = new Socket(InetAddress.getByName(host), port);
 		out = new PrintWriter(socket.getOutputStream(), true);
-		in = new DataInputStream(new GZIPInputStream(socket.getInputStream()));
+		zip = new ZipInputStream(socket.getInputStream());
+		in = new DataInputStream(zip);
 	}
 
 	public ImagePlus getImage() throws Exception {
@@ -63,6 +65,7 @@ public class ImageReceiver implements PlugIn {
 		int h = in.readInt();
 		byte[] data = new byte[w * h];
 		int read = 0;
+		zip.getNextEntry();
 		while(read < data.length)
 			read += in.read(data, read, data.length - read);
 		ByteProcessor ip = new ByteProcessor(w, h, data, null);
