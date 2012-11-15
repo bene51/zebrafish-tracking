@@ -10,6 +10,7 @@ import java.io.DataOutputStream;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.zip.GZIPOutputStream;
 
 public class ImageProvider implements PlugInFilter {
 
@@ -18,7 +19,7 @@ public class ImageProvider implements PlugInFilter {
 	public void run(int port) throws Exception {
 		ServerSocket serverSocket = new ServerSocket(port);
 		Socket clientSocket = serverSocket.accept();
-		DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
+		DataOutputStream out = new DataOutputStream(new GZIPOutputStream(clientSocket.getOutputStream()));
 		BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		String inputLine;
 		while ((inputLine = in.readLine()) != null) {
