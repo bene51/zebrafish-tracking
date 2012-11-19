@@ -6,16 +6,20 @@ import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
 import ij.process.ByteProcessor;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.util.zip.GZIPInputStream;
 
 public class ImageReceiver implements PlugIn {
 
 	private Socket socket;
 	private PrintWriter out;
 	private DataInputStream in;
+	private ImagePlus image;
 
 	@Override
 	public void run(String args) {
@@ -55,19 +59,27 @@ public class ImageReceiver implements PlugIn {
 		out = new PrintWriter(socket.getOutputStream(), true);
 		in = new DataInputStream(socket.getInputStream());
 	}
+	
+	private byte[] compressed;
+	private MyByteArrayOutputStream decompressed;
 
 	public ImagePlus getImage() throws Exception {
 		out.println("getImage");
 		int w = in.readInt();
 		int h = in.readInt();
-		byte[] data = new byte[w * h];
+		int compressedLength = in.readInt();
+		if(image == null) {
+			compressed = new byte[w * h];
+			decompressed = new MyByteArrayOutputStream(w * h);
+			image = new ImagePlus("Received", new ByteProcessor(w, h, decompressed.getBuffer(), null));
+		}
+
 		int read = 0;
-		while(read < data.length)
-			read += in.read(data, read, data.length - read);
-		ByteProcessor ip = new ByteProcessor(w, h, data, null);
-		double mean = ip.getStatistics().mean;
-		System.out.println("reading image from socket mean = " + mean);
-		return new ImagePlus("Received", ip);
+		while(read < compressedLength)
+			read += in.read(compressed, read, compressedLength - read);
+		decompress(compressed, read, decompressed);
+		image.updateAndDraw();
+		return image;
 	}
 
 	public void stop() throws Exception {
@@ -77,4 +89,30 @@ public class ImageReceiver implements PlugIn {
 		in = null;
 		out = null;
 	}
+	
+	private static byte[] tmp = new byte[1024];
+	private static void decompress(byte[] compressedBytes, int l, ByteArrayOutputStream decompressed) {
+		try {
+			GZIPInputStream zipIn = new GZIPInputStream(
+					new ByteArrayInputStream(compressedBytes));
+
+			for (int bytesRead; (bytesRead = zipIn.read(tmp)) != -1;) {
+				decompressed.write(tmp, 0, bytesRead);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private static class MyByteArrayOutputStream extends ByteArrayOutputStream {
+		
+		MyByteArrayOutputStream(int n) {
+			super(n);
+		}
+
+		byte[] getBuffer() {
+			return this.buf;
+		}
+	}
+
 }
