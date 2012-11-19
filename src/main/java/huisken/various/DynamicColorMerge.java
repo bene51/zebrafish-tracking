@@ -98,7 +98,17 @@ public class DynamicColorMerge extends BaseCameraApplication {
 
 	public void startServer(final int port) {
 		// start camera
-		final ImageProvider provider = new ImageProvider();
+
+		// start camera, each time an image is received, call provider.setImage();
+		int aw = at.AT_GetInt("AOIWidth");
+		int ah = at.AT_GetInt("AOIHeight");
+		int nPixels = aw * ah;
+		short[] pixels = new short[nPixels];
+		byte[] gray = new byte[nPixels];
+		ImageProcessor ip = new ByteProcessor(aw, ah, gray, null);
+		ImagePlus image = new ImagePlus("", ip);
+		
+		final ImageProvider provider = new ImageProvider(image);
 		new Thread() {
 			@Override
 			public void run() {
@@ -109,15 +119,6 @@ public class DynamicColorMerge extends BaseCameraApplication {
 				}
 			}
 		}.start();
-
-		// start camera, each time an image is received, call provider.setImage();
-		int aw = at.AT_GetInt("AOIWidth");
-		int ah = at.AT_GetInt("AOIHeight");
-		int nPixels = aw * ah;
-		short[] pixels = new short[nPixels];
-		byte[] gray = new byte[nPixels];
-		ImageProcessor ip = new ByteProcessor(aw, ah, gray, null);
-		ImagePlus image = new ImagePlus("", ip);
 
 		at.startPreview();
 		while(running) {
@@ -168,16 +169,19 @@ public class DynamicColorMerge extends BaseCameraApplication {
 				max = Integer.parseInt(maxTF.getText());
 			} catch(Exception e) {
 			}
+			System.out.println("getting next camera image...");
 			at.nextPreviewImage(pixels);
 			convertTo8(pixels, gray, min, max);
-			System.out.println("Received next image from camera");
+			System.out.println("done");
 			ImagePlus second = null;
 			try {
+				System.out.print("getting next image from other pc...");
 				second = receiver.getImage();
-				System.out.println("Received next image from server: w = " + second.getWidth() + " h = " + second.getHeight());
+				System.out.println("done");
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+			System.out.print("merging...");
 			ByteProcessor r = (ByteProcessor)ip;
 			ByteProcessor g = (ByteProcessor)second.getProcessor();
 			int w = r.getWidth();
@@ -190,6 +194,7 @@ public class DynamicColorMerge extends BaseCameraApplication {
 				int merge = 0xff000000 + (red << 16) + (green << 8);
 				merged.set(i, merge);
 			}
+			System.out.println("done");
 			result.updateAndDraw();
 		}
 		try {
