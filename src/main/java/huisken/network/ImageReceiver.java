@@ -73,6 +73,7 @@ public class ImageReceiver implements PlugIn {
 			decompressed = new MyByteArrayOutputStream(w * h);
 			image = new ImagePlus("Received", new ByteProcessor(w, h, decompressed.getBuffer(), null));
 		}
+		decompressed.reset();
 
 		int read = 0;
 		while(read < compressedLength)

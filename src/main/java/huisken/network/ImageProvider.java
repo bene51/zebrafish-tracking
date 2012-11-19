@@ -18,8 +18,14 @@ public class ImageProvider implements PlugInFilter {
 	protected ImagePlus image;
 	private ByteArrayOutputStream intermediate;
 
+	public ImageProvider() {}
+
+	public ImageProvider(ImagePlus image) {
+		this.image = image;
+	}
+
 	public void run(int port) throws Exception {
-		intermediate = new ByteArrayOutputStream(((byte[])getImage().getProcessor().getPixels()).length);
+		intermediate = new ByteArrayOutputStream(((byte[])image.getProcessor().getPixels()).length);
 		ServerSocket serverSocket = new ServerSocket(port);
 		Socket clientSocket = serverSocket.accept();
 		DataOutputStream out = new DataOutputStream(
@@ -34,12 +40,11 @@ public class ImageProvider implements PlugInFilter {
 			if (inputLine.equals("getImage")) {
 				double mean = getImage().getProcessor().getStatistics().mean;
 				System.out.println("writing image to socket: mean = " + mean);
-				ImagePlus im = getImage();
-				byte[] data = (byte[])im.getProcessor().getPixels();
+				byte[] data = (byte[])image.getProcessor().getPixels();
 				intermediate.reset();
 				compress(data, intermediate);
-				out.writeInt(im.getWidth());
-				out.writeInt(im.getHeight());
+				out.writeInt(image.getWidth());
+				out.writeInt(image.getHeight());
 				out.writeInt(intermediate.size());
 				intermediate.writeTo(out);
 				out.flush();
