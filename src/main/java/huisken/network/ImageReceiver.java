@@ -78,7 +78,7 @@ public class ImageReceiver implements PlugIn {
 		int read = 0;
 		while(read < compressedLength)
 			read += in.read(compressed, read, compressedLength - read);
-		decompress(compressed, read, decompressed);
+		decompress(compressed, compressedLength, decompressed);
 		image.updateAndDraw();
 		return image;
 	}
@@ -97,7 +97,8 @@ public class ImageReceiver implements PlugIn {
 			GZIPInputStream zipIn = new GZIPInputStream(
 					new ByteArrayInputStream(compressedBytes));
 
-			for (int bytesRead; (bytesRead = zipIn.read(tmp)) != -1;) {
+			int bytesRead;
+			while((bytesRead = zipIn.read(tmp)) != -1) {
 				decompressed.write(tmp, 0, bytesRead);
 			}
 		} catch (Exception e) {
