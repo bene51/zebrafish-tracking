@@ -6,17 +6,13 @@ import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.zip.GZIPOutputStream;
 
 public class ImageProvider implements PlugInFilter {
 
 	protected ImagePlus image;
-	private ByteArrayOutputStream intermediate;
 
 	public ImageProvider() {}
 
@@ -25,11 +21,21 @@ public class ImageProvider implements PlugInFilter {
 	}
 
 	public void run(int port) throws Exception {
-		intermediate = new ByteArrayOutputStream(((byte[])image.getProcessor().getPixels()).length);
+		int w = image.getWidth();
+		int h = image.getHeight();
+		byte[] header = new byte[8];
+		header[0] = (byte)((w >> 24) & 0xff);
+		header[1] = (byte)((w >> 16) & 0xff);
+		header[2] = (byte)((w >>  8) & 0xff);
+		header[3] = (byte)((w      ) & 0xff);
+		header[4] = (byte)((w >> 24) & 0xff);
+		header[5] = (byte)((w >> 16) & 0xff);
+		header[6] = (byte)((w >>  8) & 0xff);
+		header[7] = (byte)((w      ) & 0xff);
 		ServerSocket serverSocket = new ServerSocket(port);
 		Socket clientSocket = serverSocket.accept();
-		DataOutputStream out = new DataOutputStream(
-				clientSocket.getOutputStream());
+		CompressedBlockOutputStream out = new CompressedBlockOutputStream(
+				clientSocket.getOutputStream(), w * h + 8);
 		BufferedReader in = new BufferedReader(new InputStreamReader(
 				clientSocket.getInputStream()));
 		String inputLine;
@@ -41,16 +47,13 @@ public class ImageProvider implements PlugInFilter {
 				double mean = getImage().getProcessor().getStatistics().mean;
 				System.out.println("writing image to socket: mean = " + mean);
 				byte[] data = (byte[])image.getProcessor().getPixels();
-				intermediate.reset();
-				compress(data, intermediate);
-				out.writeInt(image.getWidth());
-				out.writeInt(image.getHeight());
-				out.writeInt(intermediate.size());
-				intermediate.writeTo(out);
+				out.write(header);
+				out.write(data);
 				out.flush();
 			}
 		}
 		System.out.println("Shutting down server");
+		out.close();
 		clientSocket.close();
 	}
 
@@ -71,16 +74,6 @@ public class ImageProvider implements PlugInFilter {
 			run((int) n);
 		} catch (Exception e) {
 			IJ.error(e.getMessage());
-			e.printStackTrace();
-		}
-	}
-
-	private static void compress(byte[] data, ByteArrayOutputStream out) {
-		try {
-			GZIPOutputStream zipOut = new GZIPOutputStream(out);
-			zipOut.write(data);
-			zipOut.close();
-		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}

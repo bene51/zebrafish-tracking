@@ -6,20 +6,20 @@ import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
 import ij.process.ByteProcessor;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.util.zip.GZIPInputStream;
 
 public class ImageReceiver implements PlugIn {
 
 	private Socket socket;
 	private PrintWriter out;
-	private DataInputStream in;
+	private CompressedBlockInputStream in;
 	private ImagePlus image;
+	private byte[] decompressed;
 
 	@Override
 	public void run(String args) {
@@ -57,29 +57,31 @@ public class ImageReceiver implements PlugIn {
 			throw new RuntimeException("Already running");
 		socket = new Socket(InetAddress.getByName(host), port);
 		out = new PrintWriter(socket.getOutputStream(), true);
-		in = new DataInputStream(socket.getInputStream());
+		in = new CompressedBlockInputStream(socket.getInputStream());
 	}
 	
-	private byte[] compressed;
-	private MyByteArrayOutputStream decompressed;
+	private static final int readInt(InputStream in) throws IOException {
+		int ch1 = in.read();
+		int ch2 = in.read();
+		int ch3 = in.read();
+		int ch4 = in.read();
+		if ((ch1 | ch2 | ch3 | ch4) < 0)
+			throw new EOFException();
+		return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
+	}
 
 	public ImagePlus getImage() throws Exception {
 		out.println("getImage");
-		int w = in.readInt();
-		int h = in.readInt();
-		int compressedLength = in.readInt();
+		int w = readInt(in);
+		int h = readInt(in);
 		if(image == null) {
-			compressed = new byte[w * h];
-			decompressed = new MyByteArrayOutputStream(w * h);
-			image = new ImagePlus("Received", new ByteProcessor(w, h, decompressed.getBuffer(), null));
+			decompressed = new byte[w * h];
+			image = new ImagePlus("Received", new ByteProcessor(w, h, decompressed, null));
 		}
-		decompressed.reset();
 
 		int read = 0;
-		while(read < compressedLength)
-			read += in.read(compressed, read, compressedLength - read);
-		decompress(compressed, compressedLength, decompressed);
-		image.updateAndDraw();
+		while(read < decompressed.length)
+			read += in.read(decompressed, read, decompressed.length - read);
 		return image;
 	}
 
@@ -90,31 +92,4 @@ public class ImageReceiver implements PlugIn {
 		in = null;
 		out = null;
 	}
-	
-	private static byte[] tmp = new byte[1024];
-	private static void decompress(byte[] compressedBytes, int l, ByteArrayOutputStream decompressed) {
-		try {
-			GZIPInputStream zipIn = new GZIPInputStream(
-					new ByteArrayInputStream(compressedBytes));
-
-			int bytesRead;
-			while((bytesRead = zipIn.read(tmp)) != -1) {
-				decompressed.write(tmp, 0, bytesRead);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private static class MyByteArrayOutputStream extends ByteArrayOutputStream {
-		
-		MyByteArrayOutputStream(int n) {
-			super(n);
-		}
-
-		byte[] getBuffer() {
-			return this.buf;
-		}
-	}
-
 }
