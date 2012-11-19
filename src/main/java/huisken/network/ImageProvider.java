@@ -28,8 +28,7 @@ public class ImageProvider implements PlugInFilter {
 		int h = image.getHeight();
 		ServerSocket serverSocket = new ServerSocket(port);
 		Socket clientSocket = serverSocket.accept();
-		CompressedBlockOutputStream out = new CompressedBlockOutputStream(
-				clientSocket.getOutputStream(), w * h + 8);
+		OutputStream out = clientSocket.getOutputStream();
 		BufferedReader in = new BufferedReader(new InputStreamReader(
 				clientSocket.getInputStream()));
 
@@ -51,8 +50,8 @@ public class ImageProvider implements PlugInFilter {
 				writeInt(out, h);
 				writeInt(out, compressedLength);
 				out.write(compressed, 0, compressedLength);
-				out.flush();
 				compresser.finish();
+				out.flush();
 			}
 		}
 		System.out.println("Shutting down server");

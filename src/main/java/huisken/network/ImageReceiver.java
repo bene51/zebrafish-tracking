@@ -92,7 +92,7 @@ public class ImageReceiver implements PlugIn {
 		decompresser.reset();
 		decompresser.setInput(compressed);
 		decompresser.inflate(decompressed);
-		decompresser.end();
+
 		return image;
 	}
 
