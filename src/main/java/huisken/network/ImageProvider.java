@@ -6,9 +6,12 @@ import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.zip.Deflater;
 
 public class ImageProvider implements PlugInFilter {
 
@@ -23,22 +26,16 @@ public class ImageProvider implements PlugInFilter {
 	public void run(int port) throws Exception {
 		int w = image.getWidth();
 		int h = image.getHeight();
-		byte[] header = new byte[8];
-		header[0] = (byte)((w >> 24) & 0xff);
-		header[1] = (byte)((w >> 16) & 0xff);
-		header[2] = (byte)((w >>  8) & 0xff);
-		header[3] = (byte)((w      ) & 0xff);
-		header[4] = (byte)((w >> 24) & 0xff);
-		header[5] = (byte)((w >> 16) & 0xff);
-		header[6] = (byte)((w >>  8) & 0xff);
-		header[7] = (byte)((w      ) & 0xff);
 		ServerSocket serverSocket = new ServerSocket(port);
 		Socket clientSocket = serverSocket.accept();
 		CompressedBlockOutputStream out = new CompressedBlockOutputStream(
 				clientSocket.getOutputStream(), w * h + 8);
 		BufferedReader in = new BufferedReader(new InputStreamReader(
 				clientSocket.getInputStream()));
+
+		byte[] compressed = new byte[w * h];
 		String inputLine;
+		Deflater compresser = new Deflater();
 		while ((inputLine = in.readLine()) != null) {
 			if (inputLine.equals("close")) {
 				break;
@@ -46,15 +43,28 @@ public class ImageProvider implements PlugInFilter {
 			if (inputLine.equals("getImage")) {
 				double mean = getImage().getProcessor().getStatistics().mean;
 				System.out.println("writing image to socket: mean = " + mean);
-				byte[] data = (byte[])image.getProcessor().getPixels();
-				out.write(header);
-				out.write(data);
+				byte[] decompressed = (byte[])image.getProcessor().getPixels();
+				compresser.reset();
+				compresser.setInput(decompressed);
+				int compressedLength = compresser.deflate(compressed);
+				writeInt(out, w);
+				writeInt(out, h);
+				writeInt(out, compressedLength);
+				out.write(compressed, 0, compressedLength);
 				out.flush();
+				compresser.finish();
 			}
 		}
 		System.out.println("Shutting down server");
 		out.close();
 		clientSocket.close();
+	}
+
+	private static void writeInt(OutputStream out, int i) throws IOException {
+		out.write((i >> 24) & 0xFF);
+		out.write((i >> 16) & 0xFF);
+		out.write((i >> 8) & 0xFF);
+		out.write((i >> 0) & 0xFF);
 	}
 
 	public synchronized void setImage(ImagePlus image) {

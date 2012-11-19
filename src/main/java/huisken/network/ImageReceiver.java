@@ -12,14 +12,17 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.util.zip.Inflater;
 
 public class ImageReceiver implements PlugIn {
 
 	private Socket socket;
 	private PrintWriter out;
-	private CompressedBlockInputStream in;
+	private byte[] compressed;
+	private InputStream in;
 	private ImagePlus image;
 	private byte[] decompressed;
+	private Inflater decompresser;
 
 	@Override
 	public void run(String args) {
@@ -57,7 +60,8 @@ public class ImageReceiver implements PlugIn {
 			throw new RuntimeException("Already running");
 		socket = new Socket(InetAddress.getByName(host), port);
 		out = new PrintWriter(socket.getOutputStream(), true);
-		in = new CompressedBlockInputStream(socket.getInputStream());
+		in = socket.getInputStream();
+		decompresser = new Inflater();
 	}
 	
 	private static final int readInt(InputStream in) throws IOException {
@@ -74,14 +78,21 @@ public class ImageReceiver implements PlugIn {
 		out.println("getImage");
 		int w = readInt(in);
 		int h = readInt(in);
+		int compressedLength = readInt(in);
 		if(image == null) {
+			compressed = new byte[w * h];
 			decompressed = new byte[w * h];
 			image = new ImagePlus("Received", new ByteProcessor(w, h, decompressed, null));
 		}
 
 		int read = 0;
-		while(read < decompressed.length)
-			read += in.read(decompressed, read, decompressed.length - read);
+		while(read < compressedLength)
+			read += in.read(compressed, read, compressedLength - read);
+
+		decompresser.reset();
+		decompresser.setInput(compressed);
+		decompresser.inflate(decompressed);
+		decompresser.end();
 		return image;
 	}
 
