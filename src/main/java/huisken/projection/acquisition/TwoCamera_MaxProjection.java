@@ -128,9 +128,9 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				ph = Double.parseDouble(props.getProperty("ph", "0"));
 				pd = Double.parseDouble(props.getProperty("pd", "0"));
 				center.set(
-					Float.parseFloat(props.getProperty("centerx")),
-					Float.parseFloat(props.getProperty("centery")),
-					Float.parseFloat(props.getProperty("centerz")));
+						Float.parseFloat(props.getProperty("centerx")),
+						Float.parseFloat(props.getProperty("centery")),
+						Float.parseFloat(props.getProperty("centerz")));
 				radius = (float)Double.parseDouble(props.getProperty("radius"));
 
 				// account for double-sided illumination:
@@ -166,23 +166,30 @@ public class TwoCamera_MaxProjection implements PlugIn {
 	private CameraApp cameraApp;
 
 
-	private int w, h, d, nTimepoints, nSamples, nAngles, nLayers;
-	private double layerWidth;
+	protected int w, h, d, nTimepoints, nSamples, nAngles, nLayers;
+	protected double layerWidth;
 	private static final boolean SAVE_RAW = false;
 	private boolean cameraAcquiring = false;
-	private FIFO fifo;
+	protected FIFO fifo;
 
-	private final void process() {
+	private final void consume() {
 		final short[] toProcess = new short[w * h];
 		final int d2 = 2 * d;
 		for(int t = 0; t < nTimepoints; t++) {
 			for(int s = 0; s < nSamples; s++) {
 				for(int a = 0; a < nAngles; a++) {
 					long start =  System.currentTimeMillis();
+					File tpDir = null;
+					if(SAVE_RAW) {
+						tpDir = new File(mmsmp[s].getOutputDirectory(), String.format("tp%04d_a%03d", t, a));
+						tpDir.mkdir();
+					}
 					for(int f = 0; f < d; f++) {
 						for(int ill = 0; ill < 2; ill++) {
 							fifo.get(toProcess);
 							mmsmp[s].process(toProcess, t, a, f, ill);
+							if(SAVE_RAW)
+								IJ.save(new ImagePlus("", new ShortProcessor(w, h, toProcess, null)), new File(tpDir, String.format("%04d_ill%d.tif", f, ill)).getAbsolutePath());
 						}
 					}
 					long end = System.currentTimeMillis();
@@ -192,55 +199,54 @@ public class TwoCamera_MaxProjection implements PlugIn {
 		}
 	}
 
+	protected void produce() {
+		AT at = cameraApp.getAT();
+		final short[] cache = new short[w * h];
+		final int d2 = 2 * d;
+		for(int t = 0; t < nTimepoints; t++) {
+			long tStart = -1;
+			for(int s = 0; s < nSamples; s++) {
+				for(int a = 0; a < nAngles; a++) {
+					at.AT_SetInt("FrameCount", d2);
+					at.AT_Command("AcquisitionStart");
+
+					long start = -1;
+					for(int f = 0; f < d; f++) {
+						for(int ill = 0; ill < 2; ill++) {
+							at.AT_NextFrame(cache);
+							cameraAcquiring = true;
+							if(start == -1)
+								start = System.currentTimeMillis();
+							if(tStart == -1)
+								tStart = start;
+
+							fifo.add(cache);
+							System.out.println("--- buffer: " + fifo.size() + "/100");
+						}
+					}
+					at.AT_Command("AcquisitionStop");
+					cameraAcquiring = false;
+					long end = System.currentTimeMillis();
+					System.out.println("Acquisition: Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
+				}
+			}
+			long tEnd = System.currentTimeMillis();
+			System.out.println("Timepoint " + t + ": " + (tEnd - tStart) + "ms");
+		}
+	}
+
 	private void startAcq() {
 		exec.execute(new Runnable() {
 			@Override
 			public void run() {
-				fifo = new FIFO(100, w * h);
+				fifo = new FIFO(2 * d, w * h);
 				new Thread() {
+					@Override
 					public void run() {
-						process();
+						consume();
 					}
 				}.start();
-				AT at = cameraApp.getAT();
-				final short[] cache = new short[w * h];
-				int d2 = 2 * d;
-				for(int t = 0; t < nTimepoints; t++) {
-					long tStart = -1;
-					for(int s = 0; s < nSamples; s++) {
-						for(int a = 0; a < nAngles; a++) {
-							at.AT_SetInt("FrameCount", d2);
-							at.AT_Command("AcquisitionStart");
-							File tpDir = null;
-							if(SAVE_RAW) {
-								tpDir = new File(mmsmp[s].getOutputDirectory(), String.format("tp%04d_a%03d", t, a));
-								tpDir.mkdir();
-							}
-							long start = -1;
-							for(int f = 0; f < d; f++) {
-								for(int ill = 0; ill < 2; ill++) {
-									at.AT_NextFrame(cache);
-									cameraAcquiring = true;
-									if(start == -1)
-										start = System.currentTimeMillis();
-									if(tStart == -1)
-										tStart = start;
-
-									fifo.add(cache);
-									System.out.println("--- buffer: " + fifo.size() + "/100");
-									if(SAVE_RAW)
-										IJ.save(new ImagePlus("", new ShortProcessor(w, h, cache, null)), new File(tpDir, String.format("%04d_ill%d.tif", f, ill)).getAbsolutePath());
-								}
-							}
-							at.AT_Command("AcquisitionStop");
-							cameraAcquiring = false;
-							long end = System.currentTimeMillis();
-							System.out.println("Acquisition: Needed " + (end - start) + "ms  " + 1000f * d2 / (end - start) + " fps");
-						}
-					}
-					long tEnd = System.currentTimeMillis();
-					System.out.println("Timepoint " + t + ": " + (tEnd - tStart) + "ms");
-				}
+				produce();
 			}
 		});
 	}
