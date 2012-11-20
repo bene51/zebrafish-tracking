@@ -16,11 +16,22 @@ import java.util.zip.Deflater;
 public class ImageProvider implements PlugInFilter {
 
 	protected ImagePlus image;
+	protected int w, h;
+	protected byte[] compressed;
+	protected int compressedLength;
+	protected Deflater compresser;
 
 	public ImageProvider() {}
 
 	public ImageProvider(ImagePlus image) {
-		this.image = image;
+		setup("", image);
+	}
+
+	public void init() {
+		compresser = new Deflater();
+		w = image.getWidth();
+		h = image.getHeight();
+		compressed = new byte[w * h];
 	}
 
 	public void run(int port) throws Exception {
@@ -32,25 +43,16 @@ public class ImageProvider implements PlugInFilter {
 		BufferedReader in = new BufferedReader(new InputStreamReader(
 				clientSocket.getInputStream()));
 
-		byte[] compressed = new byte[w * h];
 		String inputLine;
-		Deflater compresser = new Deflater();
 		while ((inputLine = in.readLine()) != null) {
 			if (inputLine.equals("close")) {
 				break;
 			}
 			if (inputLine.equals("getImage")) {
-				double mean = getImage().getProcessor().getStatistics().mean;
-				System.out.println("writing image to socket: mean = " + mean);
-				byte[] decompressed = (byte[])image.getProcessor().getPixels();
-				compresser.reset();
-				compresser.setInput(decompressed);
-				int compressedLength = compresser.deflate(compressed);
 				writeInt(out, w);
 				writeInt(out, h);
 				writeInt(out, compressedLength);
 				out.write(compressed, 0, compressedLength);
-				compresser.finish();
 				out.flush();
 			}
 		}
@@ -68,6 +70,11 @@ public class ImageProvider implements PlugInFilter {
 
 	public synchronized void setImage(ImagePlus image) {
 		this.image = image;
+		byte[] decompressed = (byte[])image.getProcessor().getPixels();
+		compresser.reset();
+		compresser.setInput(decompressed);
+		compresser.finish();
+		compressedLength = compresser.deflate(compressed);
 	}
 
 	public synchronized ImagePlus getImage() {
@@ -90,6 +97,7 @@ public class ImageProvider implements PlugInFilter {
 	@Override
 	public int setup(String arg, ImagePlus imp) {
 		this.image = imp;
+		init();
 		return DOES_8G;
 	}
 }

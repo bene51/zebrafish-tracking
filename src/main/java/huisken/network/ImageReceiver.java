@@ -38,13 +38,12 @@ public class ImageReceiver implements PlugIn {
 		try {
 			start(host, port);
 			while(!IJ.escapePressed()) {
-				Thread.sleep(50);
 				if(image == null) {
 					image = getImage();
 					image.show();
 				}
 				else {
-					image.setProcessor(getImage().getProcessor());
+					// image.setProcessor(getImage().getProcessor());
 					image.updateAndDraw();
 				}
 			}
