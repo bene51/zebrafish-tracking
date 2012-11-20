@@ -63,7 +63,7 @@ public class ImageReceiver implements PlugIn {
 		in = socket.getInputStream();
 		decompresser = new Inflater();
 	}
-	
+
 	private static final int readInt(InputStream in) throws IOException {
 		int ch1 = in.read();
 		int ch2 = in.read();
@@ -91,7 +91,8 @@ public class ImageReceiver implements PlugIn {
 
 		decompresser.reset();
 		decompresser.setInput(compressed);
-		decompresser.inflate(decompressed);
+		int n = decompresser.inflate(decompressed);
+		System.out.println("inflate returned " + n);
 
 		return image;
 	}
