@@ -87,6 +87,10 @@ public class CustomContent extends Content {
 		updateDisplayRange();
 	}
 
+	public SphericalMaxProjection getSMP() {
+		return smp;
+	}
+
 	public void exportToPLY(String path) throws IOException {
 		mesh.createNormalizedVersion(smp.getCenter(), smp.getRadius()).exportToPLY(path);
 	}

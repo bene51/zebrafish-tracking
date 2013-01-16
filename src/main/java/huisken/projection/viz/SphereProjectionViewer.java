@@ -22,6 +22,7 @@ import java.io.IOException;
 
 
 public class SphereProjectionViewer implements PlugIn {
+
 	@Override
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Sphere Projection Viewer");
@@ -67,11 +68,11 @@ public class SphereProjectionViewer implements PlugIn {
 		return new CustomContent(objpath, vertexDir, filenameContains);
 	}
 
-	private static class CustomBehavior extends InteractiveBehavior {
+	protected static class CustomBehavior extends InteractiveBehavior {
 
 		private final CustomContent cc;
 
-		CustomBehavior(Image3DUniverse univ, CustomContent cc) {
+		public CustomBehavior(Image3DUniverse univ, CustomContent cc) {
 			super(univ);
 			this.cc = cc;
 		}
