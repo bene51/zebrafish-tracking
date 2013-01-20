@@ -2,19 +2,64 @@ package huisken.projection.viz;
 
 import huisken.projection.processing.IndexedTriangleMesh;
 import huisken.projection.processing.SphericalMaxProjection;
+import ij3d.Content;
+import ij3d.ContentInstant;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import javax.vecmath.Color3f;
 import javax.vecmath.Point2f;
 import javax.vecmath.Point3f;
 
-public class SegmentableContent {
+public class SegmentableContent extends Content {
 
 	private CustomContent content;
+	private int[] fullSegmentation;
 
 	private int[] segmentationMeshToFullMesh;
 	private IndexedTriangleMesh segmentationMesh;
+	private int[] segmentation;
+	private Color3f[] colors;
+	private int[] intensities;
+
+	public SegmentableContent(String objfile, String vertexDir, String filenameContains, Point2f min, Point2f max) throws IOException {
+
+		super("bla", 0);
+		content = new CustomContent(objfile, vertexDir, filenameContains);
+		fullSegmentation = new int[content.getSMP().getSphere().nVertices];
+	}
+
+	public IndexedTriangleMesh getMesh() {
+		return segmentationMesh;
+	}
+
+	public Color3f[] getColors() {
+		return colors;
+	}
+
+	public int[] getIntensities() {
+		return intensities;
+	}
+
+	public CustomContent getCustomContent() {
+		return content;
+	}
+
+	public void transferSegmentation() {
+		for(int i = 0; i < segmentation.length; i++)
+			fullSegmentation[segmentationMeshToFullMesh[i]] = segmentation[i];
+	}
+
+	public int[] getSegmentation() {
+		return segmentation;
+	}
+
+	public int[] getFullSegmentation() {
+		return fullSegmentation;
+	}
 
 	// in rad
 	public void restrictTo(Point2f min, Point2f max) {
@@ -24,8 +69,12 @@ public class SegmentableContent {
 		Point3f[] fullVertices = full.getVertices();
 
 		List<Point3f> segVertices = new ArrayList<Point3f>();
+		List<Color3f> segColors = new ArrayList<Color3f>();
 		List<Integer> segFaces = new ArrayList<Integer>();
+
 		List<Integer> segToFull = new ArrayList<Integer>();
+		int[] fullToSeg = new int[full.nVertices];
+		Arrays.fill(fullToSeg, -1);
 
 		Point2f pol1 = new Point2f();
 		Point2f pol2 = new Point2f();
@@ -46,22 +95,42 @@ public class SegmentableContent {
 			smp.getPolar(v3, pol3);
 
 			if(inRange(pol1, min, max) || inRange(pol2, min, max) || inRange(pol3, min, max)) {
-				int idx = segVertices.size();
-				segVertices.add(new Point3f(v1));
-				segVertices.add(new Point3f(v2));
-				segVertices.add(new Point3f(v3));
-				segFaces.add(idx);
-				segFaces.add(idx + 1);
-				segFaces.add(idx + 2);
+				int v1In = fullToSeg[v1I];
+				if(v1In == -1) {
+					v1In = segVertices.size();
+					fullToSeg[v1I] = v1In;
+					segVertices.add(new Point3f(v1));
+					segColors.add(new Color3f(content.getColor(v1I)));
+					segToFull.add(v1I);
+				}
+				int v2In = fullToSeg[v2I];
+				if(v2In == -1) {
+					v2In = segVertices.size();
+					fullToSeg[v2I] = v2In;
+					segVertices.add(new Point3f(v2));
+					segColors.add(new Color3f(content.getColor(v2I)));
+					segToFull.add(v2I);
+				}
+				int v3In = fullToSeg[v3I];
+				if(v3In == -1) {
+					v3In = segVertices.size();
+					fullToSeg[v3I] = v3In;
+					segVertices.add(new Point3f(v3));
+					segColors.add(new Color3f(content.getColor(v3I)));
+					segToFull.add(v3I);
+				}
 
-				segToFull.add(v1I);
-				segToFull.add(v2I);
-				segToFull.add(v3I);
+				segFaces.add(v1In);
+				segFaces.add(v2In);
+				segFaces.add(v3In);
 			}
 		}
-
+		System.out.println(segVertices.size() + " vertices");
 		Point3f[] segVerticesA = new Point3f[segVertices.size()];
 		segVertices.toArray(segVerticesA);
+
+		colors = new Color3f[segVertices.size()];
+		segColors.toArray(colors);
 
 		int[] segFacesA = new int[segFaces.size()];
 		for(int i = 0; i < segFacesA.length; i++)
@@ -72,9 +141,94 @@ public class SegmentableContent {
 		segmentationMeshToFullMesh = new int[segToFull.size()];
 		for(int i = 0; i < segmentationMeshToFullMesh.length; i++)
 			segmentationMeshToFullMesh[i] = segToFull.get(i);
+
+		intensities = new int[segmentationMesh.nVertices];
+		int[] maxima = content.getMaxima();
+		for(int i = 0; i < intensities.length; i++)
+			intensities[i] = maxima[segmentationMeshToFullMesh[i]];
+
+		segmentation = new int[segmentationMesh.nVertices];
+		for(int i = 0; i < segmentation.length; i++) {
+			int idx = segmentationMeshToFullMesh[i];
+			segmentation[i] = fullSegmentation[idx];
+		}
 	}
 
-	static boolean inRange(Point2f p, Point2f min, Point2f max) {
+	public static final boolean inRange(Point2f p, Point2f min, Point2f max) {
+		if(min.x < max.x) {
+			if(p.x < min.x || p.x > max.x)
+				return false;
+		} else {
+			// min.x > max.x
+			// check that v > min.x || v < max.x
+			if(p.x < min.x && p.x > max.x)
+				return false;
+		}
+
+		if(min.y < max.y) {
+			if(p.y < min.y || p.y > max.y)
+				return false;
+		} else {
+			if(p.y < min.y && p.y > max.y)
+				return false;
+		}
+
+		return true;
+	}
+
+	public static final boolean inRangeOld(Point2f p, Point2f min, Point2f max) {
 		return p.x >= min.x && p.x <= max.x && p.y >= min.y && p.y <= max.y;
+	}
+
+	public static final Point2f toRange(Point2f p) {
+		if(p.x < -Math.PI)
+			p.x += (float)Math.PI * 2;
+		if(p.x > Math.PI)
+			p.x -= (float)Math.PI * 2;
+		if(p.y < -Math.PI)
+			p.y += (float)Math.PI * 2;
+		if(p.y > Math.PI)
+			p.y -= (float)Math.PI * 2;
+		return p;
+	}
+
+	// timeline stuff
+	@Override public void addInstant(ContentInstant ci) {}
+	@Override public void removeInstant(int t) {}
+	@Override public void setShowAllTimepoints(boolean b) {}
+
+	@Override public int getNumberOfInstants() {
+		return content.getNumberOfInstants();
+	}
+
+	@Override public ContentInstant getInstant(int t) {
+		return super.getInstant(0);
+	}
+
+	@Override public ContentInstant getCurrent() {
+		return super.getCurrent();
+	}
+
+	@Override public void showTimepoint(int t) {
+		content.showTimepoint(t);
+		// TODO
+	}
+
+	@Override public void showTimepoint(int t, boolean force) {
+		if(force)
+			super.showTimepoint(t, true);
+		showTimepoint(t);
+	}
+
+	@Override public boolean isVisibleAt(int t) {
+		return content.isVisibleAt(t);
+	}
+
+	@Override public int getStartTime() {
+		return content.getStartTime();
+	}
+
+	@Override public int getEndTime() {
+		return content.getEndTime();
 	}
 }

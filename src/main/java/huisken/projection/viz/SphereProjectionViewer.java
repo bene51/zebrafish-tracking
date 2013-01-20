@@ -137,7 +137,7 @@ public class SphereProjectionViewer implements PlugIn {
 				cc.toggleShowMaxima();
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_N) {
-				IJ.showMessage(cc.getCurrentFile());
+				IJ.showMessage(cc.getCurrentFilePath());
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_T) {
 				float angleFactor = (float)IJ.getNumber("Angle factor", 0.7);
