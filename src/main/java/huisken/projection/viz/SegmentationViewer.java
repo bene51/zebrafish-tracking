@@ -4,7 +4,6 @@ import static java.lang.Math.PI;
 import fiji.util.gui.GenericDialogPlus;
 import huisken.projection.processing.Floodfill;
 import huisken.projection.processing.IndexedTriangleMesh;
-import huisken.projection.processing.SphericalMaxProjection;
 import huisken.projection.viz.CustomContent.CustomIndexedTriangleMesh;
 import ij.IJ;
 import ij.plugin.PlugIn;
@@ -170,18 +169,6 @@ public class SegmentationViewer implements PlugIn {
 			@Override
 			public void timepointChanged(int timepoint) {
 				System.out.println("timepoint changed");
-				segContent.transferSegmentation();
-				File f = segContent.getCustomContent().getCurrentFile();
-				File dir = new File(f.getParentFile(), "segmentation");
-				String path = new File(dir, f.getName()).getAbsolutePath();
-				try {
-					SphericalMaxProjection.saveIntData(segContent.getFullSegmentation(), path);
-				} catch(Exception e) {
-					IJ.error("cannot save " + path);
-					e.printStackTrace();
-				}
-
-				segContent.restrictTo(min[currentView], max[currentView]);
 				IndexedTriangleMesh segmentationMesh = segContent.getMesh();
 
 				mesh = new CustomIndexedTriangleMesh(segmentationMesh.getVertices(), segContent.getColors(), segmentationMesh.getFaces());

@@ -2,9 +2,11 @@ package huisken.projection.viz;
 
 import huisken.projection.processing.IndexedTriangleMesh;
 import huisken.projection.processing.SphericalMaxProjection;
+import ij.IJ;
 import ij3d.Content;
 import ij3d.ContentInstant;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,7 +71,6 @@ public class SegmentableContent extends Content {
 		Point3f[] fullVertices = full.getVertices();
 
 		List<Point3f> segVertices = new ArrayList<Point3f>();
-		List<Color3f> segColors = new ArrayList<Color3f>();
 		List<Integer> segFaces = new ArrayList<Integer>();
 
 		List<Integer> segToFull = new ArrayList<Integer>();
@@ -100,7 +101,6 @@ public class SegmentableContent extends Content {
 					v1In = segVertices.size();
 					fullToSeg[v1I] = v1In;
 					segVertices.add(new Point3f(v1));
-					segColors.add(new Color3f(content.getColor(v1I)));
 					segToFull.add(v1I);
 				}
 				int v2In = fullToSeg[v2I];
@@ -108,7 +108,6 @@ public class SegmentableContent extends Content {
 					v2In = segVertices.size();
 					fullToSeg[v2I] = v2In;
 					segVertices.add(new Point3f(v2));
-					segColors.add(new Color3f(content.getColor(v2I)));
 					segToFull.add(v2I);
 				}
 				int v3In = fullToSeg[v3I];
@@ -116,7 +115,6 @@ public class SegmentableContent extends Content {
 					v3In = segVertices.size();
 					fullToSeg[v3I] = v3In;
 					segVertices.add(new Point3f(v3));
-					segColors.add(new Color3f(content.getColor(v3I)));
 					segToFull.add(v3I);
 				}
 
@@ -129,9 +127,6 @@ public class SegmentableContent extends Content {
 		Point3f[] segVerticesA = new Point3f[segVertices.size()];
 		segVertices.toArray(segVerticesA);
 
-		colors = new Color3f[segVertices.size()];
-		segColors.toArray(colors);
-
 		int[] segFacesA = new int[segFaces.size()];
 		for(int i = 0; i < segFacesA.length; i++)
 			segFacesA[i] = segFaces.get(i);
@@ -142,14 +137,15 @@ public class SegmentableContent extends Content {
 		for(int i = 0; i < segmentationMeshToFullMesh.length; i++)
 			segmentationMeshToFullMesh[i] = segToFull.get(i);
 
+
+		colors = new Color3f[segmentationMesh.nVertices];
 		intensities = new int[segmentationMesh.nVertices];
 		int[] maxima = content.getMaxima();
-		for(int i = 0; i < intensities.length; i++)
-			intensities[i] = maxima[segmentationMeshToFullMesh[i]];
-
 		segmentation = new int[segmentationMesh.nVertices];
-		for(int i = 0; i < segmentation.length; i++) {
+		for(int i = 0; i < segmentationMesh.nVertices; i++) {
 			int idx = segmentationMeshToFullMesh[i];
+			colors[i] = content.getColor(idx);
+			intensities[i] = maxima[segmentationMeshToFullMesh[i]];
 			segmentation[i] = fullSegmentation[idx];
 		}
 	}
@@ -210,14 +206,45 @@ public class SegmentableContent extends Content {
 	}
 
 	@Override public void showTimepoint(int t) {
-		content.showTimepoint(t);
-		// TODO
+		showTimepoint(t, false);
 	}
 
 	@Override public void showTimepoint(int t, boolean force) {
 		if(force)
 			super.showTimepoint(t, true);
-		showTimepoint(t);
+		transferSegmentation();
+		File f = content.getCurrentFile();
+		File dir = new File(f.getParentFile(), "segmentation");
+		if(!dir.exists())
+			dir.mkdir();
+		String path = new File(dir, f.getName()).getAbsolutePath();
+		try {
+			SphericalMaxProjection.saveIntData(fullSegmentation, path);
+		} catch(Exception e) {
+			IJ.error("cannot save " + path);
+			e.printStackTrace();
+		}
+
+		content.showTimepoint(t);
+		f = content.getCurrentFile();
+		path = new File(dir, f.getName()).getAbsolutePath();
+		try {
+			fullSegmentation = SphericalMaxProjection.loadIntData(path, fullSegmentation.length);
+		} catch(Exception e) {
+			IJ.error("cannot save " + path);
+			e.printStackTrace();
+		}
+
+		colors = new Color3f[segmentationMesh.nVertices];
+		intensities = new int[segmentationMesh.nVertices];
+		int[] maxima = content.getMaxima();
+		segmentation = new int[segmentationMesh.nVertices];
+		for(int i = 0; i < segmentationMesh.nVertices; i++) {
+			int idx = segmentationMeshToFullMesh[i];
+			colors[i] = content.getColor(idx);
+			intensities[i] = maxima[segmentationMeshToFullMesh[i]];
+			segmentation[i] = fullSegmentation[idx];
+		}
 	}
 
 	@Override public boolean isVisibleAt(int t) {
