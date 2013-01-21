@@ -11,6 +11,7 @@ import ij3d.Content;
 import ij3d.ContentInstant;
 import ij3d.Image3DUniverse;
 import ij3d.TimelapseListener;
+import ij3d.UniverseListener;
 import ij3d.behaviors.InteractiveBehavior;
 
 import java.awt.event.KeyEvent;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 
 import javax.media.j3d.IndexedTriangleArray;
 import javax.media.j3d.PickInfo;
+import javax.media.j3d.View;
 import javax.vecmath.Color3f;
 import javax.vecmath.Point2f;
 import javax.vecmath.Point3d;
@@ -68,7 +70,7 @@ public class SegmentationViewer implements PlugIn {
 	@Override
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Sphere Projection Viewer");
-		gd.addDirectoryField("Data directory", "/Users/huiskenlab/Documents/SPIMdata/Bene/spim2/20120621/17-29/fused/registered/resampled");
+		gd.addDirectoryField("Data directory", "");
 		gd.addStringField("File name contains", "");
 		gd.showDialog();
 		if(gd.wasCanceled())
@@ -133,8 +135,9 @@ public class SegmentationViewer implements PlugIn {
 
 		// load mesh
 		try {
-			segContent = new SegmentableContent(objfile, vertexDir, filenameContains, min[0], max[0]);
+			segContent = new SegmentableContent(objfile, vertexDir, filenameContains);
 			segContent.restrictTo(min[currentView], max[currentView]);
+
 			IndexedTriangleMesh segmentationMesh = segContent.getMesh();
 
 			mesh = new CustomIndexedTriangleMesh(segmentationMesh.getVertices(), segContent.getColors(), segmentationMesh.getFaces());
@@ -146,8 +149,6 @@ public class SegmentationViewer implements PlugIn {
 		} catch(Exception e) {
 			throw new RuntimeException("Cannot load " + objfile, e);
 		}
-
-		System.out.println(segContent.getInstant(0).getContent());
 
 		Image3DUniverse univ = new Image3DUniverse();
 		// univ.addInteractiveBehavior(new SphereProjectionViewer.CustomBehavior(univ, cc));
@@ -168,7 +169,6 @@ public class SegmentationViewer implements PlugIn {
 		univ.addTimelapseListener(new TimelapseListener() {
 			@Override
 			public void timepointChanged(int timepoint) {
-				System.out.println("timepoint changed");
 				IndexedTriangleMesh segmentationMesh = segContent.getMesh();
 
 				mesh = new CustomIndexedTriangleMesh(segmentationMesh.getVertices(), segContent.getColors(), segmentationMesh.getFaces());
@@ -184,9 +184,26 @@ public class SegmentationViewer implements PlugIn {
 				setSegmentation(new ArrayList<Integer>(), -1);
 			}
 		});
+		univ.addUniverseListener(new UniverseListener() {
+			@Override public void transformationStarted(View view) {}
+			@Override public void transformationUpdated(View view) {}
+			@Override public void transformationFinished(View view) {}
+			@Override public void contentAdded(Content c) {}
+			@Override public void contentRemoved(Content c) {}
+			@Override public void contentChanged(Content c) {}
+			@Override public void contentSelected(Content c) {}
+			@Override public void canvasResized() {}
+
+			@Override
+			public void universeClosed() {
+				segContent.saveCurrentTimepoint();
+			}
+		});
 
 		floodFill = new Floodfill(segContent.getMesh(), segContent.getIntensities(), segContent.getSegmentation());
 		outlines = new boolean[segContent.getMesh().nVertices];
+		floodFill.calculateOutlines(outlines);
+		setSegmentation(new ArrayList<Integer>(), -1);
 
 		return univ;
 	}
@@ -230,7 +247,7 @@ public class SegmentationViewer implements PlugIn {
 				prevView();
 				e.consume();
 			}
-			else if(e.getKeyCode() == KeyEvent.VK_A) {
+			else if(e.getKeyCode() == KeyEvent.VK_X) {
 				floodFill.exec();
 				floodFill.calculateOutlines(outlines);
 				setSegmentation(new ArrayList<Integer>(), -1);

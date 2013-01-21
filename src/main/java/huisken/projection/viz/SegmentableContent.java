@@ -27,11 +27,25 @@ public class SegmentableContent extends Content {
 	private Color3f[] colors;
 	private int[] intensities;
 
-	public SegmentableContent(String objfile, String vertexDir, String filenameContains, Point2f min, Point2f max) throws IOException {
-
+	public SegmentableContent(String objfile, String vertexDir, String filenameContains) throws IOException {
 		super("bla", 0);
 		content = new CustomContent(objfile, vertexDir, filenameContains);
-		fullSegmentation = new int[content.getSMP().getSphere().nVertices];
+		File f = content.getCurrentFile();
+		File dir = new File(f.getParentFile(), "segmentation");
+		f = content.getCurrentFile();
+		f = new File(dir, f.getName());
+		if(f.exists()) {
+			String path = f.getAbsolutePath();
+			try {
+				fullSegmentation = SphericalMaxProjection.loadIntData(path, content.getSMP().getSphere().nVertices);
+			} catch(Exception e) {
+				IJ.error("cannot load " + path);
+				e.printStackTrace();
+			}
+		} else {
+			fullSegmentation = new int[content.getSMP().getSphere().nVertices];
+		}
+
 	}
 
 	public IndexedTriangleMesh getMesh() {
@@ -123,7 +137,6 @@ public class SegmentableContent extends Content {
 				segFaces.add(v3In);
 			}
 		}
-		System.out.println(segVertices.size() + " vertices");
 		Point3f[] segVerticesA = new Point3f[segVertices.size()];
 		segVertices.toArray(segVerticesA);
 
@@ -209,9 +222,7 @@ public class SegmentableContent extends Content {
 		showTimepoint(t, false);
 	}
 
-	@Override public void showTimepoint(int t, boolean force) {
-		if(force)
-			super.showTimepoint(t, true);
+	public void saveCurrentTimepoint() {
 		transferSegmentation();
 		File f = content.getCurrentFile();
 		File dir = new File(f.getParentFile(), "segmentation");
@@ -224,15 +235,29 @@ public class SegmentableContent extends Content {
 			IJ.error("cannot save " + path);
 			e.printStackTrace();
 		}
+	}
+
+	@Override public void showTimepoint(int t, boolean force) {
+		if(force)
+			super.showTimepoint(t, true);
+		saveCurrentTimepoint();
 
 		content.showTimepoint(t);
+
+		File f = content.getCurrentFile();
+		File dir = new File(f.getParentFile(), "segmentation");
 		f = content.getCurrentFile();
-		path = new File(dir, f.getName()).getAbsolutePath();
-		try {
-			fullSegmentation = SphericalMaxProjection.loadIntData(path, fullSegmentation.length);
-		} catch(Exception e) {
-			IJ.error("cannot save " + path);
-			e.printStackTrace();
+		f = new File(dir, f.getName());
+		if(f.exists()) {
+			String path = f.getAbsolutePath();
+			try {
+				fullSegmentation = SphericalMaxProjection.loadIntData(path, fullSegmentation.length);
+			} catch(Exception e) {
+				IJ.error("cannot load " + path);
+				e.printStackTrace();
+			}
+		} else {
+			fullSegmentation = new int[fullSegmentation.length];
 		}
 
 		colors = new Color3f[segmentationMesh.nVertices];
