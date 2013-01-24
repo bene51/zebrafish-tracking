@@ -6,6 +6,7 @@ import huisken.projection.processing.Floodfill;
 import huisken.projection.processing.IndexedTriangleMesh;
 import huisken.projection.viz.CustomContent.CustomIndexedTriangleMesh;
 import ij.IJ;
+import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
 import ij3d.Content;
 import ij3d.ContentInstant;
@@ -14,9 +15,14 @@ import ij3d.TimelapseListener;
 import ij3d.UniverseListener;
 import ij3d.behaviors.InteractiveBehavior;
 
+import java.awt.TextField;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.awt.event.TextEvent;
+import java.awt.event.TextListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.ArrayList;
 
@@ -152,7 +158,7 @@ public class SegmentationViewer implements PlugIn {
 
 		Image3DUniverse univ = new Image3DUniverse();
 		// univ.addInteractiveBehavior(new SphereProjectionViewer.CustomBehavior(univ, cc));
-		univ.addInteractiveBehavior(new CustomBehavior(univ, segContent));
+		univ.addInteractiveBehavior(new CustomBehavior(univ));
 		univ.show();
 
 		univ.addContent(segContent);
@@ -227,11 +233,16 @@ public class SegmentationViewer implements PlugIn {
 
 	protected class CustomBehavior extends InteractiveBehavior {
 
-		private final SegmentableContent cc;
-
-		public CustomBehavior(Image3DUniverse univ, SegmentableContent cc) {
+		public CustomBehavior(Image3DUniverse univ) {
 			super(univ);
-			this.cc = cc;
+		}
+
+		private void updateColors() {
+			for(int i = 0; i < segContent.getMesh().nVertices; i++) {
+				int idx = segContent.segToFull(i);
+				segContent.getColors()[i] = segContent.getCustomContent().getColor(idx);
+			}
+			setSegmentation(new ArrayList<Integer>(), -1);
 		}
 
 		@Override
@@ -239,6 +250,47 @@ public class SegmentationViewer implements PlugIn {
 			if(e.getID() != KeyEvent.KEY_PRESSED)
 				return;
 
+			if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_C) {
+				final CustomContent cc = segContent.getCustomContent();
+				final float oldMin = cc.getDisplayedMinimum();
+				final float oldMax = cc.getDisplayedMaximum();
+				final GenericDialog gd = new GenericDialog("Adjust contrast");
+				gd.addSlider("Minimum", 0, 1 << 14, oldMin);
+				gd.addSlider("Maximum", 0, 1 << 14, oldMax);
+				gd.setModal(false);
+
+				gd.addWindowListener(new WindowAdapter() {
+					@Override
+					public void windowClosed(WindowEvent e) {
+						if(gd.wasCanceled()) {
+							cc.setDisplayedMinimum(oldMin);
+							cc.setDisplayedMaximum(oldMax);
+						}
+					}
+				});
+				final TextField minTF = (TextField)gd.getNumericFields().get(0);
+				final TextField maxTF = (TextField)gd.getNumericFields().get(1);
+				minTF.addTextListener(new TextListener() {
+					@Override
+					public void textValueChanged(TextEvent e) {
+						try {
+							cc.setDisplayedMinimum(Integer.parseInt(minTF.getText()));
+							updateColors();
+						} catch(NumberFormatException ex) {}
+					}
+				});
+				maxTF.addTextListener(new TextListener() {
+					@Override
+					public void textValueChanged(TextEvent e) {
+						try {
+							cc.setDisplayedMaximum(Integer.parseInt(maxTF.getText()));
+							updateColors();
+						} catch(NumberFormatException ex) {}
+					}
+				});
+
+				gd.showDialog();
+			}
 			if(e.getKeyCode() == KeyEvent.VK_RIGHT) {
 				nextView();
 				e.consume();
@@ -280,7 +332,7 @@ public class SegmentationViewer implements PlugIn {
 		}
 
 		int pickClosestVertexIndex(MouseEvent e) {
-			PickCanvas pickCanvas = new PickCanvas(univ.getCanvas(), cc);
+			PickCanvas pickCanvas = new PickCanvas(univ.getCanvas(), segContent);
 			pickCanvas.setTolerance(3f);
 			pickCanvas.setMode(PickInfo.PICK_GEOMETRY);
 			pickCanvas.setFlags(PickInfo.CLOSEST_GEOM_INFO | PickInfo.CLOSEST_INTERSECTION_POINT);

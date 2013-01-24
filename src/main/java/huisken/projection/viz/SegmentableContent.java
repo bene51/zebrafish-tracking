@@ -48,6 +48,10 @@ public class SegmentableContent extends Content {
 
 	}
 
+	public int segToFull(int i) {
+		return segmentationMeshToFullMesh[i];
+	}
+
 	public IndexedTriangleMesh getMesh() {
 		return segmentationMesh;
 	}
