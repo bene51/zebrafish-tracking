@@ -49,11 +49,11 @@ public class Fit_Sphere implements PlugInFilter {
 	@Override
 	public void run(ImageProcessor ip) {
 		double threshold = IJ.getNumber(
-			"Threshold", 127);
+				"Threshold", 127);
 		if(threshold == IJ.CANCELED)
 			return;
-		// fitMixture(threshold);
-		fit(threshold);
+		fitMixture(threshold);
+		// fit(threshold);
 		IJ.log("x0 = " + x0 + "\ny0 = " + y0 + "\nz0 = " + z0 + "\nr = " + r);
 		getControlImage().show();
 	}
@@ -71,7 +71,7 @@ public class Fit_Sphere implements PlugInFilter {
 		// imp = NaiveResampler.resample(imp, 4);
 
 		IndexedTriangleMesh mesh = new IndexedTriangleMesh(
-			MeshMaker.createSphere(model.x, model.y, model.z, model.w, 48, 48));
+				MeshMaker.createSphere(model.x, model.y, model.z, model.w, 48, 48));
 		imp = mesh.createOverlay(imp, 0xff0000);
 		image.setRoi(roi);
 		return imp;
@@ -86,11 +86,11 @@ public class Fit_Sphere implements PlugInFilter {
 		// imp = NaiveResampler.resample(imp, 4);
 
 		IndexedTriangleMesh mesh = new IndexedTriangleMesh(
-			MeshMaker.createSphere(model1.x, model1.y, model1.z, model1.w, 48, 48));
+				MeshMaker.createSphere(model1.x, model1.y, model1.z, model1.w, 48, 48));
 		imp = mesh.createOverlay(imp, 0xff0000);
 
 		mesh = new IndexedTriangleMesh(
-			MeshMaker.createSphere(model2.x, model2.y, model2.z, model2.w, 48, 48));
+				MeshMaker.createSphere(model2.x, model2.y, model2.z, model2.w, 48, 48));
 		imp = mesh.createOverlay(imp, 0x00ff00);
 		image.setRoi(roi);
 		return imp;
@@ -173,11 +173,11 @@ public class Fit_Sphere implements PlugInFilter {
 		int iterations = 20;
 		double epsilon = 10;
 		ransac(candidates,
-			new ArrayList<Point3f>(),
-			minNumMatches,
-			iterations,
-			epsilon,
-			minNumInliers);
+				new ArrayList<Point3f>(),
+				minNumMatches,
+				iterations,
+				epsilon,
+				minNumInliers);
 
 	}
 
@@ -262,7 +262,7 @@ public class Fit_Sphere implements PlugInFilter {
 
 		if(candidates.size() < minNumMatches)
 			throw new RuntimeException("At least " +
-				minNumMatches + " data points required." );
+					minNumMatches + " data points required." );
 
 		inliers.clear();
 
@@ -297,8 +297,8 @@ public class Fit_Sphere implements PlugInFilter {
 					minMatches.add(p);
 			}
 
-System.out.println("minMatches.size() = " + minMatches.size());
-System.out.println("minNumInliers = " + minNumInliers);
+			System.out.println("minMatches.size() = " + minMatches.size());
+			System.out.println("minNumInliers = " + minNumInliers);
 			// continue if we found a bad model
 			if(minMatches.size() < minNumInliers)
 				continue;
