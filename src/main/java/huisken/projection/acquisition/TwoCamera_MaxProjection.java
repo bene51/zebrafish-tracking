@@ -15,8 +15,10 @@ import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -84,6 +86,10 @@ public class TwoCamera_MaxProjection implements PlugIn {
 
 		try {
 			String s = LabView.read("Positions");
+			PrintWriter out = new PrintWriter(new FileWriter(new File(outputdir, "positions")));
+			out.println(s);
+			out.close();
+
 			ArrayList<Point4f> positions = Stage_Calibration.readPositionsFromString(s);
 
 			timepoints = LabView.readInt("n timepoints");
