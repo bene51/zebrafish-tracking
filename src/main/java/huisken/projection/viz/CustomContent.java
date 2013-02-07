@@ -87,6 +87,14 @@ public class CustomContent extends Content {
 		updateDisplayRange();
 	}
 
+	public SphericalMaxProjection getSMP() {
+		return smp;
+	}
+
+	public Color3f getColor(int i) {
+		return mesh.colors[i];
+	}
+
 	public void exportToPLY(String path) throws IOException {
 		mesh.createNormalizedVersion(smp.getCenter(), smp.getRadius()).exportToPLY(path);
 	}
@@ -104,8 +112,12 @@ public class CustomContent extends Content {
 		updateDisplayRange();
 	}
 
-	public String getCurrentFile() {
+	public String getCurrentFilePath() {
 		return files[currentIdx].getAbsolutePath();
+	}
+
+	public File getCurrentFile() {
+		return files[currentIdx];
 	}
 
 	public boolean areMaximaShown() {
@@ -124,6 +136,13 @@ public class CustomContent extends Content {
 	public void toggleShowAsColor() {
 		showColorOverlay = !showColorOverlay;
 		updateDisplayRange();
+	}
+
+	public int[] getMaxima() {
+		int[] m = new int[maxima.length];
+		for(int i = 0; i < m.length; i++)
+			m[i] = maxima[i] & 0xffff;
+		return m;
 	}
 
 	public void smooth() {
@@ -313,7 +332,7 @@ public class CustomContent extends Content {
 	}
 
 
-	private static final class CustomIndexedTriangleMesh extends CustomTriangleMesh {
+	protected static final class CustomIndexedTriangleMesh extends CustomTriangleMesh {
 
 		private final Point3f[] vertices;
 		private final Color3f[] colors;

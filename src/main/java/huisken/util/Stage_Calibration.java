@@ -49,7 +49,7 @@ public class Stage_Calibration extends BaseCameraApplication {
 	public static final double DZ = 4;
 	public static final double DX = 0.65;
 	public static final int N_POSITIONS = 7;
-	public static final Point3f REF_POS = new Point3f(125.3f, 4f, 19.02f);
+	public static final Point3f REF_POS = new Point3f(122.3f, 4f, 19.02f);
 
 	public static final String CALIBRATION_FILE = System.getProperty("user.home") + File.separator + ".spim2_stage_calibration";
 
