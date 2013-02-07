@@ -227,7 +227,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 								tStart = start;
 
 							fifo.add(cache);
-							System.out.println("--- buffer: " + fifo.size() + "/100");
+							// System.out.println("--- buffer: " + fifo.size() + "/100");
 						}
 					}
 					at.AT_Command("AcquisitionStop");
