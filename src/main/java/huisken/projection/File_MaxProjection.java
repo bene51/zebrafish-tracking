@@ -32,7 +32,7 @@ public class File_MaxProjection implements PlugIn {
 	private double layerWidth;
 	private int nLayers;
 
-	private static final String format = "sample0" + File.separator + "tp%04d_a%03d" + File.separator + "%04d_ill%d.tif";
+	private static final String format = "tp%04d_a%03d" + File.separator + "%04d_ill%d.tif";
 
 	private File getFile(int tp, int camera, int angle, int z, int ill) {
 		File dir = camera == TwoCameraSphericalMaxProjection.CAMERA1 ? cam1dir : cam2dir;
