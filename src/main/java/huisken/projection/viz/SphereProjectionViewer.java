@@ -22,6 +22,7 @@ import java.io.IOException;
 
 
 public class SphereProjectionViewer implements PlugIn {
+
 	@Override
 	public void run(String arg) {
 		GenericDialogPlus gd = new GenericDialogPlus("Sphere Projection Viewer");
@@ -67,11 +68,11 @@ public class SphereProjectionViewer implements PlugIn {
 		return new CustomContent(objpath, vertexDir, filenameContains);
 	}
 
-	private static class CustomBehavior extends InteractiveBehavior {
+	protected static class CustomBehavior extends InteractiveBehavior {
 
 		private final CustomContent cc;
 
-		CustomBehavior(Image3DUniverse univ, CustomContent cc) {
+		public CustomBehavior(Image3DUniverse univ, CustomContent cc) {
 			super(univ);
 			this.cc = cc;
 		}
@@ -136,7 +137,7 @@ public class SphereProjectionViewer implements PlugIn {
 				cc.toggleShowMaxima();
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_N) {
-				IJ.showMessage(cc.getCurrentFile());
+				IJ.showMessage(cc.getCurrentFilePath());
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_T) {
 				float angleFactor = (float)IJ.getNumber("Angle factor", 0.7);
