@@ -9,6 +9,7 @@ import ij.process.ImageProcessor;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Properties;
 
@@ -151,5 +152,58 @@ public class File_MaxProjection implements PlugIn {
 				}
 			}
 		}
+	}
+
+	public static void createConfFile() {
+		GenericDialogPlus gd = new GenericDialogPlus("Create config file");
+		gd.addNumericField("nTimepoints", 1, 0);
+		gd.addNumericField("nAngles", 1, 0);
+		gd.addNumericField("angleInc", 1, 0);
+		gd.addNumericField("w", 1, 0);
+		gd.addNumericField("h", 1, 0);
+		gd.addNumericField("d", 1, 0);
+		gd.addNumericField("pw", 1, 6);
+		gd.addNumericField("ph", 1, 6);
+		gd.addNumericField("pd", 1, 6);
+		gd.addNumericField("centerX", 1, 6);
+		gd.addNumericField("centerY", 1, 6);
+		gd.addNumericField("centerZ", 1, 6);
+		gd.addNumericField("radius", 1, 6);
+		gd.addCheckbox("doublesided", true);
+		gd.addCheckbox("twocameras", true);
+		gd.addFileField("output file", "");
+		gd.showDialog();
+		if(gd.wasCanceled())
+			return;
+
+
+		Properties properties = new Properties();
+		properties.setProperty("nTimepoints", Integer.toString((int)gd.getNextNumber()));
+		properties.setProperty("nAngles", Integer.toString((int)gd.getNextNumber()));
+		properties.setProperty("angleInc", Integer.toString((int)gd.getNextNumber()));
+		properties.setProperty("w", Integer.toString((int)gd.getNextNumber()));
+		properties.setProperty("h", Integer.toString((int)gd.getNextNumber()));
+		properties.setProperty("d", Integer.toString((int)gd.getNextNumber()));
+		properties.setProperty("pixelwidth", Double.toString(gd.getNextNumber()));
+		properties.setProperty("pixelheight", Double.toString(gd.getNextNumber()));
+		properties.setProperty("pixeldepth", Double.toString(gd.getNextNumber()));
+		properties.setProperty("centerX", Double.toString(gd.getNextNumber()));
+		properties.setProperty("centerY", Double.toString(gd.getNextNumber()));
+		properties.setProperty("centerZ", Double.toString(gd.getNextNumber()));
+		properties.setProperty("radius", Double.toString(gd.getNextNumber()));
+		properties.setProperty("doublesided", Boolean.toString(gd.getNextBoolean()));
+		properties.setProperty("twocameras", Boolean.toString(gd.getNextBoolean()));
+
+		File outf = new File(gd.getNextString());
+		try {
+			properties.store(new FileWriter(outf), "bla");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void main(String[] args) {
+		new ij.ImageJ();
+		createConfFile();
 	}
 }
