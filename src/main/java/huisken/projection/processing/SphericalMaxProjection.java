@@ -184,6 +184,7 @@ public class SphericalMaxProjection {
 			faces.add(Integer.parseInt(toks[3]));
 			line = in.readLine();
 		}
+		in.close();
 
 		Point3f[] vertices = new Point3f[points.size()];
 		points.toArray(vertices);
