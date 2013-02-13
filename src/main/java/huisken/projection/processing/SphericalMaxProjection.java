@@ -699,9 +699,9 @@ public class SphericalMaxProjection {
 	public void projectPlaneMultilayer(int z, short[] ip, short[][] maxima) {
 		for(int i = 0; i < luti[z].length; i++) {
 			try {
-			float v = ip[lutxy[z][i]] & 0xffff;
-			if(v > (maxima[luts[z][i]][luti[z][i]] & 0xffff))
-				maxima[luts[z][i]][luti[z][i]] = (short)v;
+				float v = ip[lutxy[z][i]] & 0xffff;
+				if(v > (maxima[luts[z][i]][luti[z][i]] & 0xffff))
+					maxima[luts[z][i]][luti[z][i]] = (short)v;
 			} catch(RuntimeException e) {
 				System.out.println("z = " + z);
 				System.out.println("i = " + i);
@@ -878,7 +878,7 @@ public class SphericalMaxProjection {
 
 		@SuppressWarnings("unused")
 		public boolean equals(final Node3D o) {
-	                 return p.equals(o.p);
+			return p.equals(o.p);
 		}
 
 		@Override
@@ -889,9 +889,9 @@ public class SphericalMaxProjection {
 		@Override
 		public float get(final int k) {
 			switch(k) {
-				case 0: return p.x;
-				case 1: return p.y;
-				case 2: return p.z;
+			case 0: return p.x;
+			case 1: return p.y;
+			case 2: return p.z;
 			}
 			return 0f;
 		}
