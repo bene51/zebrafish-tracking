@@ -518,11 +518,13 @@ public class SphericalMaxProjection {
 						dx.normalize();
 
 						// calculate the distance needed to move to the neighbor pixel
-						double dmax = Math.max(dx.x / pw, Math.max(dx.y / ph, dx.z / pd));
-						double ddx = dx.x / dmax;
-						double ddy = dx.y / dmax;
-						double ddz = dx.z / dmax;
-						float scale = (float)(ddx * ddx + ddy * ddy + ddz * ddz);
+						// double dmax = Math.max(dx.x / pw, Math.max(dx.y / ph, dx.z / pd));
+						// double ddx = dx.x / dmax;
+						// double ddy = dx.y / dmax;
+						// double ddz = dx.z / dmax;
+						// float scale = (float)(ddx * ddx + ddy * ddy + ddz * ddz);
+						double scale = 1.0 / Math.max(Math.abs(dx.x / pw), Math.max(
+								Math.abs(dx.y / ph), Math.abs(dx.z / pd)));
 
 						for(int s = 0; s < nLayers; s++) {
 							double start = s * layerWidth - t2;
