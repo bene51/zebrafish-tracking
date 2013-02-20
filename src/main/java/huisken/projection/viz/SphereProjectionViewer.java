@@ -118,14 +118,17 @@ public class SphereProjectionViewer implements PlugIn {
 				});
 
 				gd.showDialog();
+				e.consume();
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_S) {
 				cc.smooth();
+				e.consume();
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_F) {
 				double f = IJ.getNumber("Elevation factor", cc.getElevationFactor());
 				if(f != IJ.CANCELED)
 					cc.setElevationFactor((float)f);
+				e.consume();
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_M) {
 				if(!cc.areMaximaShown()) {
@@ -135,9 +138,11 @@ public class SphereProjectionViewer implements PlugIn {
 						cc.setMaximaThreshold(th);
 				}
 				cc.toggleShowMaxima();
+				e.consume();
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_N) {
 				IJ.showMessage(cc.getCurrentFilePath());
+				e.consume();
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_T) {
 				float angleFactor = (float)IJ.getNumber("Angle factor", 0.7);
@@ -146,9 +151,11 @@ public class SphereProjectionViewer implements PlugIn {
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
+				e.consume();
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_O) {
 				cc.toggleShowAsColor();
+				e.consume();
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_E) {
 				OpenDialog od = new OpenDialog("Open LUT", "luts", "elevation.lut");
@@ -167,6 +174,7 @@ public class SphereProjectionViewer implements PlugIn {
 				cm.getBlues(b);
 				byte[][] lut = new byte[][] {r, g, b};
 				cc.setLUT(lut);
+				e.consume();
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_P) {
 				SaveDialog od = new SaveDialog("Save as PLY", "", ".ply");
@@ -177,6 +185,7 @@ public class SphereProjectionViewer implements PlugIn {
 					ex.printStackTrace();
 					IJ.error(ex.getMessage());
 				}
+				e.consume();
 			}
 		}
 	}
