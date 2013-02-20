@@ -1,5 +1,6 @@
 package huisken.projection.processing;
 
+import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
 import ij.ImageStack;
@@ -102,6 +103,42 @@ public class AngleWeighter2 implements FusionWeight {
 			double t = angle - aperture/2.0;
 			return 1f - (float)(1.0 / (1 + Math.exp(-k * t)));
 		}
+	}
+
+	public void weightImage(ImagePlus image) {
+		double pd = image.getCalibration().pixelDepth;
+		double pw = image.getCalibration().pixelWidth;
+		double ph = image.getCalibration().pixelHeight;
+		int w = image.getWidth(), h = image.getHeight(), d = image.getStackSize();
+		for(int z = 0; z < d; z++) {
+			float rz = (float)(z * pd);
+			ImageProcessor ip = image.getStack().getProcessor(z + 1);
+			for(int y = 0; y < h; y++) {
+				float ry = (float)(y * ph);
+				for(int x = 0; x < w; x++) {
+					float rx = (float)(x * pw);
+					float v = ip.getf(x, y);
+					ip.setf(x,  y, v * getWeight(rx, ry, rz));
+				}
+			}
+		}
+	}
+
+	public static ImagePlus sum(ImagePlus[] images) {
+		int w = images[0].getWidth(), h = images[0].getHeight();
+		int d = images[0].getStackSize();
+		ImagePlus res = IJ.createImage("sum", w, h, d, images[0].getBitDepth());
+		int wh = w * h;
+		for(ImagePlus imp : images) {
+			for(int z = 0; z < d; z++) {
+				ImageProcessor ip = imp.getStack().getProcessor(z + 1);
+				ImageProcessor out = res.getStack().getProcessor(z + 1);
+				for(int i = 0; i < wh; i++)
+					out.setf(i, out.getf(i) + ip.getf(i));
+			}
+		}
+		res.setCalibration(images[0].getCalibration().copy());
+		return res;
 	}
 
 	public static void main(String[] args) {
