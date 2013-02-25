@@ -104,6 +104,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 			gd.addNumericField("#Angles", nAngles, 0);
 			gd.addNumericField("Layer width", 140.00, 2);
 			gd.addNumericField("#Layers", 1, 0);
+			gd.addCheckbox("Save raw data", false);
 			gd.showDialog();
 			if(gd.wasCanceled())
 				return;
@@ -114,6 +115,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 			nAngles = (int)gd.getNextNumber();
 			layerWidth = gd.getNextNumber();
 			nLayers = (int)gd.getNextNumber();
+			saveRaw = gd.getNextBoolean();
 
 
 
@@ -174,7 +176,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 
 	protected int w, h, d, nTimepoints, nSamples, nAngles, nLayers;
 	protected double layerWidth;
-	private static final boolean SAVE_RAW = false;
+	private boolean saveRaw;
 	private boolean cameraAcquiring = false;
 	protected FIFO fifo;
 
@@ -186,7 +188,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 				for(int a = 0; a < nAngles; a++) {
 					long start =  System.currentTimeMillis();
 					File tpDir = null;
-					if(SAVE_RAW) {
+					if(saveRaw) {
 						tpDir = new File(mmsmp[s].getOutputDirectory(), String.format("tp%04d_a%03d", t, a));
 						tpDir.mkdir();
 					}
@@ -194,7 +196,7 @@ public class TwoCamera_MaxProjection implements PlugIn {
 						for(int ill = 0; ill < 2; ill++) {
 							fifo.get(toProcess);
 							mmsmp[s].process(toProcess, t, a, f, ill);
-							if(SAVE_RAW)
+							if(saveRaw)
 								IJ.save(new ImagePlus("", new ShortProcessor(w, h, toProcess, null)), new File(tpDir, String.format("%04d_ill%d.tif", f, ill)).getAbsolutePath());
 						}
 					}
