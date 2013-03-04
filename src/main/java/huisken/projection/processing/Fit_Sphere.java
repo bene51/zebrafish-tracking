@@ -108,6 +108,7 @@ public class Fit_Sphere implements PlugInFilter {
 		double pd = cal.pixelDepth;
 
 		ArrayList<Point3f> candidates = new ArrayList<Point3f>();
+		double[] cog = new double[3];
 
 		for(int zi = 0; zi < d; zi++) {
 			ImageProcessor ip = image.getStack().getProcessor(zi + 1);
@@ -121,12 +122,24 @@ public class Fit_Sphere implements PlugInFilter {
 						continue;
 					float x = (float)(xi * pw);
 					candidates.add(new Point3f(x, y, z));
+					cog[0] += x;
+					cog[1] += y;
+					cog[2] += z;
 				}
 			}
 		}
+		cog[0] /= candidates.size();
+		cog[1] /= candidates.size();
+		cog[2] /= candidates.size();
+
 		float cx = w * (float)pw / 2;
 		float cy = h * (float)ph / 2;
 		float cz = d * (float)pd / 2;
+
+		cx = (float)cog[0];
+		cy = (float)cog[1];
+		cz = (float)cog[2];
+
 		Point4f model1 = new Point4f(cx, cy, cz, 350);
 		Point4f model2 = new Point4f(cx, cy, cz, 550);
 		fitMixture(candidates, model1, model2);
