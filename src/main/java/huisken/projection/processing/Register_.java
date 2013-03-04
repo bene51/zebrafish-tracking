@@ -112,7 +112,7 @@ public class Register_ implements PlugIn {
 		File outputfile = new File(outputDirectory, basename + ".vertices");
 		File contributionsfile = new File(contributionsDirectory, basename + ".vertices");
 		System.out.println("reg: src = " + new File(dataDirectory, basename + ".vertices").getAbsolutePath());
-		short[] maxima = SphericalMaxProjection.loadShortData(new File(dataDirectory, basename + ".vertices").getAbsolutePath(), nVertices);
+		short[] maxima = SphericalMaxProjection.loadShortData(new File(dataDirectory, basename + "_00.vertices").getAbsolutePath(), nVertices);
 
 		if(tp == 0) {
 			SphericalMaxProjection.saveShortData(maxima, outputfile.getAbsolutePath());
@@ -128,7 +128,7 @@ public class Register_ implements PlugIn {
 
 			srcPts = getPoints(proj, gauss, maxima);
 			if(tgtPts == null) {
-				short[] pmaxima = SphericalMaxProjection.loadShortData(new File(dataDirectory, String.format("tp%04d", tp-1) + ".vertices").getAbsolutePath(), nVertices);
+				short[] pmaxima = SphericalMaxProjection.loadShortData(new File(dataDirectory, String.format("tp%04d_00", tp-1) + ".vertices").getAbsolutePath(), nVertices);
 				tgtPts = getPoints(proj, gauss, pmaxima);
 			}
 
