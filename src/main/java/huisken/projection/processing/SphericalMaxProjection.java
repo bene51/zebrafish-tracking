@@ -365,6 +365,15 @@ public class SphericalMaxProjection {
 			maxima[i] = (short)(newMaxima[i] / (nNeighbors[i] + 1));
 	}
 
+	/**
+	 * maxima is unchanged / the resulting transform is not applied.
+	 * @param maxima
+	 * @return
+	 */
+	public Matrix4f alignHorizontally(int[] maxima) {
+		return HorizontalAligner.align(sphere.vertices, center, maxima);
+	}
+
 //	public boolean[] isMaximum() {
 //		return isMaximum(maxima);
 //	}
