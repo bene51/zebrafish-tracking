@@ -79,10 +79,18 @@ public class SphereProjectionViewer implements PlugIn {
 	protected static class CustomBehavior extends InteractiveBehavior {
 
 		private final CustomContent cc;
+		private int lastPicked = -1;
 
 		public CustomBehavior(Image3DUniverse univ, CustomContent cc) {
 			super(univ);
 			this.cc = cc;
+		}
+
+		@Override
+		public void doProcess(MouseEvent e) {
+			lastPicked = univ.getPicker().getPickedVertexIndices(cc, e.getX(), e.getY())[0];
+			if(lastPicked != -1)
+				IJ.log("Picked " + cc.getSMP().getSphere().getVertices()[lastPicked]);
 		}
 
 		@Override
