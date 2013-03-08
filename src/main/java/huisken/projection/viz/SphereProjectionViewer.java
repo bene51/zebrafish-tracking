@@ -109,6 +109,7 @@ public class SphereProjectionViewer implements PlugIn {
 				tw.append("Ctrl-n\tShow the file name of the displayed timepoint");
 				tw.append("Ctrl-o\tColor overlay");
 				tw.append("Ctrl-p\tSave current timepoint as PLY file");
+				tw.append("Ctrl-a\tAlign horizontally");
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_C) {
 				final float oldMin = cc.getDisplayedMinimum();
@@ -214,6 +215,14 @@ public class SphereProjectionViewer implements PlugIn {
 					IJ.error(ex.getMessage());
 				}
 				e.consume();
+			}
+			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_A) {
+				SphericalMaxProjection smp = cc.getSMP();
+				System.out.println("Optimizing...");
+				Matrix4f m = smp.alignHorizontally(cc.getMaxima());
+				System.out.println("done");
+				Transform3D t3d = new Transform3D(m);
+				cc.setTransform(t3d);
 			}
 		}
 	}
