@@ -1,17 +1,20 @@
 package huisken.projection.viz;
 
 import fiji.util.gui.GenericDialogPlus;
+import huisken.projection.processing.SphericalMaxProjection;
 import ij.IJ;
 import ij.gui.GenericDialog;
 import ij.io.OpenDialog;
 import ij.io.SaveDialog;
 import ij.plugin.LutLoader;
 import ij.plugin.PlugIn;
+import ij.text.TextWindow;
 import ij3d.Image3DUniverse;
 import ij3d.behaviors.InteractiveBehavior;
 
 import java.awt.TextField;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.awt.event.TextEvent;
 import java.awt.event.TextListener;
 import java.awt.event.WindowAdapter;
@@ -19,6 +22,11 @@ import java.awt.event.WindowEvent;
 import java.awt.image.IndexColorModel;
 import java.io.File;
 import java.io.IOException;
+
+import javax.media.j3d.Transform3D;
+import javax.vecmath.Matrix4f;
+import javax.vecmath.Point2f;
+import javax.vecmath.Point3f;
 
 
 public class SphereProjectionViewer implements PlugIn {
@@ -82,7 +90,19 @@ public class SphereProjectionViewer implements PlugIn {
 			if(e.getID() != KeyEvent.KEY_PRESSED)
 				return;
 
-			if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_C) {
+			if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_H) {
+				TextWindow tw = new TextWindow("Help", "Shortcut\tDescription", 800, 600);
+				tw.append("Ctrl-h\tOpens this help dialog");
+				tw.append("Ctrl-c\tAdjust contrast");
+				tw.append("Ctrl-s\tSmooth");
+				tw.append("Ctrl-f\tChange elevation");
+				tw.append("Ctrl-m\tShow local maxima");
+				tw.append("Ctrl-c\tAdjust contrast");
+				tw.append("Ctrl-n\tShow the file name of the displayed timepoint");
+				tw.append("Ctrl-o\tColor overlay");
+				tw.append("Ctrl-p\tSave current timepoint as PLY file");
+			}
+			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_C) {
 				final float oldMin = cc.getDisplayedMinimum();
 				final float oldMax = cc.getDisplayedMaximum();
 				final GenericDialog gd = new GenericDialog("Adjust contrast");
