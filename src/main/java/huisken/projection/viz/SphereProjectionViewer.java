@@ -26,7 +26,11 @@ import java.io.IOException;
 import javax.media.j3d.Transform3D;
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point2f;
+import javax.vecmath.Point3d;
 import javax.vecmath.Point3f;
+import javax.vecmath.Vector3d;
+
+import vib.FastMatrix;
 
 
 public class SphereProjectionViewer implements PlugIn {
@@ -79,7 +83,7 @@ public class SphereProjectionViewer implements PlugIn {
 	protected static class CustomBehavior extends InteractiveBehavior {
 
 		private final CustomContent cc;
-		private int lastPicked = -1;
+		private Point3f lastPicked = null;
 
 		public CustomBehavior(Image3DUniverse univ, CustomContent cc) {
 			super(univ);
@@ -88,9 +92,23 @@ public class SphereProjectionViewer implements PlugIn {
 
 		@Override
 		public void doProcess(MouseEvent e) {
-			lastPicked = univ.getPicker().getPickedVertexIndices(cc, e.getX(), e.getY())[0];
-			if(lastPicked != -1)
-				IJ.log("Picked " + cc.getSMP().getSphere().getVertices()[lastPicked]);
+			if(e.getID() != MouseEvent.MOUSE_CLICKED)
+				return;
+			if(e.getButton() == MouseEvent.BUTTON1 && e.isControlDown()) {
+				Point3d picked = univ.getPicker().getPickPointGeometry(cc, e);
+				if(picked != null) {
+					lastPicked = new Point3f(picked);
+
+					Transform3D t3d = new Transform3D();
+					cc.getLocalRotate(t3d);
+					t3d.transform(picked);
+					Point2f polar = new Point2f();
+					cc.getSMP().getPolar(new Point3f(picked), polar);
+					polar.x = (float)(polar.x * 180 / Math.PI);
+					polar.y = (float)(polar.y * 180 / Math.PI);
+					IJ.log("Picked " + lastPicked + " -> " + polar);
+				}
+			}
 		}
 
 		@Override
@@ -99,7 +117,7 @@ public class SphereProjectionViewer implements PlugIn {
 				return;
 
 			if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_H) {
-				TextWindow tw = new TextWindow("Help", "Shortcut\tDescription", 800, 600);
+				TextWindow tw = new TextWindow("Help", "Shortcut\tDescription", "", 800, 600);
 				tw.append("Ctrl-h\tOpens this help dialog");
 				tw.append("Ctrl-c\tAdjust contrast");
 				tw.append("Ctrl-s\tSmooth");
@@ -110,7 +128,7 @@ public class SphereProjectionViewer implements PlugIn {
 				tw.append("Ctrl-o\tColor overlay");
 				tw.append("Ctrl-p\tSave current timepoint as PLY file");
 				tw.append("Ctrl-a\tAlign horizontally");
-				tw.append("Ctrl-t\tAdjust longitude");
+				tw.append("Ctrl-v\tAdjust longitude");
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_C) {
 				final float oldMin = cc.getDisplayedMinimum();
@@ -220,18 +238,36 @@ public class SphereProjectionViewer implements PlugIn {
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_A) {
 				SphericalMaxProjection smp = cc.getSMP();
 				System.out.println("Optimizing...");
-				Matrix4f m = smp.alignHorizontally(cc.getMaxima());
+				Transform3D initialT3D = new Transform3D();
+				cc.getLocalRotate(initialT3D);
+				double[] d = new double[16];
+				initialT3D.get(d);
+				FastMatrix fm = new FastMatrix(
+						new double[][] {
+								{ d[0], d[1], d[2], d[3] },
+								{ d[4], d[5], d[6], d[7] },
+								{ d[8], d[9], d[10], d[11] },
+						});
+				double[] param = new double[9];
+				Point3f center = smp.getCenter();
+				fm.guessEulerParameters(param, new math3d.Point3d(center.x, center.y, center.z));
+
+				double threshold = IJ.getNumber("Threshold", 130);
+				if(threshold == IJ.CANCELED)
+					return;
+
+				Matrix4f m = smp.alignHorizontally(cc.getMaxima(), new double[] {param[0], param[1], param[2]}, (int)threshold);
 				System.out.println("done");
 				Transform3D t3d = new Transform3D(m);
 				cc.setTransform(t3d);
 			}
-			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_T) {
-				if(lastPicked == -1) {
+			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_V) {
+				if(lastPicked == null) {
 					IJ.error("No point picked");
 					return;
 				}
 				SphericalMaxProjection smp = cc.getSMP();
-				Point3f pt = new Point3f(smp.getSphere().getVertices()[lastPicked]);
+				Point3f pt = new Point3f(lastPicked);
 				Transform3D t3d = new Transform3D();
 				cc.getLocalRotate(t3d);
 				t3d.transform(pt);
@@ -239,14 +275,30 @@ public class SphereProjectionViewer implements PlugIn {
 				Point2f polar = new Point2f();
 				smp.getPolar(pt, polar);
 
-				double tgtLongitude = IJ.getNumber("Target longitude", polar.x * 180.0 / Math.PI);
+				double tgtLongitude = IJ.getNumber("Target longitude", 135);
 				if(tgtLongitude == IJ.CANCELED)
 					return;
 				tgtLongitude = tgtLongitude * Math.PI / 180.0;
 
 				t3d.setIdentity();
-				t3d.rotY(tgtLongitude);
 
+				Vector3d cenV = new Vector3d(smp.getCenter());
+				t3d.setTranslation(cenV);
+
+				Transform3D rot = new Transform3D();
+//				rot.setIdentity();
+//				rot.rotY(tgtLongitude);
+//				t3d.mul(rot);
+
+				rot.setIdentity();
+				rot.rotY(polar.x - tgtLongitude);
+				t3d.mul(rot);
+
+				cenV.scale(-1);
+				Transform3D cen = new Transform3D();
+				cen.setIdentity();
+				cen.setTranslation(cenV);
+				t3d.mul(t3d, cen);
 				cc.applyTransform(t3d);
 			}
 		}

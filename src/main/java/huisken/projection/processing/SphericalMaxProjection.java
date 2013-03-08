@@ -370,8 +370,12 @@ public class SphericalMaxProjection {
 	 * @param maxima
 	 * @return
 	 */
-	public Matrix4f alignHorizontally(int[] maxima) {
-		return HorizontalAligner.align(sphere.vertices, center, maxima);
+	public Matrix4f alignHorizontally(int[] maxima, int threshold) {
+		return HorizontalAligner.align(sphere.vertices, center, maxima, threshold);
+	}
+
+	public Matrix4f alignHorizontally(int[] maxima, double[] initial, int threshold) {
+		return HorizontalAligner.align(sphere.vertices, center, maxima, initial, threshold);
 	}
 
 //	public boolean[] isMaximum() {

@@ -7,19 +7,28 @@ import vib.FastMatrix;
 
 public class HorizontalAligner {
 
-	public static final Matrix4f align(Point3f[] vertices, Point3f center, int[] maxima) {
-		return new HorizontalAligner(vertices, center, maxima).optimize();
+	// initial: euler angles
+	public static final Matrix4f align(Point3f[] vertices, Point3f center, int[] maxima, double[] initial, int threshold) {
+		Matrix4f m = new Matrix4f();
+		new HorizontalAligner(vertices, center, maxima, threshold).optimize(initial, m);
+		return m;
+	}
+
+	public static final Matrix4f align(Point3f[] vertices, Point3f center, int[] maxima, int threshold) {
+		return new HorizontalAligner(vertices, center, maxima, threshold).optimize();
 	}
 
 	private final Point3f[] vertices;
 	private final int[] maxima;
 	private final Point3f center;
+	private final int threshold;
 
-	public HorizontalAligner(Point3f[] vertices, Point3f center, int[] maxima) {
+	public HorizontalAligner(Point3f[] vertices, Point3f center, int[] maxima, int threshold) {
 		super();
 		this.vertices = vertices;
 		this.maxima = maxima;
 		this.center = center;
+		this.threshold = threshold;
 	}
 
 	/**
@@ -92,9 +101,14 @@ public class HorizontalAligner {
 			transform.transform(v, trans);
 
 			double m = maxima[i];
-			sumY  += v.y * m;
-			sumY2 += v.y * m * m;
-			total += m;
+//			sumY  += trans.y * m;
+//			sumY2 += trans.y * trans.y * m;
+//			total += m;
+			if(m > threshold) {
+				sumY  += trans.y;
+				sumY2 += trans.y * trans.y;
+				total += 1;
+			}
 		}
 
 		double Ey  = sumY / total;
