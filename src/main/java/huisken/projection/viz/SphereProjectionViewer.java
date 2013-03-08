@@ -110,6 +110,7 @@ public class SphereProjectionViewer implements PlugIn {
 				tw.append("Ctrl-o\tColor overlay");
 				tw.append("Ctrl-p\tSave current timepoint as PLY file");
 				tw.append("Ctrl-a\tAlign horizontally");
+				tw.append("Ctrl-t\tAdjust longitude");
 			}
 			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_C) {
 				final float oldMin = cc.getDisplayedMinimum();
@@ -223,6 +224,30 @@ public class SphereProjectionViewer implements PlugIn {
 				System.out.println("done");
 				Transform3D t3d = new Transform3D(m);
 				cc.setTransform(t3d);
+			}
+			else if(e.isControlDown() && e.getKeyCode() == KeyEvent.VK_T) {
+				if(lastPicked == -1) {
+					IJ.error("No point picked");
+					return;
+				}
+				SphericalMaxProjection smp = cc.getSMP();
+				Point3f pt = new Point3f(smp.getSphere().getVertices()[lastPicked]);
+				Transform3D t3d = new Transform3D();
+				cc.getLocalRotate(t3d);
+				t3d.transform(pt);
+
+				Point2f polar = new Point2f();
+				smp.getPolar(pt, polar);
+
+				double tgtLongitude = IJ.getNumber("Target longitude", polar.x * 180.0 / Math.PI);
+				if(tgtLongitude == IJ.CANCELED)
+					return;
+				tgtLongitude = tgtLongitude * Math.PI / 180.0;
+
+				t3d.setIdentity();
+				t3d.rotY(tgtLongitude);
+
+				cc.applyTransform(t3d);
 			}
 		}
 	}
