@@ -109,7 +109,7 @@ public class Register_ implements PlugIn {
 
 	public void registerTimepoint(int tp) throws IOException {
 		String basename = String.format("tp%04d", tp);
-		File outputfile = new File(outputDirectory, basename + ".vertices");
+		File outputfile = new File(outputDirectory, basename + "_00.vertices");
 		File contributionsfile = new File(contributionsDirectory, basename + ".vertices");
 		System.out.println("reg: src = " + new File(dataDirectory, basename + ".vertices").getAbsolutePath());
 		short[] maxima = SphericalMaxProjection.loadShortData(new File(dataDirectory, basename + "_00.vertices").getAbsolutePath(), nVertices);
